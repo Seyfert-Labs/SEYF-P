@@ -1,5 +1,6 @@
-import UtonomaApp from "@/components/app/UtonomaApp";
+import "./landing.css";
+import Landing from "@/components/landing/Landing";
 
 export default function Home() {
-  return <UtonomaApp />;
+  return <Landing />;
 }

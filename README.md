@@ -8,6 +8,14 @@ redención de **MXNB**.
 - **Diseño:** dark glassmorphism, acento lima `#C8FF4D` + violeta `#8B5CF6`
 - **Integración MXNB:** ver [`INTEGRATION.md`](./INTEGRATION.md)
 
+## Rutas
+
+| Ruta | Pantalla |
+|------|----------|
+| `/`     | **Landing** (primera pantalla) — botón **Iniciar / Iniciar ahora** → `/app` |
+| `/app`  | **App** de wallet (onboarding → Home/Wallet/Bonos/Bóvedas/Tarjeta/Perfil) |
+| `/api/juno/*` | Endpoints de la integración Juno/Bitso Business |
+
 ## Arranque rápido
 
 ```bash
@@ -21,10 +29,13 @@ npm run dev                  # http://localhost:3000
 ```
 src/
   app/
-    page.tsx                 # monta la app (UtonomaApp)
+    page.tsx                 # landing (/)
+    landing.css              # estilos de la landing (scoped bajo .lp)
+    app/page.tsx             # app de wallet (/app)
     layout.tsx               # fuentes (Manrope + Space Grotesk), metadata
     globals.css              # tokens + estilos de la app
     api/juno/*/route.ts      # 11 endpoints firmados (Bitso Business / Juno)
+  components/landing/        # Landing portada de Utonoma Landing.html
   components/app/            # UI portada del prototipo (pantallas, iconos, device)
     screens/                 # core (Home/Wallet), invest (Bonos/Convertir), account
     modals/                  # DepositModal, RedeemModal (conectados a Juno)
