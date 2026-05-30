@@ -20,8 +20,8 @@ export function buildJunoAuthHeader(
   path: string,
   body = '',
 ): string {
-  const apiKey = process.env.BITSO_APIKEY;
-  const apiSecret = process.env.BITSO_SECRET_APIKEY;
+  const apiKey = process.env.BITSO_APIKEY?.trim();
+  const apiSecret = process.env.BITSO_SECRET_APIKEY?.trim();
   if (!apiKey || !apiSecret) {
     throw new Error(
       'Faltan credenciales de Juno. Define BITSO_APIKEY y BITSO_SECRET_APIKEY en .env.local',
