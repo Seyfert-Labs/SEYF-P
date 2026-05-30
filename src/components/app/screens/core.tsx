@@ -18,7 +18,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   if (step === 0)
     return (
       <div className="onb screen-enter">
-        <div className="logo-mark brand">U</div>
+        <div className="logo-mark brand">S</div>
         <div className="onb-hero">
           <h1>Tu dinero, <em>protegido</em> y creciendo en automático.</h1>
           <p className="sub">Pesos digitales, bonos de gobierno y bóvedas de ahorro en una sola app. Rendimientos premium, tipo de cambio justo.</p>
@@ -52,7 +52,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         <Icon name="lock" size={15} color="var(--accent)" />
         <span>Cifrado AES-256 · Regulado y supervisado</span>
       </div>
-      <button className="btn btn-primary" onClick={onDone}>Entrar a Utonoma</button>
+      <button className="btn btn-primary" onClick={onDone}>Entrar a Seyf</button>
     </div>
   );
 }
@@ -71,10 +71,18 @@ function SecSetupRow({ icon, t, s, on, lock }: { icon: string; t: string; s: str
   );
 }
 
-/* ---------------- HOME ---------------- */
+/* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
-  const total = ALLOC.reduce((s, a) => s + a.vl, 0);
+  const [modal, setModal] = useState<null | "deposit" | "redeem">(null);
+  const { balance, error: balError, refresh: refreshBal } = useMXNBBalance();
+
+  // El saldo de "Pesos digitales" sale de Juno (MXNB) cuando está disponible.
+  const liveBalance = !balError && balance > 0;
+  const pesos = liveBalance ? balance : ALLOC[0].vl;
+  const alloc = ALLOC.map((a) => (a.key === "pesos" ? { ...a, vl: pesos } : a));
+  const total = alloc.reduce((s, a) => s + a.vl, 0);
+
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
@@ -94,14 +102,16 @@ export function ScreenHome({ go }: { go: Go }) {
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
               <span className="pos-pill"><Icon name="send" size={12} /> +2.15%</span>
-              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>+<span className="num">$12,340</span> este mes</span>
+              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>
+                {liveBalance ? <>MXNB en vivo · Bitso Business</> : <>+<span className="num">$12,340</span> este mes</>}
+              </span>
             </div>
           </div>
           <div className="alloc-bar" style={{ marginTop: 20 }}>
-            {ALLOC.map((a) => <span key={a.key} style={{ width: `${(a.vl / total) * 100}%`, background: a.color }} />)}
+            {alloc.map((a) => <span key={a.key} style={{ width: `${(a.vl / total) * 100}%`, background: a.color }} />)}
           </div>
           <div className="alloc-legend">
-            {ALLOC.map((a) => (
+            {alloc.map((a) => (
               <div className="row" key={a.key}>
                 <span className="dot" style={{ background: a.color }} />
                 <div className="col">
@@ -114,8 +124,8 @@ export function ScreenHome({ go }: { go: Go }) {
         </div>
 
         <div className="quick-row" style={{ marginTop: 18 }}>
-          <button className="quick" onClick={() => go("wallet")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
-          <button className="quick" onClick={() => go("wallet")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
+          <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
+          <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
           <button className="quick" onClick={() => go("convertir")}><span className="ic"><Icon name="swap" /></span><span className="tx">Convertir</span></button>
           <button className="quick" onClick={() => go("bonos")}><span className="ic"><Icon name="invest" /></span><span className="tx">Invertir</span></button>
         </div>
@@ -123,7 +133,7 @@ export function ScreenHome({ go }: { go: Go }) {
         <div className="sec-head"><h3>Mis cuentas</h3></div>
         <div className="card" style={{ padding: "6px 18px" }}>
           <div className="list">
-            <AcctRow go={go} to="wallet" ic="leaf" nm="Pesos digitales" su="Rinde 9% anual" vl={ALLOC[0].vl} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
+            <AcctRow go={go} to="wallet" ic="leaf" nm="Pesos digitales" su={liveBalance ? "MXNB · en vivo" : "Rinde 9% anual"} vl={pesos} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
             <AcctRow go={go} to="bonos" ic="globe" nm="Bonos de gobierno" su="4 países · hasta 11.75%" vl={ALLOC[1].vl} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
             <AcctRow go={go} to="bovedas" ic="vault" nm="Bóvedas de ahorro" su="3 metas activas" vl={ALLOC[2].vl} series={[18, 19, 21, 23, 24, 26, 28, 29]} />
             <AcctRow go={go} to="bonos" ic="star" nm="Acciones premium" su="Cartera curada" vl={ALLOC[3].vl} series={[40, 38, 42, 44, 43, 46, 48, 47]} />
@@ -136,6 +146,9 @@ export function ScreenHome({ go }: { go: Go }) {
         </div>
       </div>
       <div className="scroll-bottom" />
+
+      {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={refreshBal} />}
+      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={refreshBal} maxAmount={liveBalance ? balance : undefined} />}
     </div>
   );
 }

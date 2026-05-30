@@ -23,7 +23,7 @@ export function ScreenCard({ go }: { go: Go }) {
           <div className="sheen" />
           <div className="mesh" />
           <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span className="brand" style={{ fontSize: 22, fontWeight: 800 }}>Utonoma</span>
+            <span className="brand" style={{ fontSize: 22, fontWeight: 800 }}>Seyf</span>
             <Icon name="globe" size={24} color="var(--accent)" />
           </div>
           <div style={{ position: "relative" }}>

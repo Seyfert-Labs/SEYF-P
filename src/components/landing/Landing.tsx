@@ -182,7 +182,7 @@ export default function Landing() {
 
       {/* NAV */}
       <div className={`nav-inner${navHidden ? " nav-hidden" : ""}${navScrolled ? " nav-scrolled" : ""}`}>
-        <a href="#" className="brand-logo"><span className="mk">U</span> Utonoma</a>
+        <a href="#" className="brand-logo"><span className="mk">S</span> Seyf</a>
         <div className="nav-links">
           <a href="#producto">Producto</a>
           <a href="#bonos">Bonos</a>
@@ -368,7 +368,7 @@ export default function Landing() {
               <div className="credit" ref={creditRef} onMouseMove={onCardMove} onMouseLeave={onCardLeave}>
                 <div className="sheen" /><div className="blob" />
                 <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <span className="display" style={{ fontSize: 22, fontWeight: 800 }}>Utonoma</span>
+                  <span className="display" style={{ fontSize: 22, fontWeight: 800 }}>Seyf</span>
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" /></svg>
                 </div>
                 <div style={{ position: "relative" }}>
@@ -507,7 +507,7 @@ export default function Landing() {
           <div className="wrap">
             <div className="foot-grid">
               <div className="foot-col">
-                <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk">U</span> Utonoma</a>
+                <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk">S</span> Seyf</a>
                 <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 280, margin: 0 }}>La super app de finanzas para ahorrar, invertir y gastar sin fronteras.</p>
               </div>
               <div className="foot-col"><h5>Producto</h5><a href="#producto">Pesos digitales</a><a href="#bonos">Bonos</a><a href="#producto">Bóvedas</a><a href="#tarjeta">Tarjeta</a></div>
@@ -515,7 +515,7 @@ export default function Landing() {
               <div className="foot-col"><h5>Legal</h5><a href="#">Términos</a><a href="#">Privacidad</a><a href="#">Comisiones</a><a href="#">Soporte</a></div>
             </div>
             <div className="foot-bottom">
-              <span>© 2026 Utonoma. Todos los derechos reservados.</span>
+              <span>© 2026 Seyf. Todos los derechos reservados.</span>
               <span>Hecho con seguridad de grado bancario · Regulado en México</span>
             </div>
           </div>

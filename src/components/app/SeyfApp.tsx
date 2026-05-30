@@ -1,8 +1,7 @@
 "use client";
 
-/* UTONOMA — shell de la app: router + tab bar + escalado del dispositivo */
-import React, { useCallback, useEffect, useState } from "react";
-import { IOSDevice } from "./IOSDevice";
+/* SEYF — shell de la app: router + tab bar (responsivo, sin marco de teléfono) */
+import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet } from "./screens/core";
@@ -39,10 +38,9 @@ function TabBar({ screen, go }: { screen: Screen; go: Go }) {
   );
 }
 
-export default function UtonomaApp() {
+export default function SeyfApp() {
   const [entered, setEntered] = useState(false);
   const [route, setRoute] = useState<{ screen: Screen; ctx: unknown }>({ screen: "home", ctx: null });
-  const [scale, setScale] = useState(1);
 
   const go = useCallback<Go>((screen, ctx = null) => {
     setRoute({ screen, ctx });
@@ -50,17 +48,6 @@ export default function UtonomaApp() {
       const el = document.querySelector(".screen");
       if (el) el.scrollTop = 0;
     });
-  }, []);
-
-  useEffect(() => {
-    const fit = () => {
-      const m = 24;
-      const s = Math.min(1, (window.innerHeight - m) / 874, (window.innerWidth - m) / 402);
-      setScale(s);
-    };
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
   }, []);
 
   const SCREENS: Record<Screen, React.ReactNode> = {
@@ -81,20 +68,16 @@ export default function UtonomaApp() {
   const showTabs = !["bono", "boveda", "convertir", "cambio", "txn"].includes(route.screen);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-      <div style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}>
-        <IOSDevice dark>
-          <div className="uto-root style-expresivo" key={route.screen}>
-            {!entered ? (
-              <Onboarding onDone={() => setEntered(true)} />
-            ) : (
-              <>
-                {SCREENS[route.screen] || SCREENS.home}
-                {showTabs && <TabBar screen={route.screen} go={go} />}
-              </>
-            )}
-          </div>
-        </IOSDevice>
+    <div className="app-shell">
+      <div className="uto-root style-expresivo" key={route.screen}>
+        {!entered ? (
+          <Onboarding onDone={() => setEntered(true)} />
+        ) : (
+          <>
+            {SCREENS[route.screen] || SCREENS.home}
+            {showTabs && <TabBar screen={route.screen} go={go} />}
+          </>
+        )}
       </div>
     </div>
   );

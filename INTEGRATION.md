@@ -67,6 +67,8 @@ Define en `.env.local` (ver `.env.example`):
 
 | Pantalla | Botón | Acción Juno |
 |----------|-------|-------------|
+| **Home** (`screens/core.tsx`) | Patrimonio / Pesos digitales | `GET /balance` (MXNB en vivo) |
+| Home | **Agregar** / **Enviar** | `DepositModal` / `RedeemModal` |
 | **Wallet** (`screens/core.tsx`) | Saldo disponible | `GET /balance` (`useMXNBBalance`) |
 | Wallet | Movimientos | `GET /transactions` (`useTransactions`) |
 | Wallet | **Agregar** | `DepositModal` → `create-clabe` + `mock-deposit` |
@@ -99,6 +101,11 @@ En la app: **Inicio → Agregar** (genera CLABE y simula un depósito) y luego
 - `mock-deposit` está restringido al endpoint `/spei/test/*` de stage.
 
 ## 7. Changelog
+
+### 1.1.0 — 2026-05-30
+- Marca renombrada Utonoma → **Seyf**.
+- App responsiva (móvil/escritorio), sin marco de teléfono.
+- Home conectado a Juno: saldo MXNB en vivo + accesos a depósito/redención.
 
 ### 1.0.0 — 2026-05-30
 - Port inicial desde `puma-pay-campus-wallet`.

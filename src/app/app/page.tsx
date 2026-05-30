@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import UtonomaApp from "@/components/app/UtonomaApp";
+import SeyfApp from "@/components/app/SeyfApp";
 
 export const metadata: Metadata = {
-  title: "Utonoma — App",
+  title: "Seyf — App",
 };
 
 export default function AppPage() {
-  return <UtonomaApp />;
+  return <SeyfApp />;
 }

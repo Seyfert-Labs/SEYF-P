@@ -15,7 +15,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Utonoma — Super app de finanzas",
+  title: "Seyf — Super app de finanzas",
   description:
     "Pesos digitales, bonos de gobierno y bóvedas de ahorro. Integración Bitso Business / Juno (MXNB).",
 };
