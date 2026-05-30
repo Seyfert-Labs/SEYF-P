@@ -12,6 +12,7 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
 import { SendOnchainModal } from "../modals/SendOnchainModal";
+import { WelcomeBonus } from "../WelcomeBonus";
 
 /* ---------------- ONBOARDING ---------------- */
 export function Onboarding({ onDone }: { onDone: () => void }) {
@@ -125,6 +126,8 @@ export function ScreenHome({ go }: { go: Go }) {
             ))}
           </div>
         </div>
+
+        <WelcomeBonus />
 
         <div className="quick-row" style={{ marginTop: 18 }}>
           <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>

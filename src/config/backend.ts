@@ -22,6 +22,7 @@ export const backendConfig = {
     redeem: '/api/juno/redeem',
     // On-chain
     withdrawal: '/api/juno/withdrawal',
+    welcomeBonus: '/api/juno/welcome-bonus',
     // Utilidades
     health: '/api/juno/health',
     webhook: '/api/juno/webhook',

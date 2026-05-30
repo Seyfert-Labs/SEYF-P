@@ -1,6 +1,6 @@
 # Integración Bitso Business / Juno (MXNB) + Wallets sociales — Seyf
 
-**Versión de la integración:** `1.3.0`
+**Versión de la integración:** `1.4.0`
 **Entorno por defecto:** `stage` (`https://stage.buildwithjuno.com`)
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5
 
@@ -136,6 +136,12 @@ paymaster (configurado en el dashboard de Privy) paga el gas.
   patrocinio de gas para Arbitrum Sepolia.
 
 ## 9. Changelog
+
+### 1.4.0 — 2026-05-30
+- **Bono de bienvenida**: `POST /api/juno/welcome-bonus` — Juno emite 1,500 MXNB
+  on-chain a la smart wallet del usuario nuevo (banner en Home). Gate best-effort
+  en memoria (producción: DB). Env: `WELCOME_BONUS_AMOUNT`, `JUNO_WITHDRAWAL_ASSET`,
+  `JUNO_BLOCKCHAIN`.
 
 ### 1.3.0 — 2026-05-30
 - **Account abstraction + gasless**: smart wallets de Privy + envío de MXNB on-chain

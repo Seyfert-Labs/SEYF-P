@@ -138,6 +138,15 @@ export class JunoService {
     return res.payload;
   }
 
+  /** Reclama el bono de bienvenida (Juno emite MXNB on-chain a la wallet). */
+  async claimWelcomeBonus(address: string): Promise<unknown> {
+    const res = await this.makeRequest(backendConfig.endpoints.welcomeBonus, {
+      method: 'POST',
+      body: JSON.stringify({ address }),
+    });
+    return res.payload;
+  }
+
   // ---------------- Utilidades ----------------
 
   async healthCheck(): Promise<boolean> {
