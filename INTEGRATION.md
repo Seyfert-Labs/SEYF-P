@@ -1,6 +1,6 @@
-# Integración Bitso Business / Juno (MXNB) — SEYF2 / Utonoma
+# Integración Bitso Business / Juno (MXNB) + Wallets sociales — Seyf
 
-**Versión de la integración:** `1.0.0`
+**Versión de la integración:** `1.2.0`
 **Entorno por defecto:** `stage` (`https://stage.buildwithjuno.com`)
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5
 
@@ -100,7 +100,37 @@ En la app: **Inicio → Agregar** (genera CLABE y simula un depósito) y luego
 - Webhook con verificación de firma `timingSafeEqual`.
 - `mock-deposit` está restringido al endpoint `/spei/test/*` de stage.
 
-## 7. Changelog
+## 8. Wallets sociales (Privy) + saldo on-chain
+
+Login social con **Privy** (Google / Email OTP) que crea una **wallet embebida sin
+seed phrase** en Arbitrum. El usuario no maneja llaves ni firma para entrar.
+
+- **`src/components/Providers.tsx`** — `PrivyProvider` (montado solo en `/app` vía
+  `src/app/app/layout.tsx`). Sin `NEXT_PUBLIC_PRIVY_APP_ID`, la app corre en modo demo.
+- **`src/components/wallet/PrivyBridge.tsx`** — traduce el estado de Privy + el saldo
+  MXNB on-chain al `WalletContext`.
+- **`src/components/wallet/WalletContext.tsx`** — `useWallet()` que consumen las pantallas
+  (no llaman hooks de Privy directamente).
+- **`src/lib/chain.ts`** — chain (Arbitrum Sepolia/One), dirección de MXNB y lectura del
+  saldo ERC-20 con viem (`readMXNBBalance`).
+
+**Dato clave:** `/api/juno/balance` es el saldo de la **cuenta de negocio** (Bitso
+Business), no el de cada usuario. El saldo **por usuario** se lee on-chain de su wallet
+(`Home`/`Wallet` muestran `wallet.balance`). El onboarding (`/app`) gatea por sesión:
+sin login se muestra el onboarding; al iniciar sesión aparece la app.
+
+Variables nuevas (ver `.env.example`): `NEXT_PUBLIC_PRIVY_APP_ID`, `NEXT_PUBLIC_CHAIN`,
+`NEXT_PUBLIC_MXNB_ADDRESS`, `NEXT_PUBLIC_ARBITRUM_RPC`.
+
+> Siguiente paso (gasless real): activar **smart wallets** de Privy + un paymaster
+> (Pimlico/ZeroDev) para patrocinar gas en transferencias on-chain del usuario.
+
+## 9. Changelog
+
+### 1.2.0 — 2026-05-30
+- Wallets sociales con **Privy** (Google / Email), wallet embebida sin seed phrase.
+- Saldo **MXNB on-chain real por usuario** (viem, Arbitrum Sepolia).
+- Onboarding gateado por sesión; Perfil muestra wallet + cerrar sesión.
 
 ### 1.1.0 — 2026-05-30
 - Marca renombrada Utonoma → **Seyf**.

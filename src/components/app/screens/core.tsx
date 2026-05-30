@@ -6,8 +6,9 @@ import { Icon, Spark } from "../ui";
 import { TopBar, SubHeader, TxnRow } from "../shared";
 import { ALLOC, TXNS, FMT, type Txn } from "../data";
 import type { Go } from "../nav";
-import { useMXNBBalance, useTransactions } from "@/hooks/useJuno";
+import { useTransactions } from "@/hooks/useJuno";
 import type { Transaction } from "@/types/juno";
+import { useWallet } from "@/components/wallet/WalletContext";
 import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
 
@@ -75,11 +76,12 @@ function SecSetupRow({ icon, t, s, on, lock }: { icon: string; t: string; s: str
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
   const [modal, setModal] = useState<null | "deposit" | "redeem">(null);
-  const { balance, error: balError, refresh: refreshBal } = useMXNBBalance();
+  const wallet = useWallet();
+  const refreshBal = wallet.refreshBalance;
 
-  // El saldo de "Pesos digitales" sale de Juno (MXNB) cuando está disponible.
-  const liveBalance = !balError && balance > 0;
-  const pesos = liveBalance ? balance : ALLOC[0].vl;
+  // El saldo de "Pesos digitales" sale del balance MXNB on-chain del usuario.
+  const liveBalance = wallet.authenticated && wallet.balance > 0;
+  const pesos = liveBalance ? wallet.balance : ALLOC[0].vl;
   const alloc = ALLOC.map((a) => (a.key === "pesos" ? { ...a, vl: pesos } : a));
   const total = alloc.reduce((s, a) => s + a.vl, 0);
 
@@ -103,7 +105,7 @@ export function ScreenHome({ go }: { go: Go }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
               <span className="pos-pill"><Icon name="send" size={12} /> +2.15%</span>
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>
-                {liveBalance ? <>MXNB en vivo · Bitso Business</> : <>+<span className="num">$12,340</span> este mes</>}
+                {liveBalance ? <>MXNB on-chain · Arbitrum</> : <>+<span className="num">$12,340</span> este mes</>}
               </span>
             </div>
           </div>
@@ -133,7 +135,7 @@ export function ScreenHome({ go }: { go: Go }) {
         <div className="sec-head"><h3>Mis cuentas</h3></div>
         <div className="card" style={{ padding: "6px 18px" }}>
           <div className="list">
-            <AcctRow go={go} to="wallet" ic="leaf" nm="Pesos digitales" su={liveBalance ? "MXNB · en vivo" : "Rinde 9% anual"} vl={pesos} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
+            <AcctRow go={go} to="wallet" ic="leaf" nm="Pesos digitales" su={liveBalance ? "MXNB · on-chain" : "Rinde 9% anual"} vl={pesos} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
             <AcctRow go={go} to="bonos" ic="globe" nm="Bonos de gobierno" su="4 países · hasta 11.75%" vl={ALLOC[1].vl} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
             <AcctRow go={go} to="bovedas" ic="vault" nm="Bóvedas de ahorro" su="3 metas activas" vl={ALLOC[2].vl} series={[18, 19, 21, 23, 24, 26, 28, 29]} />
             <AcctRow go={go} to="bonos" ic="star" nm="Acciones premium" su="Cartera curada" vl={ALLOC[3].vl} series={[40, 38, 42, 44, 43, 46, 48, 47]} />
@@ -148,7 +150,7 @@ export function ScreenHome({ go }: { go: Go }) {
       <div className="scroll-bottom" />
 
       {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={refreshBal} />}
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={refreshBal} maxAmount={liveBalance ? balance : undefined} />}
+      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={refreshBal} maxAmount={liveBalance ? wallet.balance : undefined} />}
     </div>
   );
 }
@@ -185,13 +187,15 @@ function junoTxnToRow(t: Transaction): Txn {
 }
 
 export function ScreenWallet({ go }: { go: Go }) {
-  const { balance, loading: loadingBal, error: balError, refresh: refreshBal } = useMXNBBalance();
+  const wallet = useWallet();
   const { transactions, refresh: refreshTxns } = useTransactions(25);
   const [modal, setModal] = useState<null | "deposit" | "redeem">(null);
 
-  // Si Juno no está configurado/responde, usamos el saldo demo del prototipo.
-  const liveBalance = !balError && balance > 0;
-  const shown = liveBalance ? balance : 48250.4;
+  // Saldo real on-chain del usuario; si no hay sesión, saldo demo del prototipo.
+  const loadingBal = wallet.balanceLoading;
+  const liveBalance = wallet.authenticated && wallet.balance > 0;
+  const shown = liveBalance ? wallet.balance : 48250.4;
+  const refreshBal = wallet.refreshBalance;
   const [intPart, centsPart] = FMT(shown, 2).split(".");
 
   const liveTxns = transactions.length > 0 ? transactions.map(junoTxnToRow) : TXNS;
@@ -215,8 +219,8 @@ export function ScreenWallet({ go }: { go: Go }) {
             </p>
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
-            <span className="pos-pill"><Icon name="leaf" size={12} /> {liveBalance ? "MXNB en vivo" : "+$12.40 hoy"}</span>
-            <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>{liveBalance ? "Vía Bitso Business · Juno" : "9% anual · pagado diario"}</span>
+            <span className="pos-pill"><Icon name="leaf" size={12} /> {liveBalance ? "MXNB on-chain" : "+$12.40 hoy"}</span>
+            <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>{liveBalance ? "Arbitrum · tu wallet" : "9% anual · pagado diario"}</span>
           </div>
         </div>
 
@@ -243,7 +247,7 @@ export function ScreenWallet({ go }: { go: Go }) {
       <div className="scroll-bottom" />
 
       {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} />}
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={liveBalance ? balance : undefined} />}
+      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={liveBalance ? wallet.balance : undefined} />}
     </div>
   );
 }

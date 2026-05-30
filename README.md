@@ -1,8 +1,8 @@
-# SEYF2 / Utonoma
+# Seyf
 
 Super app de finanzas (pesos digitales, bonos de gobierno, bóvedas de ahorro y
 tarjeta multi-divisa) con integración **Bitso Business / Juno** para emisión y
-redención de **MXNB**.
+redención de **MXNB**, y **wallets sociales** (Privy) sin seed phrase en Arbitrum.
 
 - **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5 · Tailwind v4
 - **Diseño:** dark glassmorphism, acento lima `#C8FF4D` + violeta `#8B5CF6`

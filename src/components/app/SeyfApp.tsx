@@ -1,6 +1,7 @@
 "use client";
 
-/* SEYF — shell de la app: router + tab bar (responsivo, sin marco de teléfono) */
+/* SEYF — shell de la app: router + tab bar (responsivo, sin marco de teléfono).
+   Gating por sesión: onboarding → login (Privy) → app. */
 import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
@@ -13,6 +14,7 @@ import {
   ScreenConvert,
 } from "./screens/invest";
 import { ScreenCard, ScreenProfile } from "./screens/account";
+import { useWallet } from "@/components/wallet/WalletContext";
 
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
   { id: "inicio", ic: "home", lb: "Inicio", screen: "home", match: ["home", "wallet", "convertir", "cambio", "notifs", "txn"] },
@@ -38,8 +40,20 @@ function TabBar({ screen, go }: { screen: Screen; go: Go }) {
   );
 }
 
+function Splash() {
+  return (
+    <div className="app-shell">
+      <div className="uto-root style-expresivo" style={{ alignItems: "center", justifyContent: "center" }}>
+        <div className="logo-mark brand" style={{ marginBottom: 18 }}>S</div>
+        <span className="spin" style={{ color: "var(--accent)" }} />
+      </div>
+    </div>
+  );
+}
+
 export default function SeyfApp() {
-  const [entered, setEntered] = useState(false);
+  const wallet = useWallet();
+  const [enteredDemo, setEnteredDemo] = useState(false);
   const [route, setRoute] = useState<{ screen: Screen; ctx: unknown }>({ screen: "home", ctx: null });
 
   const go = useCallback<Go>((screen, ctx = null) => {
@@ -49,6 +63,12 @@ export default function SeyfApp() {
       if (el) el.scrollTop = 0;
     });
   }, []);
+
+  // Con Privy: gatear por sesión real. Sin Privy: flujo demo local.
+  const showApp = wallet.enabled ? wallet.authenticated : enteredDemo;
+  const onEnter = wallet.enabled ? wallet.login : () => setEnteredDemo(true);
+
+  if (wallet.enabled && !wallet.ready) return <Splash />;
 
   const SCREENS: Record<Screen, React.ReactNode> = {
     home: <ScreenHome go={go} />,
@@ -69,9 +89,9 @@ export default function SeyfApp() {
 
   return (
     <div className="app-shell">
-      <div className="uto-root style-expresivo" key={route.screen}>
-        {!entered ? (
-          <Onboarding onDone={() => setEntered(true)} />
+      <div className="uto-root style-expresivo" key={showApp ? route.screen : "onb"}>
+        {!showApp ? (
+          <Onboarding onDone={onEnter} />
         ) : (
           <>
             {SCREENS[route.screen] || SCREENS.home}

@@ -6,6 +6,12 @@ import { Icon, Flag, Ring } from "../ui";
 import { SubHeader, TxnRow } from "../shared";
 import { CARD_TXNS } from "../data";
 import type { Go } from "../nav";
+import { useWallet } from "@/components/wallet/WalletContext";
+import { explorerBase, IS_TESTNET } from "@/lib/chain";
+
+function shortAddr(a?: string) {
+  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
+}
 
 /* ---------------- TARJETA ---------------- */
 export function ScreenCard({ go }: { go: Go }) {
@@ -84,19 +90,43 @@ export function ScreenCard({ go }: { go: Go }) {
 
 /* ---------------- PERFIL / SEGURIDAD ---------------- */
 export function ScreenProfile({ go }: { go: Go }) {
+  const wallet = useWallet();
+  const email = wallet.email || "diego@correo.com";
+  const copyAddr = () => {
+    if (wallet.address) navigator.clipboard?.writeText(wallet.address).catch(() => {});
+  };
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
       <SubHeader title="Perfil" go={go} back="home" />
       <div className="screen-pad">
         <div className="card" style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div className="avatar" style={{ width: 60, height: 60, fontSize: 22 }}>DR</div>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 18 }}>Diego Robles</p>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>diego@correo.com</p>
+          <div className="avatar" style={{ width: 60, height: 60, fontSize: 22 }}>{(email[0] || "S").toUpperCase()}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 18 }}>{wallet.authenticated ? "Mi cuenta" : "Diego Robles"}</p>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)", overflow: "hidden", textOverflow: "ellipsis" }}>{email}</p>
           </div>
           <span className="pos-pill"><Icon name="check" size={12} /> Verificado</span>
         </div>
+
+        {wallet.enabled && wallet.authenticated && wallet.address && (
+          <div className="card" style={{ marginTop: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <p className="eyebrow">Wallet · Arbitrum{IS_TESTNET ? " Sepolia" : ""}</p>
+              <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>Sin seed phrase</span>
+            </div>
+            <div className="clabe-box" style={{ marginTop: 10 }}>
+              <span className="clabe-val" style={{ fontSize: 15 }}>{shortAddr(wallet.address)}</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="icon-btn" onClick={copyAddr} aria-label="Copiar dirección"><Icon name="copy" size={18} /></button>
+                <a className="icon-btn" href={`${explorerBase}/address/${wallet.address}`} target="_blank" rel="noopener noreferrer" aria-label="Ver en explorador"><Icon name="arrowR" size={18} /></a>
+              </div>
+            </div>
+            <p style={{ margin: "10px 2px 0", fontSize: 12, color: "var(--txt-dim)" }}>
+              Tu wallet se creó con tu login social. No necesitas firmar ni pagar gas.
+            </p>
+          </div>
+        )}
 
         <div className="card glow" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 16 }}>
           <Ring pct={92} size={66} color="var(--accent)" />
@@ -130,7 +160,7 @@ export function ScreenProfile({ go }: { go: Go }) {
         <div className="card" style={{ padding: 6 }}>
           <SecRow icon="doc" t="Documentos y estados de cuenta" right={<Icon name="chevR" size={16} color="var(--txt-dim)" />} />
           <SecRow icon="headset" t="Soporte 24/7" right={<Icon name="chevR" size={16} color="var(--txt-dim)" />} />
-          <SecRow icon="logout" t="Cerrar sesión" right={<Icon name="chevR" size={16} color="var(--txt-dim)" />} danger last />
+          <SecRow icon="logout" t="Cerrar sesión" right={<Icon name="chevR" size={16} color="var(--txt-dim)" />} danger last onClick={wallet.enabled ? wallet.logout : undefined} />
         </div>
       </div>
       <div className="scroll-bottom" />
@@ -138,9 +168,9 @@ export function ScreenProfile({ go }: { go: Go }) {
   );
 }
 
-function SecRow({ icon, t, right, last, danger }: { icon: string; t: string; right?: React.ReactNode; last?: boolean; danger?: boolean }) {
+function SecRow({ icon, t, right, last, danger, onClick }: { icon: string; t: string; right?: React.ReactNode; last?: boolean; danger?: boolean; onClick?: () => void }) {
   return (
-    <div className="lrow" style={{ padding: "12px 12px", borderBottom: last ? "none" : "1px solid var(--line)" }}>
+    <div className="lrow" onClick={onClick} style={{ padding: "12px 12px", borderBottom: last ? "none" : "1px solid var(--line)", cursor: onClick ? "pointer" : undefined }}>
       <span style={{ width: 38, height: 38, borderRadius: 11, background: danger ? "rgba(255,122,122,.13)" : "var(--surface-2)", color: danger ? "var(--neg)" : "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid var(--line)" }}>
         <Icon name={icon} size={19} />
       </span>
