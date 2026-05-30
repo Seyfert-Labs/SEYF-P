@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 
 // Bono de bienvenida: Juno emite y envía MXNB on-chain a la smart wallet del
 // usuario nuevo (para probar la app y el gas patrocinado en testnet).
+// Juno exige asset "MXNB" (mayúsculas) y blockchain "ARBITRUM" (validado contra stage).
 const BONUS_AMOUNT = process.env.WELCOME_BONUS_AMOUNT || "1500";
-const ASSET = process.env.JUNO_WITHDRAWAL_ASSET || "mxn";
+const ASSET = process.env.JUNO_WITHDRAWAL_ASSET || "MXNB";
 const BLOCKCHAIN = process.env.JUNO_BLOCKCHAIN || "ARBITRUM";
 
 // Anti-doble-reclamo best-effort (se reinicia con el server).
