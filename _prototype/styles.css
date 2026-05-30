@@ -1,13 +1,11 @@
-@import "tailwindcss";
-
 /* ============================================================
    UTONOMA — Super app de finanzas
-   Tokens + estilos de componentes. Paleta lima/violeta.
-   Portado del prototipo (_prototype/styles.css).
-   Fuentes: --font-sans (Manrope) + --font-display (Space Grotesk)
+   Tokens + component styles. Theme is controlled by CSS vars
+   set on .uto-root by the Tweaks panel (palette + style).
    ============================================================ */
 
 :root {
+  /* base dark surfaces (constant across palettes) */
   --bg:        #08080D;
   --surface:   #131120;
   --surface-2: #1A1729;
@@ -19,13 +17,17 @@
   --txt-dim:   #67627E;
   --neg:       #FF7A7A;
 
-  --accent:    #C8FF4D;
-  --accent-2:  #8B5CF6;
-  --on-accent: #0A0A0F;
+  /* accent set — overridden per-palette on .uto-root */
+  --accent:    #C8FF4D;          /* lime / phosphorescent green */
+  --accent-2:  #8B5CF6;          /* violet */
+  --on-accent: #0A0A0F;          /* text on lime */
   --pos:       #C8FF4D;
+
+  /* derived (recomputed in JS-set inline vars too, fallbacks here) */
   --accent-soft:   rgba(200,255,77,0.14);
   --accent-2-soft: rgba(139,92,246,0.18);
 
+  /* type scale */
   --t-hero:  44px;
   --t-xl:    30px;
   --t-lg:    22px;
@@ -41,20 +43,12 @@
 
 * { box-sizing: border-box; }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background: #000;
-  overscroll-behavior: none;
-}
-
 .uto-root {
   width: 100%;
   height: 100%;
   background: var(--bg);
   color: var(--txt);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: 'Manrope', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   position: relative;
   display: flex;
@@ -62,6 +56,7 @@ html, body {
   overflow: hidden;
 }
 
+/* atmospheric background — only in expressive mode */
 .uto-root::before {
   content: '';
   position: absolute; inset: 0;
@@ -75,8 +70,8 @@ html, body {
 }
 .uto-root.style-expresivo::before { opacity: 1; }
 
-.num { font-family: var(--font-display), system-ui, sans-serif; font-feature-settings: 'tnum' 1; letter-spacing: -0.02em; }
-.brand { font-family: var(--font-display), system-ui, sans-serif; font-weight: 700; letter-spacing: -0.03em; }
+.num { font-family: 'Space Grotesk', system-ui, sans-serif; font-feature-settings: 'tnum' 1; letter-spacing: -0.02em; }
+.brand { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.03em; }
 
 /* ---------- app shell ---------- */
 .screen {
@@ -114,7 +109,6 @@ html, body {
   background: linear-gradient(135deg, var(--accent-2), var(--accent));
   display: flex; align-items: center; justify-content: center;
   font-weight: 800; color: var(--on-accent); font-size: 15px; cursor: pointer;
-  border: none;
 }
 
 /* section title */
@@ -167,12 +161,11 @@ html, body {
 .btn {
   width: 100%; border: none; cursor: pointer;
   border-radius: 16px; padding: 17px;
-  font-family: var(--font-sans), sans-serif; font-weight: 800; font-size: var(--t-md);
+  font-family: 'Manrope', sans-serif; font-weight: 800; font-size: var(--t-md);
   display: flex; align-items: center; justify-content: center; gap: 8px;
   transition: transform .1s, filter .15s;
 }
 .btn:active { transform: scale(.985); }
-.btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn-primary { background: var(--accent); color: var(--on-accent); }
 .style-expresivo .btn-primary { box-shadow: 0 10px 30px -8px var(--accent-soft); }
 .btn-ghost { background: var(--surface-2); color: var(--txt); border: 1px solid var(--line-strong); }
@@ -235,10 +228,9 @@ html, body {
 .flag { width: 34px; height: 34px; border-radius: var(--r-pill); overflow: hidden; flex-shrink: 0; border: 1px solid var(--line-strong); }
 .flag.sm { width: 26px; height: 26px; }
 .flag.lg { width: 48px; height: 48px; }
-.flag svg { width: 100%; height: 100%; display: block; }
 
 /* bond card */
-.bond-card { display: flex; align-items: center; gap: 14px; padding: 18px; cursor: pointer; }
+.bond-card { display: flex; align-items: center; gap: 14px; padding: 18px; }
 .bond-card .yield { text-align: right; }
 .bond-card .yield .pc { font-size: 20px; font-weight: 800; color: var(--accent); }
 .bond-card .yield .lb { font-size: var(--t-xxs); color: var(--txt-dim); }
@@ -250,7 +242,7 @@ html, body {
 /* vault card */
 .vault {
   border-radius: var(--r-card); padding: 20px; position: relative; overflow: hidden;
-  border: 1px solid var(--line); cursor: pointer;
+  border: 1px solid var(--line);
 }
 
 /* card visual */
@@ -282,6 +274,12 @@ html, body {
 }
 .tab.active { color: var(--accent); }
 .tab .lb { font-size: 10px; font-weight: 700; letter-spacing: .01em; }
+.tab .fab {
+  width: 50px; height: 50px; border-radius: 16px; margin-top: -16px;
+  background: var(--accent); color: var(--on-accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.style-expresivo .tab .fab { box-shadow: 0 10px 24px -8px var(--accent-soft); }
 
 /* mini sparkline container */
 .spark { display: block; }
@@ -342,78 +340,22 @@ html, body {
 .gmatch { display: inline-flex; align-items: center; gap: 7px; font-size: var(--t-xs); color: var(--txt-muted); }
 .gmatch b { color: var(--accent); font-weight: 800; }
 
+/* keypad-ish enter row removed; misc */
 .divider { height: 1px; background: var(--line); margin: 18px 0; }
 
 /* fade/slide screen transition */
 .screen-enter { animation: scrIn .32s cubic-bezier(.2,.7,.2,1); }
 @keyframes scrIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
+/* shimmer on lime CTA in expressive */
 .style-expresivo .logo-mark { box-shadow: 0 12px 34px -10px var(--accent-soft); }
 
 /* segmented control */
 .seg { display: flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 13px; padding: 4px; gap: 4px; }
-.seg button { flex: 1; border: none; background: none; color: var(--txt-muted); font-weight: 700; font-size: var(--t-xs); padding: 9px; border-radius: 9px; cursor: pointer; font-family: var(--font-sans), sans-serif; }
+.seg button { flex: 1; border: none; background: none; color: var(--txt-muted); font-weight: 700; font-size: var(--t-xs); padding: 9px; border-radius: 9px; cursor: pointer; font-family: 'Manrope', sans-serif; }
 .seg button.on { background: var(--surface-3); color: var(--txt); }
 
 /* mini bar chart */
 .bars { display: flex; align-items: flex-end; gap: 7px; height: 90px; }
 .bars .b { flex: 1; border-radius: 6px 6px 3px 3px; background: var(--surface-3); position: relative; }
 .bars .b.hi { background: var(--accent); }
-
-/* ============================================================
-   Juno integration UI — depósito / redención (modales + inputs)
-   ============================================================ */
-.modal-overlay {
-  position: absolute; inset: 0; z-index: 100;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: flex; align-items: flex-end; justify-content: center;
-  animation: fadeIn .2s ease;
-}
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.modal-sheet {
-  width: 100%; background: var(--surface); border-top-left-radius: 28px; border-top-right-radius: 28px;
-  border-top: 1px solid var(--line-strong); padding: 10px 22px 30px;
-  max-height: 88%; overflow-y: auto; scrollbar-width: none;
-  animation: sheetUp .28s cubic-bezier(.2,.7,.2,1);
-}
-.modal-sheet::-webkit-scrollbar { display: none; }
-@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
-.modal-grab { width: 40px; height: 5px; border-radius: 999px; background: var(--surface-3); margin: 0 auto 16px; }
-.modal-title { font-size: var(--t-lg); font-weight: 800; margin: 0 0 4px; letter-spacing: -0.02em; }
-.modal-sub { font-size: var(--t-xs); color: var(--txt-muted); margin: 0 0 18px; line-height: 1.5; }
-
-.field-label { font-size: var(--t-xxs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--txt-dim); margin: 16px 0 8px; display: block; }
-.input {
-  width: 100%; background: var(--surface-2); border: 1px solid var(--line);
-  border-radius: 14px; padding: 15px 16px; color: var(--txt);
-  font-family: var(--font-sans), sans-serif; font-size: var(--t-md); font-weight: 600;
-  outline: none; transition: border-color .15s;
-}
-.input:focus { border-color: var(--accent); }
-.input::placeholder { color: var(--txt-dim); }
-.input.num-input { font-family: var(--font-display), sans-serif; }
-
-.alert { border-radius: 14px; padding: 13px 15px; font-size: var(--t-xs); font-weight: 600; line-height: 1.45; margin-top: 14px; }
-.alert-error { background: rgba(255,122,122,.12); color: var(--neg); border: 1px solid rgba(255,122,122,.25); }
-.alert-ok { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(200,255,77,.25); }
-.alert-info { background: var(--accent-2-soft); color: #c4b5fd; border: 1px solid rgba(139,92,246,.25); }
-
-.clabe-box {
-  background: var(--surface-2); border: 1px dashed var(--line-strong); border-radius: 14px;
-  padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px;
-}
-.clabe-box .clabe-val { font-family: var(--font-display), sans-serif; font-size: 18px; font-weight: 700; letter-spacing: .04em; }
-
-.spin { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.bank-opt {
-  width: 100%; text-align: left; background: var(--surface-2); border: 1px solid var(--line);
-  border-radius: 14px; padding: 14px 16px; margin-top: 10px; cursor: pointer; color: var(--txt);
-  display: flex; align-items: center; gap: 12px; transition: border-color .15s, background .15s;
-}
-.bank-opt.sel { border-color: var(--accent); background: var(--accent-soft); }
-.skel { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
-  background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 8px; }
-@keyframes shimmer { to { background-position: -200% 0; } }

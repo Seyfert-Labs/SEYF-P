@@ -1,7 +1,8 @@
 {
-  "name": "seyf2app",
+  "name": "seyf2",
   "version": "0.1.0",
   "private": true,
+  "description": "SEYF2 / Utonoma — super app de finanzas con integración Bitso Business / Juno (MXNB).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,13 +15,16 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
+    "@tailwindcss/postcss": "4.3.0",
+    "@types/node": "20.19.41",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "4.3.0",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

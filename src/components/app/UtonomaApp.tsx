@@ -1,0 +1,101 @@
+"use client";
+
+/* UTONOMA — shell de la app: router + tab bar + escalado del dispositivo */
+import React, { useCallback, useEffect, useState } from "react";
+import { IOSDevice } from "./IOSDevice";
+import { Icon } from "./ui";
+import type { Go, Screen } from "./nav";
+import { Onboarding, ScreenHome, ScreenWallet } from "./screens/core";
+import {
+  ScreenBonos,
+  ScreenBondDetail,
+  ScreenVaults,
+  ScreenVaultDetail,
+  ScreenConvert,
+} from "./screens/invest";
+import { ScreenCard, ScreenProfile } from "./screens/account";
+
+const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
+  { id: "inicio", ic: "home", lb: "Inicio", screen: "home", match: ["home", "wallet", "convertir", "cambio", "notifs", "txn"] },
+  { id: "invertir", ic: "invest", lb: "Invertir", screen: "bonos", match: ["bonos", "bono"] },
+  { id: "bovedas", ic: "vault", lb: "Bóvedas", screen: "bovedas", match: ["bovedas", "boveda"] },
+  { id: "tarjeta", ic: "card", lb: "Tarjeta", screen: "card", match: ["card"] },
+  { id: "perfil", ic: "user", lb: "Perfil", screen: "perfil", match: ["perfil"] },
+];
+
+function TabBar({ screen, go }: { screen: Screen; go: Go }) {
+  return (
+    <div className="tabbar">
+      {TABS.map((t) => {
+        const active = t.match.includes(screen);
+        return (
+          <button key={t.id} className={`tab ${active ? "active" : ""}`} onClick={() => go(t.screen)}>
+            <Icon name={t.ic} size={24} stroke={active ? 2.4 : 2} />
+            <span className="lb">{t.lb}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function UtonomaApp() {
+  const [entered, setEntered] = useState(false);
+  const [route, setRoute] = useState<{ screen: Screen; ctx: unknown }>({ screen: "home", ctx: null });
+  const [scale, setScale] = useState(1);
+
+  const go = useCallback<Go>((screen, ctx = null) => {
+    setRoute({ screen, ctx });
+    requestAnimationFrame(() => {
+      const el = document.querySelector(".screen");
+      if (el) el.scrollTop = 0;
+    });
+  }, []);
+
+  useEffect(() => {
+    const fit = () => {
+      const m = 24;
+      const s = Math.min(1, (window.innerHeight - m) / 874, (window.innerWidth - m) / 402);
+      setScale(s);
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
+
+  const SCREENS: Record<Screen, React.ReactNode> = {
+    home: <ScreenHome go={go} />,
+    wallet: <ScreenWallet go={go} />,
+    bonos: <ScreenBonos go={go} />,
+    bono: <ScreenBondDetail go={go} ctx={route.ctx} />,
+    bovedas: <ScreenVaults go={go} />,
+    boveda: <ScreenVaultDetail go={go} ctx={route.ctx} />,
+    card: <ScreenCard go={go} />,
+    perfil: <ScreenProfile go={go} />,
+    convertir: <ScreenConvert go={go} />,
+    cambio: <ScreenConvert go={go} />,
+    notifs: <ScreenProfile go={go} />,
+    txn: <ScreenWallet go={go} />,
+  };
+
+  const showTabs = !["bono", "boveda", "convertir", "cambio", "txn"].includes(route.screen);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <div style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}>
+        <IOSDevice dark>
+          <div className="uto-root style-expresivo" key={route.screen}>
+            {!entered ? (
+              <Onboarding onDone={() => setEntered(true)} />
+            ) : (
+              <>
+                {SCREENS[route.screen] || SCREENS.home}
+                {showTabs && <TabBar screen={route.screen} go={go} />}
+              </>
+            )}
+          </div>
+        </IOSDevice>
+      </div>
+    </div>
+  );
+}

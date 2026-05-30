@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SEYF2 / Utonoma
 
-## Getting Started
+Super app de finanzas (pesos digitales, bonos de gobierno, bóvedas de ahorro y
+tarjeta multi-divisa) con integración **Bitso Business / Juno** para emisión y
+redención de **MXNB**.
 
-First, run the development server:
+- **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5 · Tailwind v4
+- **Diseño:** dark glassmorphism, acento lima `#C8FF4D` + violeta `#8B5CF6`
+- **Integración MXNB:** ver [`INTEGRATION.md`](./INTEGRATION.md)
+
+## Arranque rápido
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local   # añade tus llaves de Juno (BITSO_APIKEY / BITSO_SECRET_APIKEY)
+npm install
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estructura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+  app/
+    page.tsx                 # monta la app (UtonomaApp)
+    layout.tsx               # fuentes (Manrope + Space Grotesk), metadata
+    globals.css              # tokens + estilos de la app
+    api/juno/*/route.ts      # 11 endpoints firmados (Bitso Business / Juno)
+  components/app/            # UI portada del prototipo (pantallas, iconos, device)
+    screens/                 # core (Home/Wallet), invest (Bonos/Convertir), account
+    modals/                  # DepositModal, RedeemModal (conectados a Juno)
+  hooks/useJuno.ts           # hooks de React para la UI
+  services/junoService.ts    # cliente tipado del navegador
+  lib/juno/                  # firma HMAC + cliente server-side
+  types/juno.ts              # tipos compartidos
+  config/backend.ts          # config de endpoints del cliente
+_prototype/                  # prototipo original (HTML/JSX) — referencia de diseño
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev`   | Servidor de desarrollo |
+| `npm run build` | Build de producción |
+| `npm run start` | Servir el build |
+| `npm run lint`  | ESLint |
 
-To learn more about Next.js, take a look at the following resources:
+## Documentación
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`INTEGRATION.md`](./INTEGRATION.md) — integración Juno/Bitso (endpoints, env, flujos, versiones)
+- [`PLAN-NextJS-ClaudeCode.md`](./PLAN-NextJS-ClaudeCode.md) — plan de la landing
