@@ -11,6 +11,7 @@ import type { Transaction } from "@/types/juno";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
+import { SendOnchainModal } from "../modals/SendOnchainModal";
 
 /* ---------------- ONBOARDING ---------------- */
 export function Onboarding({ onDone }: { onDone: () => void }) {
@@ -189,7 +190,7 @@ function junoTxnToRow(t: Transaction): Txn {
 export function ScreenWallet({ go }: { go: Go }) {
   const wallet = useWallet();
   const { transactions, refresh: refreshTxns } = useTransactions(25);
-  const [modal, setModal] = useState<null | "deposit" | "redeem">(null);
+  const [modal, setModal] = useState<null | "deposit" | "redeem" | "send">(null);
 
   // Saldo real on-chain del usuario; si no hay sesión, saldo demo del prototipo.
   const loadingBal = wallet.balanceLoading;
@@ -229,6 +230,12 @@ export function ScreenWallet({ go }: { go: Go }) {
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setModal("redeem")}><Icon name="send" size={18} /> Enviar</button>
         </div>
 
+        {wallet.enabled && wallet.authenticated && (
+          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setModal("send")}>
+            <Icon name="swap" size={18} /> Transferir MXNB on-chain · sin gas
+          </button>
+        )}
+
         <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 14, background: "var(--accent-soft)", border: "none" }}>
           <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Icon name="leaf" size={22} />
@@ -248,6 +255,7 @@ export function ScreenWallet({ go }: { go: Go }) {
 
       {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} />}
       {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={liveBalance ? wallet.balance : undefined} />}
+      {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} />}
     </div>
   );
 }

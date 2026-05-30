@@ -112,8 +112,8 @@ export function ScreenProfile({ go }: { go: Go }) {
         {wallet.enabled && wallet.authenticated && wallet.address && (
           <div className="card" style={{ marginTop: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p className="eyebrow">Wallet · Arbitrum{IS_TESTNET ? " Sepolia" : ""}</p>
-              <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>Sin seed phrase</span>
+              <p className="eyebrow">{wallet.gaslessReady ? "Cuenta inteligente" : "Wallet"} · Arbitrum{IS_TESTNET ? " Sepolia" : ""}</p>
+              <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>{wallet.gaslessReady ? "Gas patrocinado" : "Sin seed phrase"}</span>
             </div>
             <div className="clabe-box" style={{ marginTop: 10 }}>
               <span className="clabe-val" style={{ fontSize: 15 }}>{shortAddr(wallet.address)}</span>

@@ -1,6 +1,6 @@
 # Integración Bitso Business / Juno (MXNB) + Wallets sociales — Seyf
 
-**Versión de la integración:** `1.2.0`
+**Versión de la integración:** `1.3.0`
 **Entorno por defecto:** `stage` (`https://stage.buildwithjuno.com`)
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5
 
@@ -122,10 +122,24 @@ sin login se muestra el onboarding; al iniciar sesión aparece la app.
 Variables nuevas (ver `.env.example`): `NEXT_PUBLIC_PRIVY_APP_ID`, `NEXT_PUBLIC_CHAIN`,
 `NEXT_PUBLIC_MXNB_ADDRESS`, `NEXT_PUBLIC_ARBITRUM_RPC`.
 
-> Siguiente paso (gasless real): activar **smart wallets** de Privy + un paymaster
-> (Pimlico/ZeroDev) para patrocinar gas en transferencias on-chain del usuario.
+### Account abstraction + gas patrocinado (gasless)
+
+Activado con **smart wallets de Privy** (`SmartWalletsProvider` + `useSmartWallets`):
+la wallet embebida (EOA) firma como *owner* de una cuenta inteligente ERC-4337; un
+paymaster (configurado en el dashboard de Privy) paga el gas.
+
+- La dirección efectiva del usuario (saldo/recepción) es la **smart wallet**.
+- `wallet.sendMXNB(to, amount)` envía MXNB **sin que el usuario firme ni pague gas**
+  (`src/components/app/modals/SendOnchainModal.tsx`, botón en Wallet).
+- Requiere el dep `permissionless` (peer de Privy smart wallets) y configurar en el
+  **dashboard de Privy**: Smart Wallets ON + provider (Kernel/Safe) + política de
+  patrocinio de gas para Arbitrum Sepolia.
 
 ## 9. Changelog
+
+### 1.3.0 — 2026-05-30
+- **Account abstraction + gasless**: smart wallets de Privy + envío de MXNB on-chain
+  sin firmas ni gas (`SendOnchainModal`). Dep `permissionless` añadida.
 
 ### 1.2.0 — 2026-05-30
 - Wallets sociales con **Privy** (Google / Email), wallet embebida sin seed phrase.

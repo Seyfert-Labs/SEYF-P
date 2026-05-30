@@ -4,6 +4,7 @@
    Login social (Google / Email OTP), wallet creada sin seed phrase.
    Si no hay App ID, expone un WalletContext por defecto (modo demo). */
 import { PrivyProvider } from "@privy-io/react-auth";
+import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
 import { activeChain } from "@/lib/chain";
 import { WalletCtx, defaultWalletState } from "./wallet/WalletContext";
 import PrivyBridge from "./wallet/PrivyBridge";
@@ -34,7 +35,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      <PrivyBridge>{children}</PrivyBridge>
+      <SmartWalletsProvider>
+        <PrivyBridge>{children}</PrivyBridge>
+      </SmartWalletsProvider>
     </PrivyProvider>
   );
 }

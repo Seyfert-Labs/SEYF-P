@@ -29,7 +29,7 @@ export const publicClient = createPublicClient({
   transport: http(process.env.NEXT_PUBLIC_ARBITRUM_RPC || undefined),
 });
 
-// ABI mínimo de ERC-20 para leer saldo.
+// ABI mínimo de ERC-20 (saldo + transferencia).
 export const erc20Abi = [
   {
     type: "function",
@@ -37,6 +37,16 @@ export const erc20Abi = [
     stateMutability: "view",
     inputs: [{ name: "account", type: "address" }],
     outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "transfer",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
   },
 ] as const;
 
