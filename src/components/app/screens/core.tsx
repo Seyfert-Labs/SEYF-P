@@ -81,10 +81,14 @@ export function ScreenHome({ go }: { go: Go }) {
   const wallet = useWallet();
   const refreshBal = wallet.refreshBalance;
 
-  // El saldo de "Pesos digitales" sale del balance MXNB on-chain del usuario.
-  const liveBalance = wallet.authenticated && wallet.balance > 0;
-  const pesos = liveBalance ? wallet.balance : ALLOC[0].vl;
-  const alloc = ALLOC.map((a) => (a.key === "pesos" ? { ...a, vl: pesos } : a));
+  // Con sesión iniciada mostramos datos reales: Pesos digitales = saldo MXNB
+  // on-chain del usuario; las demás categorías aún no tienen integración → $0.
+  const realData = wallet.enabled && wallet.authenticated;
+  const pesos = realData ? wallet.balance : ALLOC[0].vl;
+  const alloc = ALLOC.map((a) => {
+    if (a.key === "pesos") return { ...a, vl: pesos };
+    return realData ? { ...a, vl: 0 } : a;
+  });
   const total = alloc.reduce((s, a) => s + a.vl, 0);
 
   return (
@@ -105,14 +109,18 @@ export function ScreenHome({ go }: { go: Go }) {
               <span className="cur">MXN</span>
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
-              <span className="pos-pill"><Icon name="send" size={12} /> +2.15%</span>
-              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>
-                {liveBalance ? <>MXNB on-chain · Arbitrum</> : <>+<span className="num">$12,340</span> este mes</>}
-              </span>
+              {realData ? (
+                <span className="pos-pill"><Icon name="leaf" size={12} /> MXNB on-chain · Arbitrum</span>
+              ) : (
+                <>
+                  <span className="pos-pill"><Icon name="send" size={12} /> +2.15%</span>
+                  <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>+<span className="num">$12,340</span> este mes</span>
+                </>
+              )}
             </div>
           </div>
           <div className="alloc-bar" style={{ marginTop: 20 }}>
-            {alloc.map((a) => <span key={a.key} style={{ width: `${(a.vl / total) * 100}%`, background: a.color }} />)}
+            {alloc.map((a) => <span key={a.key} style={{ width: total > 0 ? `${(a.vl / total) * 100}%` : "0%", background: a.color }} />)}
           </div>
           <div className="alloc-legend">
             {alloc.map((a) => (
@@ -139,22 +147,28 @@ export function ScreenHome({ go }: { go: Go }) {
         <div className="sec-head"><h3>Mis cuentas</h3></div>
         <div className="card" style={{ padding: "6px 18px" }}>
           <div className="list">
-            <AcctRow go={go} to="wallet" ic="leaf" nm="Pesos digitales" su={liveBalance ? "MXNB · on-chain" : "Rinde 9% anual"} vl={pesos} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
-            <AcctRow go={go} to="bonos" ic="globe" nm="Bonos de gobierno" su="4 países · hasta 11.75%" vl={ALLOC[1].vl} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
-            <AcctRow go={go} to="bovedas" ic="vault" nm="Bóvedas de ahorro" su="3 metas activas" vl={ALLOC[2].vl} series={[18, 19, 21, 23, 24, 26, 28, 29]} />
-            <AcctRow go={go} to="bonos" ic="star" nm="Acciones premium" su="Cartera curada" vl={ALLOC[3].vl} series={[40, 38, 42, 44, 43, 46, 48, 47]} />
+            <AcctRow go={go} to="wallet" ic="leaf" nm="Pesos digitales" su={realData ? "MXNB · on-chain" : "Rinde 9% anual"} vl={pesos} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
+            <AcctRow go={go} to="bonos" ic="globe" nm="Bonos de gobierno" su={realData ? "Próximamente · Etherfuse" : "4 países · hasta 11.75%"} vl={realData ? 0 : ALLOC[1].vl} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
+            <AcctRow go={go} to="bovedas" ic="vault" nm="Bóvedas de ahorro" su={realData ? "Próximamente" : "3 metas activas"} vl={realData ? 0 : ALLOC[2].vl} series={[18, 19, 21, 23, 24, 26, 28, 29]} />
+            <AcctRow go={go} to="bonos" ic="star" nm="Acciones premium" su={realData ? "Próximamente" : "Cartera curada"} vl={realData ? 0 : ALLOC[3].vl} series={[40, 38, 42, 44, 43, 46, 48, 47]} />
           </div>
         </div>
 
         <div className="sec-head"><h3>Movimientos recientes</h3><span className="link" onClick={() => go("wallet")}>Ver todo</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
-          <div className="list">{TXNS.slice(0, 3).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
+          {realData ? (
+            <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
+              Aún no tienes movimientos. Reclama tu bono o agrega fondos para empezar.
+            </p>
+          ) : (
+            <div className="list">{TXNS.slice(0, 3).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
+          )}
         </div>
       </div>
       <div className="scroll-bottom" />
 
       {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={refreshBal} />}
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={refreshBal} maxAmount={liveBalance ? wallet.balance : undefined} />}
+      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={refreshBal} maxAmount={realData ? wallet.balance : undefined} />}
     </div>
   );
 }

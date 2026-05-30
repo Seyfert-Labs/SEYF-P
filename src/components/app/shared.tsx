@@ -1,22 +1,36 @@
+"use client";
+
 /* UTONOMA — helpers de layout compartidos */
 import React from "react";
 import { Icon } from "./ui";
 import { FMT, type Txn } from "./data";
 import type { Go, Screen } from "./nav";
+import { useWallet } from "@/components/wallet/WalletContext";
 
 /* barra superior con saludo + acciones (estilo home) */
 export function TopBar({ go }: { go: Go }) {
+  const wallet = useWallet();
+  const authed = wallet.enabled && wallet.authenticated;
+  const display = authed ? wallet.email ?? "Mi cuenta" : "Diego Robles";
+  const initials = authed
+    ? (wallet.email ? wallet.email.slice(0, 2).toUpperCase() : "MX")
+    : "DR";
   return (
     <div className="app-head">
-      <div>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <p className="greet">Buenas tardes</p>
-        <p className="name">Diego Robles</p>
+        <p
+          className="name"
+          style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 230 }}
+        >
+          {display}
+        </p>
       </div>
       <div className="head-actions">
         <button className="icon-btn" onClick={() => go("notifs")} aria-label="Notificaciones">
           <Icon name="bell" size={20} />
         </button>
-        <button className="avatar" onClick={() => go("perfil")}>DR</button>
+        <button className="avatar" onClick={() => go("perfil")}>{initials}</button>
       </div>
     </div>
   );
