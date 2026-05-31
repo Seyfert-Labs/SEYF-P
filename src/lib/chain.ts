@@ -1,4 +1,4 @@
-import { createPublicClient, http, type Address } from "viem";
+import { createPublicClient, http, parseAbiItem, type Address } from "viem";
 import { arbitrum, arbitrumSepolia } from "viem/chains";
 
 // ============================================================
@@ -64,3 +64,87 @@ export async function readMXNBBalance(address: Address): Promise<number> {
 export const explorerBase = IS_TESTNET
   ? "https://sepolia.arbiscan.io"
   : "https://arbiscan.io";
+
+// ---------------- Historial on-chain (transferencias MXNB del usuario) ----------------
+
+const transferEvent = parseAbiItem(
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+);
+
+export interface OnchainTransfer {
+  hash: string;
+  from: string;
+  to: string;
+  value: number; // unidades MXNB
+  direction: "in" | "out";
+  timestamp: number; // ms (0 si no se pudo leer)
+  blockNumber: bigint;
+}
+
+/** Lee las transferencias de MXNB hacia/desde una dirección (recientes). */
+export async function readMXNBTransfers(
+  address: Address,
+  lookback = 500000n,
+): Promise<OnchainTransfer[]> {
+  const latest = await publicClient.getBlockNumber();
+  const fromBlock = latest > lookback ? latest - lookback : 0n;
+
+  async function fetchPair(fb: bigint) {
+    const base = { address: MXNB_ADDRESS, event: transferEvent, fromBlock: fb, toBlock: "latest" as const };
+    return Promise.all([
+      publicClient.getLogs({ ...base, args: { to: address } }),
+      publicClient.getLogs({ ...base, args: { from: address } }),
+    ]);
+  }
+
+  let incoming, outgoing;
+  try {
+    [incoming, outgoing] = await fetchPair(fromBlock);
+  } catch {
+    // Rango grande rechazado por el RPC → ventana corta.
+    const fb = latest > 9000n ? latest - 9000n : 0n;
+    try {
+      [incoming, outgoing] = await fetchPair(fb);
+    } catch {
+      return [];
+    }
+  }
+
+  const tagged = [
+    ...incoming.map((l) => ({ l, dir: "in" as const })),
+    ...outgoing.map((l) => ({ l, dir: "out" as const })),
+  ];
+
+  // Timestamps por bloque (dedupe).
+  const blockNums = [...new Set(tagged.map((t) => t.l.blockNumber))];
+  const tsMap = new Map<bigint, number>();
+  await Promise.all(
+    blockNums.map(async (bn) => {
+      try {
+        const blk = await publicClient.getBlock({ blockNumber: bn });
+        tsMap.set(bn, Number(blk.timestamp) * 1000);
+      } catch {
+        /* ignora */
+      }
+    }),
+  );
+
+  const seen = new Set<string>();
+  const out: OnchainTransfer[] = [];
+  for (const { l, dir } of tagged) {
+    const key = `${l.transactionHash}-${dir}-${l.logIndex}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      hash: l.transactionHash,
+      from: l.args.from as string,
+      to: l.args.to as string,
+      value: Number(l.args.value) / 10 ** MXNB_DECIMALS,
+      direction: dir,
+      timestamp: tsMap.get(l.blockNumber) ?? 0,
+      blockNumber: l.blockNumber,
+    });
+  }
+  out.sort((a, b) => Number(b.blockNumber - a.blockNumber));
+  return out;
+}

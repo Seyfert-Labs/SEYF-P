@@ -6,9 +6,9 @@ import { Icon, Spark } from "../ui";
 import { TopBar, SubHeader, TxnRow } from "../shared";
 import { ALLOC, TXNS, FMT, type Txn } from "../data";
 import type { Go } from "../nav";
-import { useTransactions } from "@/hooks/useJuno";
-import type { Transaction } from "@/types/juno";
 import { useWallet } from "@/components/wallet/WalletContext";
+import { useOnchainTxns } from "@/hooks/useOnchain";
+import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
 import { SendOnchainModal } from "../modals/SendOnchainModal";
@@ -79,6 +79,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
   const [modal, setModal] = useState<null | "deposit" | "redeem">(null);
   const wallet = useWallet();
+  const homeTxns = useOnchainTxns(wallet.address);
   const refreshBal = wallet.refreshBalance;
 
   // Con sesión iniciada mostramos datos reales: Pesos digitales = saldo MXNB
@@ -157,9 +158,15 @@ export function ScreenHome({ go }: { go: Go }) {
         <div className="sec-head"><h3>Movimientos recientes</h3><span className="link" onClick={() => go("wallet")}>Ver todo</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
           {realData ? (
-            <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
-              Aún no tienes movimientos. Reclama tu bono o agrega fondos para empezar.
-            </p>
+            homeTxns.loading && homeTxns.txns.length === 0 ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
+            ) : homeTxns.txns.length === 0 ? (
+              <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
+                Aún no tienes movimientos. Reclama tu bono o agrega fondos para empezar.
+              </p>
+            ) : (
+              <div className="list">{homeTxns.txns.slice(0, 3).map(onchainToRow).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
+            )
           ) : (
             <div className="list">{TXNS.slice(0, 3).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
           )}
@@ -185,20 +192,16 @@ function AcctRow({ go, to, ic, nm, su, vl, series }: { go: Go; to: Parameters<Go
   );
 }
 
-/* ---------------- WALLET (pesos digitales · wired a Juno) ---------------- */
-const TXN_LABEL: Record<string, string> = {
-  ISSUANCE: "Depósito recibido (MXNB)",
-  REDEMPTION: "Redención a MXN",
-  DEPOSIT: "Depósito SPEI",
-};
-
-function junoTxnToRow(t: Transaction): Txn {
-  const pos = t.transaction_type !== "REDEMPTION";
+/* ---------------- WALLET (pesos digitales · MXNB on-chain) ---------------- */
+function onchainToRow(t: OnchainTransfer, i: number): Txn {
+  const pos = t.direction === "in";
   return {
-    id: Number(t.id) || Math.random(),
-    nm: TXN_LABEL[t.transaction_type] ?? t.transaction_type,
-    su: `${t.summary_status} · ${new Date(t.created_at).toLocaleDateString("es-MX")}`,
-    amt: pos ? Math.abs(t.amount) : -Math.abs(t.amount),
+    id: i + 1,
+    nm: pos ? "MXNB recibido" : "MXNB enviado",
+    su: t.timestamp
+      ? new Date(t.timestamp).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "Confirmando…",
+    amt: pos ? t.value : -t.value,
     ic: pos ? "in" : "send",
     pos,
   };
@@ -206,9 +209,10 @@ function junoTxnToRow(t: Transaction): Txn {
 
 export function ScreenWallet({ go }: { go: Go }) {
   const wallet = useWallet();
-  const { transactions, refresh: refreshTxns } = useTransactions(25);
+  const { txns: onchainTxns, loading: loadingTxns, refresh: refreshTxns } = useOnchainTxns(wallet.address);
   const [modal, setModal] = useState<null | "deposit" | "redeem" | "send">(null);
 
+  const realMode = wallet.enabled && wallet.authenticated;
   // Saldo real on-chain del usuario; si no hay sesión, saldo demo del prototipo.
   const loadingBal = wallet.balanceLoading;
   const liveBalance = wallet.authenticated && wallet.balance > 0;
@@ -216,7 +220,7 @@ export function ScreenWallet({ go }: { go: Go }) {
   const refreshBal = wallet.refreshBalance;
   const [intPart, centsPart] = FMT(shown, 2).split(".");
 
-  const liveTxns = transactions.length > 0 ? transactions.map(junoTxnToRow) : TXNS;
+  const liveTxns = realMode ? onchainTxns.map(onchainToRow) : TXNS;
 
   const onSuccess = () => { void refreshBal(); void refreshTxns(); };
 
@@ -265,7 +269,13 @@ export function ScreenWallet({ go }: { go: Go }) {
 
         <div className="sec-head"><h3>Movimientos</h3><span className="link" onClick={() => onSuccess()}>Actualizar</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
-          <div className="list">{liveTxns.map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
+          {realMode && loadingTxns && liveTxns.length === 0 ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
+          ) : realMode && liveTxns.length === 0 ? (
+            <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>Aún no tienes movimientos.</p>
+          ) : (
+            <div className="list">{liveTxns.map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
+          )}
         </div>
       </div>
       <div className="scroll-bottom" />

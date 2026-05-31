@@ -4,9 +4,12 @@
 import React, { useState } from "react";
 import { Icon, Flag, Spark, Ring } from "../ui";
 import { SubHeader } from "../shared";
-import { BONDS, VAULTS, FX, FMT, type Bond, type Vault } from "../data";
+import { BONDS, FX, FMT, type Bond } from "../data";
 import type { Go } from "../nav";
+import { useWallet } from "@/components/wallet/WalletContext";
+import { useVaults, type UserVault } from "@/hooks/useVaults";
 import { RedeemModal } from "../modals/RedeemModal";
+import { DepositModal } from "../modals/DepositModal";
 
 /* ---------------- BONOS LIST ---------------- */
 export function ScreenBonos({ go }: { go: Go }) {
@@ -142,59 +145,84 @@ export function ScreenBondDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
 
 /* ---------------- BÓVEDAS ---------------- */
 export function ScreenVaults({ go }: { go: Go }) {
-  const totalSaved = VAULTS.reduce((s, v) => s + v.bal, 0);
+  const wallet = useWallet();
+  const { vaults, addVault, totalSaved } = useVaults(wallet.address);
+  const [adding, setAdding] = useState(false);
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
       <div className="app-head" style={{ paddingTop: 4 }}>
         <p className="name">Bóvedas</p>
-        <button className="icon-btn"><Icon name="plus" size={22} /></button>
+        <button className="icon-btn" onClick={() => setAdding(true)} aria-label="Nueva bóveda"><Icon name="plus" size={22} /></button>
       </div>
       <div className="screen-pad">
         <div className="card glow" style={{ padding: 22 }}>
           <p className="eyebrow">Total ahorrado en bóvedas</p>
           <p className="amount num" style={{ fontSize: 38, marginTop: 12 }}>${FMT(totalSaved, 2).split(".")[0]}<span style={{ opacity: 0.5 }}>.{FMT(totalSaved, 2).split(".")[1]}</span></p>
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <span className="pos-pill"><Icon name="leaf" size={12} /> Rinde hasta 11.2%</span>
-            <span className="chip" style={{ pointerEvents: "none" }}>{VAULTS.length} metas</span>
+            <span className="chip" style={{ pointerEvents: "none" }}>{vaults.length} {vaults.length === 1 ? "meta" : "metas"}</span>
           </div>
         </div>
+
         <div className="sec-head"><h3>Tus metas</h3></div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {VAULTS.map((v) => {
-            const pct = Math.round((v.bal / v.goal) * 100);
-            return (
-              <div key={v.id} className="vault card" onClick={() => go("boveda", v)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <Ring pct={pct} size={58} color={v.color} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+
+        {vaults.length === 0 ? (
+          <div className="card" style={{ textAlign: "center", padding: 28 }}>
+            <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}><Icon name="vault" size={26} /></span>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>Aún no tienes bóvedas</p>
+            <p style={{ margin: "6px 0 16px", fontSize: 13, color: "var(--txt-muted)" }}>Crea una meta de ahorro y sigue tu progreso.</p>
+            <button className="btn btn-primary" onClick={() => setAdding(true)}><Icon name="plus" size={18} /> Crear mi primera bóveda</button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {vaults.map((v) => {
+              const pct = v.goal > 0 ? Math.round((v.bal / v.goal) * 100) : 0;
+              return (
+                <div key={v.id} className="vault card" onClick={() => go("boveda", v)}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <Ring pct={pct} size={58} color={v.color} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{v.nm}</p>
-                      {v.locked && <Icon name="lock" size={14} color="var(--txt-dim)" />}
+                      <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>{FMT(v.apy, 1)}% anual</p>
+                      <p className="num" style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 800 }}>
+                        ${FMT(v.bal, 0)} <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}>/ ${FMT(v.goal, 0)}</span>
+                      </p>
                     </div>
-                    <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>{v.note} · {FMT(v.apy, 1)}% anual</p>
-                    <p className="num" style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 800 }}>
-                      ${FMT(v.bal, 0)} <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}>/ ${FMT(v.goal, 0)}</span>
-                    </p>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-          <button className="card" style={{ textAlign: "center", cursor: "pointer", borderStyle: "dashed", color: "var(--txt-muted)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "transparent" }}>
-            <Icon name="plus" size={18} /> Crear nueva bóveda
-          </button>
-        </div>
+              );
+            })}
+            <button className="card" onClick={() => setAdding(true)} style={{ textAlign: "center", cursor: "pointer", borderStyle: "dashed", color: "var(--txt-muted)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "transparent" }}>
+              <Icon name="plus" size={18} /> Crear nueva bóveda
+            </button>
+          </div>
+        )}
       </div>
       <div className="scroll-bottom" />
+      {adding && <AddVaultModal onClose={() => setAdding(false)} onCreate={(v) => { addVault(v); setAdding(false); }} />}
     </div>
   );
 }
 
 /* ---------------- VAULT DETAIL ---------------- */
 export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
-  const v = (ctx as Vault) || VAULTS[0];
-  const pct = Math.round((v.bal / v.goal) * 100);
+  const wallet = useWallet();
+  const { vaults, updateBalance, removeVault } = useVaults(wallet.address);
+  const ctxV = ctx as UserVault | undefined;
+  const v = vaults.find((x) => x.id === ctxV?.id) ?? ctxV;
+  const [action, setAction] = useState<null | "abonar" | "retirar">(null);
+
+  if (!v) {
+    return (
+      <div className="screen screen-enter">
+        <div className="safe-top" />
+        <SubHeader title="Bóveda" go={go} back="bovedas" />
+        <div className="screen-pad"><p style={{ color: "var(--txt-muted)" }}>Esta bóveda ya no existe.</p></div>
+      </div>
+    );
+  }
+
+  const pct = v.goal > 0 ? Math.round((v.bal / v.goal) * 100) : 0;
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
@@ -211,25 +239,77 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: "4px 0 0" }}>de ${FMT(v.goal, 0)} MXN</p>
         <div className="stat-grid" style={{ marginTop: 22, textAlign: "left" }}>
           <div className="tile"><div className="k">Rendimiento</div><div className="v" style={{ color: "var(--accent)", fontSize: 20 }}>{FMT(v.apy, 1)}%</div></div>
-          <div className="tile"><div className="k">Estado</div><div className="v" style={{ fontSize: 16 }}>{v.locked ? "Bloqueada" : "Flexible"}</div></div>
-        </div>
-        <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="bolt" size={20} /></span>
-          <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.45 }}>Ahorro automático: <b style={{ color: "var(--txt)" }}>$1,500</b> cada quincena</p>
+          <div className="tile"><div className="k">Faltan</div><div className="v num" style={{ fontSize: 18 }}>${FMT(Math.max(0, v.goal - v.bal), 0)}</div></div>
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
-          <button className="btn btn-primary" style={{ flex: 1 }}><Icon name="plus" size={18} /> Abonar</button>
-          <button className="btn btn-ghost" style={{ flex: 1 }}>Retirar</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setAction("abonar")}><Icon name="plus" size={18} /> Abonar</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAction("retirar")} disabled={v.bal <= 0}>Retirar</button>
         </div>
+        <button onClick={() => { removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Eliminar bóveda</button>
       </div>
       <div className="scroll-bottom" />
+      {action && (
+        <VaultAmountModal
+          mode={action}
+          vault={v}
+          onClose={() => setAction(null)}
+          onConfirm={(amt) => { updateBalance(v.id, action === "abonar" ? amt : -amt); setAction(null); }}
+        />
+      )}
     </div>
   );
 }
 
-/* ---------------- CONVERTIR (wired: redención MXNB → MXN) ---------------- */
+/* ---------------- CONVERTIR (calculadora + acción real MXNB↔MXN) ---------------- */
+interface Asset { code: string; nm: string; mxn: number; flag: string | null }
+const ASSETS: Asset[] = [
+  { code: "MXNB", nm: "MXN Bitso (on-chain)", mxn: 1, flag: null },
+  { code: "MXN", nm: "Peso mexicano", mxn: 1, flag: null },
+  { code: "USD", nm: "Dólar estadounidense", mxn: 17.1252, flag: "us" },
+  { code: "BRL", nm: "Real brasileño", mxn: 3.482, flag: "br" },
+  { code: "KRW", nm: "Won surcoreano", mxn: 0.01243, flag: "kr" },
+];
+
+function AssetBadge({ asset }: { asset: Asset }) {
+  if (asset.flag) return <Flag code={asset.flag} cls="sm" />;
+  return (
+    <span className="num" style={{ width: 40, height: 40, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>$</span>
+  );
+}
+
+function AssetSelect({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude?: string }) {
+  return (
+    <select
+      className="chip"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ appearance: "none", WebkitAppearance: "none", cursor: "pointer", color: "var(--txt)", fontWeight: 700 }}
+    >
+      {ASSETS.filter((a) => a.code !== exclude).map((a) => (
+        <option key={a.code} value={a.code} style={{ color: "#000" }}>{a.code}</option>
+      ))}
+    </select>
+  );
+}
+
 export function ScreenConvert({ go }: { go: Go }) {
-  const [showRedeem, setShowRedeem] = useState(false);
+  const wallet = useWallet();
+  const [fromCode, setFromCode] = useState("MXNB");
+  const [toCode, setToCode] = useState("MXN");
+  const [amount, setAmount] = useState("1000");
+  const [modal, setModal] = useState<null | "redeem" | "deposit">(null);
+
+  const from = ASSETS.find((a) => a.code === fromCode)!;
+  const to = ASSETS.find((a) => a.code === toCode)!;
+  const amt = Number(amount) || 0;
+  const result = to.mxn > 0 ? (amt * from.mxn) / to.mxn : 0;
+
+  const swap = () => { setFromCode(toCode); setToCode(fromCode); };
+
+  // Acción real solo para el par MXNB ↔ MXN (rieles de Juno).
+  const isRedeem = fromCode === "MXNB" && toCode === "MXN";
+  const isDeposit = fromCode === "MXN" && toCode === "MXNB";
+
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
@@ -237,32 +317,50 @@ export function ScreenConvert({ go }: { go: Go }) {
       <div className="screen-pad">
         <div style={{ position: "relative" }}>
           <div className="conv-field">
-            <span style={{ width: 40, height: 40, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }} className="num">$</span>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>Pesos mexicanos</p>
-              <p className="big num" style={{ margin: "2px 0 0" }}>5,000.00</p>
+            <AssetBadge asset={from} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{from.nm}</p>
+              <input
+                className="big num"
+                value={amount}
+                inputMode="decimal"
+                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+                style={{ background: "none", border: "none", outline: "none", color: "var(--txt)", width: "100%", padding: 0, margin: "2px 0 0" }}
+              />
             </div>
-            <span className="chip active" style={{ pointerEvents: "none" }}>MXN</span>
+            <AssetSelect value={fromCode} onChange={setFromCode} exclude={toCode} />
           </div>
-          <div className="conv-swap"><Icon name="swap" size={20} /></div>
+          <div className="conv-swap" onClick={swap} style={{ cursor: "pointer" }}><Icon name="swap" size={20} /></div>
           <div className="conv-field">
-            <Flag code="us" cls="sm" />
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>Dólar estadounidense</p>
-              <p className="big num" style={{ margin: "2px 0 0" }}>292.0<span style={{ opacity: 0.5 }}>7</span></p>
+            <AssetBadge asset={to} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{to.nm}</p>
+              <p className="big num" style={{ margin: "2px 0 0" }}>{FMT(result, to.code === "KRW" ? 0 : 2)}</p>
             </div>
-            <span className="chip" style={{ pointerEvents: "none" }}>USD</span>
+            <AssetSelect value={toCode} onChange={setToCode} exclude={fromCode} />
           </div>
         </div>
-        <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="gmatch"><Icon name="globe" size={16} color="var(--accent)" /> Tipo de cambio <b>1 USD = $17.1252</b></div>
-          <span className="pos-pill">Igual a Google</span>
-        </div>
-        <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0", lineHeight: 1.5 }}>
-          Sin comisiones ocultas ni márgenes. Te damos el tipo de cambio real del mercado, idéntico al que ves en Google.
-        </p>
 
-        <div className="sec-head"><h3>Divisas</h3><span className="link" onClick={() => go("cambio")}>Ver todas</span></div>
+        <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="gmatch"><Icon name="globe" size={16} color="var(--accent)" /> 1 {from.code} = <b>{FMT(from.mxn / to.mxn, 4)} {to.code}</b></div>
+          <span className="pos-pill">Tipo real</span>
+        </div>
+
+        {isRedeem || isDeposit ? (
+          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setModal(isRedeem ? "redeem" : "deposit")}>
+            <Icon name={isRedeem ? "send" : "plus"} size={18} />
+            {isRedeem ? ` Redimir ${FMT(amt, 2)} MXNB → MXN` : " Depositar MXN para obtener MXNB"}
+          </button>
+        ) : (
+          <>
+            <button className="btn btn-ghost" style={{ marginTop: 18 }} disabled>Solo informativo para este par</button>
+            <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0", lineHeight: 1.5 }}>
+              Las divisas extranjeras son cálculo en vivo. Las conversiones reales en testnet son <b style={{ color: "var(--txt)" }}>MXNB ↔ MXN</b> (vía Bitso Business / Juno).
+            </p>
+          </>
+        )}
+
+        <div className="sec-head"><h3>Tipos de cambio</h3></div>
         <div className="card" style={{ padding: "4px 18px" }}>
           {FX.map((f) => (
             <div className="fx-row" key={f.code}>
@@ -278,17 +376,64 @@ export function ScreenConvert({ go }: { go: Go }) {
             </div>
           ))}
         </div>
-
-        <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setShowRedeem(true)}>
-          <Icon name="send" size={18} /> Redimir MXNB a pesos (SPEI)
-        </button>
-        <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0", lineHeight: 1.5 }}>
-          La conversión a pesos en tu banco se ejecuta como una redención de MXNB vía Bitso Business / Juno.
-        </p>
       </div>
       <div className="scroll-bottom" />
 
-      {showRedeem && <RedeemModal onClose={() => setShowRedeem(false)} />}
+      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} maxAmount={wallet.balance} />}
+      {modal === "deposit" && <DepositModal onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+/* ---------------- Modales de bóvedas ---------------- */
+const VAULT_COLORS = ["var(--accent)", "var(--accent-2)", "#5BD6C0", "#F5A623", "#FF7A7A"];
+
+function AddVaultModal({ onClose, onCreate }: { onClose: () => void; onCreate: (v: { nm: string; goal: number; apy: number; color: string }) => void }) {
+  const [nm, setNm] = useState("");
+  const [goal, setGoal] = useState("");
+  const [color, setColor] = useState(VAULT_COLORS[0]);
+  const valid = nm.trim().length > 0 && Number(goal) > 0;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-grab" />
+        <p className="modal-title">Nueva bóveda</p>
+        <p className="modal-sub">Ponle nombre y una meta. Tú decides cuánto abonar.</p>
+        <span className="field-label">Nombre</span>
+        <input className="input" placeholder="Ej. Viaje a Japón" value={nm} onChange={(e) => setNm(e.target.value)} />
+        <span className="field-label">Meta (MXN)</span>
+        <input className="input num-input" type="number" inputMode="decimal" placeholder="40,000" value={goal} onChange={(e) => setGoal(e.target.value)} />
+        <span className="field-label">Color</span>
+        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+          {VAULT_COLORS.map((c) => (
+            <button key={c} onClick={() => setColor(c)} aria-label="color" style={{ width: 34, height: 34, borderRadius: 999, background: c, border: color === c ? "3px solid var(--txt)" : "3px solid transparent", cursor: "pointer" }} />
+          ))}
+        </div>
+        <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={!valid} onClick={() => onCreate({ nm: nm.trim(), goal: Number(goal), apy: 9, color })}>
+          <Icon name="check" size={18} /> Crear bóveda
+        </button>
+        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; onClose: () => void; onConfirm: (amt: number) => void }) {
+  const [amount, setAmount] = useState("");
+  const max = mode === "abonar" ? Math.max(0, vault.goal - vault.bal) : vault.bal;
+  const n = Number(amount);
+  const valid = n > 0 && n <= max;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-grab" />
+        <p className="modal-title">{mode === "abonar" ? "Abonar a" : "Retirar de"} {vault.nm}</p>
+        <span className="field-label">Monto (MXN)</span>
+        <input className="input num-input" type="number" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <p className="modal-sub" style={{ margin: "8px 0 0" }}>{mode === "abonar" ? `Falta para la meta: $${FMT(max, 2)}` : `Disponible: $${FMT(max, 2)}`}</p>
+        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={!valid} onClick={() => onConfirm(n)}>{mode === "abonar" ? "Abonar" : "Retirar"}</button>
+        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cancelar</button>
+      </div>
     </div>
   );
 }
