@@ -1,13 +1,14 @@
 "use client";
 
 /* UTONOMA — pantallas core: Onboarding, Home, Wallet (wired a Juno) */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Icon, Spark } from "../ui";
-import { TopBar, SubHeader, TxnRow } from "../shared";
+import { TopBar, SubHeader, TxnRow, PendingTxnRow } from "../shared";
 import { ALLOC, TXNS, FMT, type Txn } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
+import { usePendingTxns } from "@/hooks/usePendingTxns";
 import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
@@ -80,7 +81,13 @@ export function ScreenHome({ go }: { go: Go }) {
   const [modal, setModal] = useState<null | "deposit" | "send">(null);
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
+  const pend = usePendingTxns(wallet.address);
   const refreshBal = wallet.refreshBalance;
+
+  // Retira pendientes ya confirmados on-chain.
+  useEffect(() => {
+    pend.reconcile(homeTxns.txns);
+  }, [homeTxns.txns, pend.reconcile]);
 
   // Con sesión iniciada mostramos datos reales: Pesos digitales = saldo MXNB
   // on-chain del usuario; las demás categorías aún no tienen integración → $0.
@@ -158,14 +165,19 @@ export function ScreenHome({ go }: { go: Go }) {
         <div className="sec-head"><h3>Movimientos recientes</h3><span className="link" onClick={() => go("wallet")}>Ver todo</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
           {realData ? (
-            homeTxns.loading && homeTxns.txns.length === 0 ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
-            ) : homeTxns.txns.length === 0 ? (
-              <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
-                Aún no tienes movimientos. Reclama tu bono o agrega fondos para empezar.
-              </p>
+            pend.pending.length === 0 && homeTxns.txns.length === 0 ? (
+              homeTxns.loading ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
+              ) : (
+                <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
+                  Aún no tienes movimientos. Reclama tu bono o agrega fondos para empezar.
+                </p>
+              )
             ) : (
-              <div className="list">{homeTxns.txns.slice(0, 3).map(onchainToRow).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
+              <div className="list">
+                {pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
+                {homeTxns.txns.slice(0, 3).map(onchainToRow).map((t) => <TxnRow key={t.id} t={t} go={go} />)}
+              </div>
             )
           ) : (
             <div className="list">{TXNS.slice(0, 3).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
@@ -210,7 +222,12 @@ function onchainToRow(t: OnchainTransfer, i: number): Txn {
 export function ScreenWallet({ go }: { go: Go }) {
   const wallet = useWallet();
   const { txns: onchainTxns, loading: loadingTxns, refresh: refreshTxns } = useOnchainTxns(wallet.address);
+  const pend = usePendingTxns(wallet.address);
   const [modal, setModal] = useState<null | "deposit" | "redeem" | "send">(null);
+
+  useEffect(() => {
+    pend.reconcile(onchainTxns);
+  }, [onchainTxns, pend.reconcile]);
 
   const realMode = wallet.enabled && wallet.authenticated;
   // Con sesión: saldo real on-chain (aunque sea $0). Sin sesión: saldo demo.
@@ -270,12 +287,15 @@ export function ScreenWallet({ go }: { go: Go }) {
 
         <div className="sec-head" style={{ marginTop: realMode ? 26 : undefined }}><h3>Movimientos</h3><span className="link" onClick={() => onSuccess()}>Actualizar</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
-          {realMode && loadingTxns && liveTxns.length === 0 ? (
+          {realMode && pend.pending.length === 0 && loadingTxns && liveTxns.length === 0 ? (
             <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
-          ) : realMode && liveTxns.length === 0 ? (
+          ) : realMode && pend.pending.length === 0 && liveTxns.length === 0 ? (
             <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>Aún no tienes movimientos.</p>
           ) : (
-            <div className="list">{liveTxns.map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
+            <div className="list">
+              {realMode && pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
+              {liveTxns.map((t) => <TxnRow key={t.id} t={t} go={go} />)}
+            </div>
           )}
         </div>
       </div>

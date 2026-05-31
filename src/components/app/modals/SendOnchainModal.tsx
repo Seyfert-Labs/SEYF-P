@@ -7,9 +7,11 @@ import { Icon } from "../ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { explorerBase } from "@/lib/chain";
 import { JunoService } from "@/services/junoService";
+import { usePendingTxns } from "@/hooks/usePendingTxns";
 
 export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: () => void }) {
   const wallet = useWallet();
+  const pending = usePendingTxns(wallet.address);
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +29,8 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
     try {
       const h = await wallet.sendMXNB(to, amount);
       setHash(h);
+      pending.add("send", Number(amount)); // aparece como "pendiente" en el historial
+      onSuccess?.();
       // refresca saldo/historial tras unos segundos (confirmación on-chain)
       setTimeout(() => onSuccess?.(), 5000);
     } catch (e) {

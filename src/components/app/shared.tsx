@@ -88,6 +88,27 @@ export function Money({
   );
 }
 
+/* fila de transacción pendiente (optimistic UI · confirmando on-chain) */
+export function PendingTxnRow({ p }: { p: { kind: "deposit" | "send"; amount: number } }) {
+  const pos = p.kind === "deposit";
+  return (
+    <div className="lrow" style={{ opacity: 0.92 }}>
+      <div className="ava" style={{ background: "var(--surface-3)" }}>
+        <span className="spin" style={{ width: 18, height: 18, color: "var(--accent)" }} />
+      </div>
+      <div className="mid">
+        <p className="ti">{pos ? "Depósito MXNB" : "Envío MXNB"}</p>
+        <p className="su" style={{ color: "var(--accent-2)" }}>Pendiente · confirmando…</p>
+      </div>
+      <div className="amt">
+        <div className="a" style={{ color: pos ? "var(--accent)" : "var(--txt)" }}>
+          {pos ? "+" : "−"}<span className="num">${FMT(p.amount, 2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* fila de transacción / lista */
 export function TxnRow({ t, go }: { t: Txn; go?: Go }) {
   const pos = t.amt > 0;

@@ -8,12 +8,14 @@ import { Icon } from "./ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { junoService } from "@/services/junoService";
 import { JunoService } from "@/services/junoService";
+import { usePendingTxns } from "@/hooks/usePendingTxns";
 
 const claimKey = (addr: string) => `seyf_bonus_${addr.toLowerCase()}`;
 type Status = "idle" | "claiming" | "validating" | "done" | "slow" | "error";
 
 export function WelcomeBonus() {
   const wallet = useWallet();
+  const pending = usePendingTxns(wallet.address);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const balanceBefore = useRef(0);
@@ -49,6 +51,7 @@ export function WelcomeBonus() {
     try {
       await junoService.claimWelcomeBonus(wallet.address);
       localStorage.setItem(claimKey(wallet.address), "1");
+      pending.add("deposit", 1500); // aparece como pendiente en el historial
       setStatus("validating");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo reclamar el bono");

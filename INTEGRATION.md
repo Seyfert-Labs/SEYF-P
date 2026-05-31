@@ -1,6 +1,6 @@
 # Integración Bitso Business / Juno (MXNB) + Wallets sociales — Seyf
 
-**Versión de la integración:** `1.4.0`
+**Versión de la integración:** `1.5.0`
 **Entorno por defecto:** `stage` (`https://stage.buildwithjuno.com`)
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5
 
@@ -136,6 +136,16 @@ paymaster (configurado en el dashboard de Privy) paga el gas.
   patrocinio de gas para Arbitrum Sepolia.
 
 ## 9. Changelog
+
+### 1.5.0 — 2026-05-31
+- **Depósitos a la wallet del usuario**: `/api/juno/fund-wallet` (Juno envía MXNB
+  on-chain a la dirección del usuario). "Agregar" usa este rail.
+- **Enviar = transferencia on-chain gasless** (se resta del saldo del usuario);
+  el redeem a SPEI pasa a acción secundaria.
+- **Historial real por usuario**: transferencias MXNB on-chain (viem getLogs) +
+  **transacciones pendientes** (UI optimista: pendiente → confirmado).
+- **CLABE por usuario** (`create-clabe`) + tarjeta de depósito (`ClabeCard`).
+- Timeout de Juno a 45s (60s en withdrawals) + mensajes claros de red.
 
 ### 1.4.0 — 2026-05-30
 - **Bono de bienvenida**: `POST /api/juno/welcome-bonus` — Juno emite 1,500 MXNB
