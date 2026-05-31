@@ -63,9 +63,9 @@ export function RedeemModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
-        <p className="modal-title">Enviar a tu banco</p>
+        <p className="modal-title">Retirar a tu banco</p>
         <p className="modal-sub">
-          Redime tus MXNB a pesos y recíbelos por SPEI en una cuenta CLABE registrada.
+          Redime tus MXNB a pesos (MXN) y recíbelos por <b style={{ color: "var(--txt)" }}>SPEI</b> en una cuenta CLABE registrada.
         </p>
 
         {done ? (
