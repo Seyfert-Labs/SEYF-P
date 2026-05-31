@@ -8,7 +8,7 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { explorerBase } from "@/lib/chain";
 import { JunoService } from "@/services/junoService";
 
-export function SendOnchainModal({ onClose }: { onClose: () => void }) {
+export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: () => void }) {
   const wallet = useWallet();
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
@@ -27,6 +27,8 @@ export function SendOnchainModal({ onClose }: { onClose: () => void }) {
     try {
       const h = await wallet.sendMXNB(to, amount);
       setHash(h);
+      // refresca saldo/historial tras unos segundos (confirmación on-chain)
+      setTimeout(() => onSuccess?.(), 5000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo enviar la transacción");
     } finally {

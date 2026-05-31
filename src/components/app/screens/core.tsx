@@ -77,7 +77,7 @@ function SecSetupRow({ icon, t, s, on, lock }: { icon: string; t: string; s: str
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
-  const [modal, setModal] = useState<null | "deposit" | "redeem">(null);
+  const [modal, setModal] = useState<null | "deposit" | "send">(null);
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const refreshBal = wallet.refreshBalance;
@@ -140,7 +140,7 @@ export function ScreenHome({ go }: { go: Go }) {
 
         <div className="quick-row" style={{ marginTop: 18 }}>
           <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
-          <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
+          <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
           <button className="quick" onClick={() => go("convertir")}><span className="ic"><Icon name="swap" /></span><span className="tx">Convertir</span></button>
           <button className="quick" onClick={() => go("bonos")}><span className="ic"><Icon name="invest" /></span><span className="tx">Invertir</span></button>
         </div>
@@ -174,8 +174,8 @@ export function ScreenHome({ go }: { go: Go }) {
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={refreshBal} />}
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={refreshBal} maxAmount={realData ? wallet.balance : undefined} />}
+      {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} />}
+      {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} />}
     </div>
   );
 }
@@ -247,12 +247,12 @@ export function ScreenWallet({ go }: { go: Go }) {
 
         <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setModal("deposit")}><Icon name="plus" size={18} /> Agregar</button>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setModal("redeem")}><Icon name="send" size={18} /> Enviar</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setModal("send")}><Icon name="send" size={18} /> Enviar</button>
         </div>
 
-        {wallet.enabled && wallet.authenticated && (
-          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setModal("send")}>
-            <Icon name="swap" size={18} /> Transferir MXNB on-chain · sin gas
+        {realMode && (
+          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setModal("redeem")}>
+            <Icon name="recv" size={18} /> Redimir a pesos (SPEI)
           </button>
         )}
 
@@ -283,7 +283,7 @@ export function ScreenWallet({ go }: { go: Go }) {
 
       {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} />}
       {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={realMode ? wallet.balance : undefined} />}
-      {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} />}
+      {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} onSuccess={onSuccess} />}
     </div>
   );
 }
