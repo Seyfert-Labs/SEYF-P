@@ -213,10 +213,9 @@ export function ScreenWallet({ go }: { go: Go }) {
   const [modal, setModal] = useState<null | "deposit" | "redeem" | "send">(null);
 
   const realMode = wallet.enabled && wallet.authenticated;
-  // Saldo real on-chain del usuario; si no hay sesión, saldo demo del prototipo.
+  // Con sesión: saldo real on-chain (aunque sea $0). Sin sesión: saldo demo.
   const loadingBal = wallet.balanceLoading;
-  const liveBalance = wallet.authenticated && wallet.balance > 0;
-  const shown = liveBalance ? wallet.balance : 48250.4;
+  const shown = realMode ? wallet.balance : 48250.4;
   const refreshBal = wallet.refreshBalance;
   const [intPart, centsPart] = FMT(shown, 2).split(".");
 
@@ -241,8 +240,8 @@ export function ScreenWallet({ go }: { go: Go }) {
             </p>
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
-            <span className="pos-pill"><Icon name="leaf" size={12} /> {liveBalance ? "MXNB on-chain" : "+$12.40 hoy"}</span>
-            <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>{liveBalance ? "Arbitrum · tu wallet" : "9% anual · pagado diario"}</span>
+            <span className="pos-pill"><Icon name="leaf" size={12} /> {realMode ? "MXNB on-chain" : "+$12.40 hoy"}</span>
+            <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>{realMode ? "Arbitrum · tu wallet" : "9% anual · pagado diario"}</span>
           </div>
         </div>
 
@@ -257,17 +256,19 @@ export function ScreenWallet({ go }: { go: Go }) {
           </button>
         )}
 
-        <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 14, background: "var(--accent-soft)", border: "none" }}>
-          <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Icon name="leaf" size={22} />
-          </span>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 15, color: "var(--accent)" }}>Tu saldo trabaja solo</p>
-            <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>Has ganado <b className="num" style={{ color: "var(--txt)" }}>$372.18</b> este mes en intereses.</p>
+        {!realMode && (
+          <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 14, background: "var(--accent-soft)", border: "none" }}>
+            <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="leaf" size={22} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 15, color: "var(--accent)" }}>Tu saldo trabaja solo</p>
+              <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>Has ganado <b className="num" style={{ color: "var(--txt)" }}>$372.18</b> este mes en intereses.</p>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="sec-head"><h3>Movimientos</h3><span className="link" onClick={() => onSuccess()}>Actualizar</span></div>
+        <div className="sec-head" style={{ marginTop: realMode ? 26 : undefined }}><h3>Movimientos</h3><span className="link" onClick={() => onSuccess()}>Actualizar</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
           {realMode && loadingTxns && liveTxns.length === 0 ? (
             <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
@@ -281,7 +282,7 @@ export function ScreenWallet({ go }: { go: Go }) {
       <div className="scroll-bottom" />
 
       {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} />}
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={liveBalance ? wallet.balance : undefined} />}
+      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={realMode ? wallet.balance : undefined} />}
       {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} />}
     </div>
   );

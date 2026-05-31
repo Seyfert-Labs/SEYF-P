@@ -63,7 +63,7 @@ export class JunoApiError extends Error {
 export async function junoRequest<T = unknown>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
-  { body, idempotency, timeoutMs = 30000 }: JunoRequestOptions = {},
+  { body, idempotency, timeoutMs = 45000 }: JunoRequestOptions = {},
 ): Promise<{ payload: T; raw: Record<string, unknown>; idempotencyKey?: string }> {
   const bodyStr = body !== undefined ? JSON.stringify(body) : '';
   const authHeader = buildJunoAuthHeader(method, path, bodyStr);
@@ -79,12 +79,22 @@ export async function junoRequest<T = unknown>(
     headers['X-Idempotency-Key'] = idempotencyKey;
   }
 
-  const res = await fetch(`${JUNO_BASE_URL}${path}`, {
-    method,
-    headers,
-    body: method === 'GET' ? undefined : bodyStr || undefined,
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${JUNO_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: method === 'GET' ? undefined : bodyStr || undefined,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (e) {
+    const name = (e as { name?: string })?.name;
+    const message =
+      name === 'TimeoutError' || name === 'AbortError'
+        ? `Juno tardó más de ${Math.round(timeoutMs / 1000)}s en responder. La operación puede seguir procesándose; vuelve a intentar en un momento.`
+        : `No se pudo conectar con Juno (${e instanceof Error ? e.message : 'error de red'}).`;
+    throw new JunoApiError(message, 504, { cause: String(e) });
+  }
 
   const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
 

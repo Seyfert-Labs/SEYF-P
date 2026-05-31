@@ -138,6 +138,15 @@ export class JunoService {
     return res.payload;
   }
 
+  /** Fondea la smart wallet del usuario con MXNB on-chain (testnet). */
+  async fundWallet(address: string, amount: number | string): Promise<unknown> {
+    const res = await this.makeRequest(backendConfig.endpoints.fundWallet, {
+      method: 'POST',
+      body: JSON.stringify({ address, amount }),
+    });
+    return res.payload;
+  }
+
   /** Reclama el bono de bienvenida (Juno emite MXNB on-chain a la wallet). */
   async claimWelcomeBonus(address: string): Promise<unknown> {
     const res = await this.makeRequest(backendConfig.endpoints.welcomeBonus, {

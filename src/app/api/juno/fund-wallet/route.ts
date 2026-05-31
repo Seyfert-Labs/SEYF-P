@@ -4,26 +4,22 @@ import { ok, fail, badRequest } from "@/lib/juno/respond";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Bono de bienvenida: Juno emite y envía MXNB on-chain a la smart wallet del
-// usuario nuevo (para probar la app y el gas patrocinado en testnet).
-// Juno exige asset "MXNB" (mayúsculas) y blockchain "ARBITRUM" (validado contra stage).
-const BONUS_AMOUNT = process.env.WELCOME_BONUS_AMOUNT || "1500";
+// Fondea la smart wallet del usuario con MXNB on-chain (testnet).
+// Juno emite/envía desde el float del negocio a la dirección del usuario.
+// Es el rail que hace que un "depósito" caiga en la cuenta del usuario.
 const ASSET = process.env.JUNO_WITHDRAWAL_ASSET || "MXNB";
 const BLOCKCHAIN = process.env.JUNO_BLOCKCHAIN || "ARBITRUM";
 
-// Anti-doble-reclamo best-effort (se reinicia con el server).
-// Producción: persistir en una base de datos.
-const granted = new Set<string>();
-
 export async function POST(request: Request) {
   try {
-    const { address } = (await request.json()) as { address?: string };
+    const { address, amount } = (await request.json()) as { address?: string; amount?: string | number };
+
     if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
       return badRequest("Dirección de wallet inválida.");
     }
-    const key = address.toLowerCase();
-    if (granted.has(key)) {
-      return badRequest("Esta wallet ya reclamó el bono de bienvenida.");
+    const numeric = Number(amount);
+    if (!numeric || isNaN(numeric) || numeric <= 0) {
+      return badRequest("El monto debe ser un número mayor a 0.");
     }
 
     const { payload, idempotencyKey } = await junoRequest(
@@ -32,7 +28,7 @@ export async function POST(request: Request) {
       {
         body: {
           address,
-          amount: BONUS_AMOUNT,
+          amount: String(numeric),
           asset: ASSET,
           blockchain: BLOCKCHAIN,
           compliance: {},
@@ -41,9 +37,7 @@ export async function POST(request: Request) {
         timeoutMs: 60000,
       },
     );
-
-    granted.add(key);
-    return ok(payload, { idempotency_key: idempotencyKey, amount: BONUS_AMOUNT });
+    return ok(payload, { idempotency_key: idempotencyKey, amount: String(numeric) });
   } catch (error) {
     return fail(error);
   }
