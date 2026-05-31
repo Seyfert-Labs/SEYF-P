@@ -8,6 +8,7 @@ import { CARD_TXNS } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { explorerBase, IS_TESTNET } from "@/lib/chain";
+import { ClabeCard } from "../ClabeCard";
 
 function shortAddr(a?: string) {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
@@ -126,6 +127,13 @@ export function ScreenProfile({ go }: { go: Go }) {
               Tu wallet se creó con tu login social. No necesitas firmar ni pagar gas.
             </p>
           </div>
+        )}
+
+        {wallet.enabled && wallet.authenticated && (
+          <>
+            <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Cuenta de depósito (SPEI)</p>
+            <ClabeCard />
+          </>
         )}
 
         <div className="card glow" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 16 }}>

@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { junoService, JunoService } from "@/services/junoService";
+import { ClabeCard } from "../ClabeCard";
 
 type Status = "idle" | "funding" | "validating" | "done" | "slow" | "error";
 
@@ -90,9 +91,14 @@ export function DepositModal({
             >
               <Icon name="recv" size={18} /> Recibir {amount ? `$${amount}` : ""} MXNB
             </button>
-            <p className="modal-sub" style={{ marginTop: 14, marginBottom: 0 }}>
-              💡 En producción esto sería un depósito <b>SPEI</b> a tu CLABE, que Juno convierte a MXNB y envía a tu wallet.
+
+            <div className="divider" style={{ marginTop: 20 }} />
+            <span className="field-label" style={{ marginTop: 0 }}>O recibe por SPEI a tu CLABE</span>
+            <ClabeCard />
+            <p className="modal-sub" style={{ marginTop: 10, marginBottom: 0 }}>
+              💡 Deposita por SPEI a esta CLABE y Juno convierte el monto a MXNB. (En producción el webhook acredita a tu wallet automáticamente.)
             </p>
+
             <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={onClose}>Cancelar</button>
           </>
         )}

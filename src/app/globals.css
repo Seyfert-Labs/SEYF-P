@@ -434,3 +434,14 @@ html, body {
 .skel { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
   background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 8px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
+
+/* tarjeta de depósito (CLABE) */
+.deposit-card {
+  border-radius: 22px; padding: 22px; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #14331f 0%, #0b0a14 100%);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 24px 60px -30px rgba(0,0,0,0.8);
+}
+.deposit-card .dc-glow { position: absolute; right: -40px; top: -50px; width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-soft), transparent 70%); filter: blur(6px); pointer-events: none; }
+.deposit-card .dc-clabe { font-size: 22px; font-weight: 700; letter-spacing: .08em; color: var(--txt); }
