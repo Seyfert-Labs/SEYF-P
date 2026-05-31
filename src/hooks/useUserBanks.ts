@@ -1,63 +1,36 @@
 "use client";
 
 // Cuentas bancarias (CLABE destino) registradas por CADA usuario.
-// Las cuentas se crean en Juno (register-bank, a nivel negocio), pero aquí
-// guardamos cuáles pertenecen a este usuario para mostrar solo las suyas.
-// (En producción esta relación user→cuenta vive en tu base de datos.)
+// Persistidas en Supabase (con fallback local). Las cuentas se crean en Juno
+// (register-bank) y aquí guardamos cuáles pertenecen a este usuario.
 import { useCallback, useEffect, useState } from "react";
+import { store, type StoreBank } from "@/lib/store";
 
-export interface UserBank {
-  id: string;
-  tag: string;
-  clabe: string;
-  recipient_legal_name: string;
-}
-
-const KEY = (a?: string) => `seyf_banks_${(a ?? "anon").toLowerCase()}`;
+export type UserBank = StoreBank;
 
 export function useUserBanks(address?: string) {
   const [list, setList] = useState<UserBank[]>([]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      setList(JSON.parse(localStorage.getItem(KEY(address)) || "[]") as UserBank[]);
-    } catch {
+  const reload = useCallback(async () => {
+    if (!address) {
       setList([]);
+      return;
     }
+    setList(await store.listBanks(address));
   }, [address]);
 
-  const persist = useCallback(
-    (next: UserBank[]) => {
-      setList(next);
-      try {
-        localStorage.setItem(KEY(address), JSON.stringify(next));
-      } catch {
-        /* ignora */
-      }
-    },
-    [address],
-  );
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   const add = useCallback(
     (b: UserBank) => {
-      setList((prev) => {
-        const next = [...prev.filter((x) => x.id !== b.id), b];
-        try {
-          localStorage.setItem(KEY(address), JSON.stringify(next));
-        } catch {
-          /* ignora */
-        }
-        return next;
-      });
+      if (!address) return;
+      setList((prev) => [...prev.filter((x) => x.id !== b.id), b]);
+      void store.addBank(address, b);
     },
     [address],
   );
 
-  const remove = useCallback(
-    (id: string) => persist(list.filter((b) => b.id !== id)),
-    [list, persist],
-  );
-
-  return { list, add, remove };
+  return { list, add, reload };
 }

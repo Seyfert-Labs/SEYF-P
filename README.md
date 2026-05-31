@@ -79,6 +79,7 @@ Cada usuario tiene **saldo real on-chain**, **historial real** (transferencias M
 | **Bundler** | [Pimlico](https://pimlico.io) | Empaqueta y envía las UserOperations |
 | **On-chain** | [viem](https://viem.sh) · `permissionless` | Lectura de saldo/eventos ERC-20 y transfers |
 | **Rieles fiat** | [Juno / Bitso Business](https://docs.bitso.com/juno) | Issuance/redeem de **MXNB**, CLABEs, SPEI (HMAC-SHA256) |
+| **Persistencia** | [Supabase](https://supabase.com) (Postgres) | Perfiles, CLABEs, cuentas, bóvedas y bono por usuario |
 | **Red / activo** | Arbitrum Sepolia · **MXNB** (ERC-20, 6 decimales) | Donde vive y se mueve el dinero del usuario |
 
 ---
@@ -391,8 +392,7 @@ _prototype/                  # prototipo original (referencia de diseño)
 
 ## Roadmap
 
-- Verificación de usuario en el backend (Privy `server-auth` + App Secret) para atar issuance/redeem al usuario logueado.
-- Persistir CLABE y bono en base de datos (hoy es best-effort en cliente/memoria).
+- Verificación de usuario en el backend (Privy `server-auth` + App Secret) para atar issuance/redeem y `/api/db/*` al usuario logueado (hoy se scopea por dirección de wallet).
 - Redeem no custodial (que el cash-out reste del saldo on-chain del usuario).
 - Integración con Etherfuse para comprar bonos de gobierno tokenizados con MXNB.
 - Webhooks de Juno → actualización de saldos e historial en tiempo real.

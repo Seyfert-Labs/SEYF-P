@@ -1,6 +1,6 @@
 # Integración Bitso Business / Juno (MXNB) + Wallets sociales — Seyf
 
-**Versión de la integración:** `1.5.0`
+**Versión de la integración:** `1.6.0`
 **Entorno por defecto:** `stage` (`https://stage.buildwithjuno.com`)
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5
 
@@ -136,6 +136,16 @@ paymaster (configurado en el dashboard de Privy) paga el gas.
   patrocinio de gas para Arbitrum Sepolia.
 
 ## 9. Changelog
+
+### 1.6.0 — 2026-05-31
+- **Persistencia en Supabase** (reemplaza localStorage): tablas `profiles`,
+  `deposit_clabes`, `bank_accounts`, `vaults`, `bonus_claims`, `transactions`
+  (ver `supabase/migrations/0001_seyf_schema.sql`).
+- Acceso server-side con service role (RLS bloqueado) vía `/api/db/*`; el cliente
+  usa `src/lib/store.ts` con **fallback a localStorage** si `NEXT_PUBLIC_USE_SUPABASE`
+  no está activo.
+- `profiles` guarda smart wallet + wallet embebida (Privy) + correo + privy_did,
+  actualizado al iniciar sesión.
 
 ### 1.5.0 — 2026-05-31
 - **Depósitos a la wallet del usuario**: `/api/juno/fund-wallet` (Juno envía MXNB

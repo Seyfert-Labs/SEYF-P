@@ -1,51 +1,37 @@
 "use client";
 
-// Bóvedas de ahorro del usuario, persistidas en localStorage (por wallet).
-// (Tracker personal de metas; un vault on-chain real sería el siguiente paso.)
-import { useCallback, useEffect, useState } from "react";
+// Bóvedas de ahorro del usuario (persistidas en Supabase, con fallback local).
+import { useCallback, useEffect, useRef, useState } from "react";
+import { store, type StoreVault } from "@/lib/store";
 
-export interface UserVault {
-  id: string;
-  nm: string;
-  goal: number;
-  bal: number;
-  apy: number;
-  color: string;
-  createdAt: number;
-}
-
-const KEY = (addr?: string) => `seyf_vaults_${(addr ?? "anon").toLowerCase()}`;
+export type UserVault = StoreVault;
 
 export function useVaults(address?: string) {
   const [vaults, setVaults] = useState<UserVault[]>([]);
   const [ready, setReady] = useState(false);
-
-  // Carga inicial.
+  const vaultsRef = useRef<UserVault[]>([]);
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem(KEY(address));
-      setVaults(raw ? (JSON.parse(raw) as UserVault[]) : []);
-    } catch {
+    vaultsRef.current = vaults;
+  }, [vaults]);
+
+  const reload = useCallback(async () => {
+    if (!address) {
       setVaults([]);
+      setReady(true);
+      return;
     }
+    const list = await store.listVaults(address);
+    setVaults(list.sort((a, b) => a.createdAt - b.createdAt));
     setReady(true);
   }, [address]);
 
-  const persist = useCallback(
-    (next: UserVault[]) => {
-      setVaults(next);
-      try {
-        localStorage.setItem(KEY(address), JSON.stringify(next));
-      } catch {
-        /* ignora */
-      }
-    },
-    [address],
-  );
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   const addVault = useCallback(
     (v: { nm: string; goal: number; apy: number; color: string }) => {
+      if (!address) return;
       const nuevo: UserVault = {
         id: `v_${Date.now()}`,
         nm: v.nm,
@@ -55,26 +41,32 @@ export function useVaults(address?: string) {
         color: v.color,
         createdAt: Date.now(),
       };
-      persist([...vaults, nuevo]);
+      setVaults((prev) => [...prev, nuevo]);
+      void store.upsertVault(address, nuevo);
       return nuevo;
     },
-    [vaults, persist],
+    [address],
   );
 
   const updateBalance = useCallback(
     (id: string, delta: number) => {
-      persist(
-        vaults.map((v) =>
-          v.id === id ? { ...v, bal: Math.max(0, Math.min(v.goal, v.bal + delta)) } : v,
-        ),
-      );
+      if (!address) return;
+      const cur = vaultsRef.current.find((v) => v.id === id);
+      if (!cur) return;
+      const updated: UserVault = { ...cur, bal: Math.max(0, Math.min(cur.goal, cur.bal + delta)) };
+      setVaults((prev) => prev.map((v) => (v.id === id ? updated : v)));
+      void store.upsertVault(address, updated);
     },
-    [vaults, persist],
+    [address],
   );
 
   const removeVault = useCallback(
-    (id: string) => persist(vaults.filter((v) => v.id !== id)),
-    [vaults, persist],
+    (id: string) => {
+      if (!address) return;
+      setVaults((prev) => prev.filter((v) => v.id !== id));
+      void store.deleteVault(address, id);
+    },
+    [address],
   );
 
   const totalSaved = vaults.reduce((s, v) => s + v.bal, 0);

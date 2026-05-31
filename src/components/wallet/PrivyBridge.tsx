@@ -8,6 +8,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useSmartWallets } from "@privy-io/react-auth/smart-wallets";
 import { encodeFunctionData, parseUnits, type Address } from "viem";
 import { WalletCtx, type WalletState } from "./WalletContext";
+import { store } from "@/lib/store";
 import {
   readMXNBBalance,
   erc20Abi,
@@ -30,6 +31,12 @@ export default function PrivyBridge({ children }: { children: React.ReactNode })
     user?.email?.address ||
     (user?.google?.email as string | undefined) ||
     undefined;
+
+  // Guarda/actualiza el perfil del usuario (smart wallet + wallet embebida + correo).
+  useEffect(() => {
+    if (!authenticated || !address) return;
+    void store.upsertProfile({ wallet: address, embedded: embeddedAddress, email, did: user?.id });
+  }, [authenticated, address, embeddedAddress, email, user?.id]);
 
   const [balance, setBalance] = useState(0);
   const [balanceLoading, setBalanceLoading] = useState(false);

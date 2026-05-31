@@ -9,8 +9,8 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { junoService } from "@/services/junoService";
 import { JunoService } from "@/services/junoService";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
+import { store } from "@/lib/store";
 
-const claimKey = (addr: string) => `seyf_bonus_${addr.toLowerCase()}`;
 type Status = "idle" | "claiming" | "validating" | "done" | "slow" | "error";
 
 export function WelcomeBonus() {
@@ -18,12 +18,21 @@ export function WelcomeBonus() {
   const pending = usePendingTxns(wallet.address);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [alreadyClaimed, setAlreadyClaimed] = useState(true); // asume reclamado hasta verificar
   const balanceBefore = useRef(0);
 
-  const alreadyClaimed =
-    typeof window !== "undefined" && wallet.address
-      ? !!localStorage.getItem(claimKey(wallet.address))
-      : false;
+  // Verifica si ya reclamó el bono (Supabase / local).
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!wallet.address) return;
+      const claimed = await store.getBonus(wallet.address);
+      if (active) setAlreadyClaimed(claimed);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [wallet.address]);
 
   // Polling del saldo mientras se valida el depósito on-chain.
   useEffect(() => {
@@ -50,7 +59,8 @@ export function WelcomeBonus() {
     setError(null);
     try {
       await junoService.claimWelcomeBonus(wallet.address);
-      localStorage.setItem(claimKey(wallet.address), "1");
+      await store.setBonus(wallet.address, 1500);
+      setAlreadyClaimed(true);
       pending.add("deposit", 1500); // aparece como pendiente en el historial
       setStatus("validating");
     } catch (e) {
