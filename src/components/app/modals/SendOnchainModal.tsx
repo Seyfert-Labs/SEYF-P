@@ -44,9 +44,9 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
-        <p className="modal-title">Transferir MXNB</p>
+        <p className="modal-title">Enviar a otra cuenta</p>
         <p className="modal-sub">
-          Envía MXNB on-chain desde tu cuenta inteligente. <b style={{ color: "var(--accent)" }}>Sin firmar ni pagar gas</b> — la red la patrocinamos.
+          Transferencia <b style={{ color: "var(--txt)" }}>entre cuentas Seyf</b> (interna, on-chain). Pega la wallet del destinatario. <b style={{ color: "var(--accent)" }}>Sin firmar ni pagar gas.</b>
         </p>
 
         {hash ? (
@@ -61,7 +61,7 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
           </>
         ) : (
           <>
-            <span className="field-label">Dirección destino (0x…)</span>
+            <span className="field-label">Wallet de la cuenta Seyf destino (0x…)</span>
             <input
               className="input num-input"
               placeholder="0x0000000000000000000000000000000000000000"

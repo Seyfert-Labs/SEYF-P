@@ -78,7 +78,7 @@ function SecSetupRow({ icon, t, s, on, lock }: { icon: string; t: string; s: str
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
-  const [modal, setModal] = useState<null | "deposit" | "send">(null);
+  const [modal, setModal] = useState<null | "deposit" | "send" | "redeem">(null);
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
@@ -148,8 +148,8 @@ export function ScreenHome({ go }: { go: Go }) {
         <div className="quick-row" style={{ marginTop: 18 }}>
           <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
           <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
+          <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="recv" /></span><span className="tx">Retirar</span></button>
           <button className="quick" onClick={() => go("convertir")}><span className="ic"><Icon name="swap" /></span><span className="tx">Convertir</span></button>
-          <button className="quick" onClick={() => go("bonos")}><span className="ic"><Icon name="invest" /></span><span className="tx">Invertir</span></button>
         </div>
 
         <div className="sec-head"><h3>Mis cuentas</h3></div>
@@ -188,6 +188,7 @@ export function ScreenHome({ go }: { go: Go }) {
 
       {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} />}
       {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} />}
+      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} />}
     </div>
   );
 }
@@ -269,7 +270,7 @@ export function ScreenWallet({ go }: { go: Go }) {
 
         {realMode && (
           <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setModal("redeem")}>
-            <Icon name="recv" size={18} /> Redimir a pesos (SPEI)
+            <Icon name="recv" size={18} /> Retirar a mi banco (SPEI)
           </button>
         )}
 

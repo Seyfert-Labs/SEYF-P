@@ -8,8 +8,6 @@ import { BONDS, FX, FMT, type Bond } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
-import { RedeemModal } from "../modals/RedeemModal";
-import { DepositModal } from "../modals/DepositModal";
 
 /* ---------------- BONOS LIST ---------------- */
 export function ScreenBonos({ go }: { go: Go }) {
@@ -293,11 +291,9 @@ function AssetSelect({ value, onChange, exclude }: { value: string; onChange: (v
 }
 
 export function ScreenConvert({ go }: { go: Go }) {
-  const wallet = useWallet();
-  const [fromCode, setFromCode] = useState("MXNB");
+  const [fromCode, setFromCode] = useState("USD");
   const [toCode, setToCode] = useState("MXN");
-  const [amount, setAmount] = useState("1000");
-  const [modal, setModal] = useState<null | "redeem" | "deposit">(null);
+  const [amount, setAmount] = useState("100");
 
   const from = ASSETS.find((a) => a.code === fromCode)!;
   const to = ASSETS.find((a) => a.code === toCode)!;
@@ -305,10 +301,6 @@ export function ScreenConvert({ go }: { go: Go }) {
   const result = to.mxn > 0 ? (amt * from.mxn) / to.mxn : 0;
 
   const swap = () => { setFromCode(toCode); setToCode(fromCode); };
-
-  // Acción real solo para el par MXNB ↔ MXN (rieles de Juno).
-  const isRedeem = fromCode === "MXNB" && toCode === "MXN";
-  const isDeposit = fromCode === "MXN" && toCode === "MXNB";
 
   return (
     <div className="screen screen-enter">
@@ -346,19 +338,9 @@ export function ScreenConvert({ go }: { go: Go }) {
           <span className="pos-pill">Tipo real</span>
         </div>
 
-        {isRedeem || isDeposit ? (
-          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setModal(isRedeem ? "redeem" : "deposit")}>
-            <Icon name={isRedeem ? "send" : "plus"} size={18} />
-            {isRedeem ? ` Redimir ${FMT(amt, 2)} MXNB → MXN` : " Depositar MXN para obtener MXNB"}
-          </button>
-        ) : (
-          <>
-            <button className="btn btn-ghost" style={{ marginTop: 18 }} disabled>Solo informativo para este par</button>
-            <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0", lineHeight: 1.5 }}>
-              Las divisas extranjeras son cálculo en vivo. Las conversiones reales en testnet son <b style={{ color: "var(--txt)" }}>MXNB ↔ MXN</b> (vía Bitso Business / Juno).
-            </p>
-          </>
-        )}
+        <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "14px 4px 0", lineHeight: 1.5 }}>
+          Calculadora de tipo de cambio en tiempo real, igual al mercado y sin comisión. Para mover dinero usa <b style={{ color: "var(--txt)" }}>Agregar</b>, <b style={{ color: "var(--txt)" }}>Enviar</b> o <b style={{ color: "var(--txt)" }}>Retirar</b> en Inicio.
+        </p>
 
         <div className="sec-head"><h3>Tipos de cambio</h3></div>
         <div className="card" style={{ padding: "4px 18px" }}>
@@ -378,9 +360,6 @@ export function ScreenConvert({ go }: { go: Go }) {
         </div>
       </div>
       <div className="scroll-bottom" />
-
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} maxAmount={wallet.balance} />}
-      {modal === "deposit" && <DepositModal onClose={() => setModal(null)} />}
     </div>
   );
 }
