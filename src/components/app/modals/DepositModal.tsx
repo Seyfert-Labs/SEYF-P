@@ -49,10 +49,9 @@ export function DepositModal({
 
         {status === "idle" && (
           <>
-            <p className="modal-title">Agregar MXNB</p>
+            <p className="modal-title">Agregar dinero</p>
             <p className="modal-sub">
-              En testnet acreditamos MXNB directo a <b style={{ color: "var(--txt)" }}>tu wallet</b> en Arbitrum.
-              No pagas gas ni firmas.
+              Acreditamos el dinero directo a <b style={{ color: "var(--txt)" }}>tu cuenta</b> al instante.
             </p>
             <span className="field-label">Monto a recibir (MXN)</span>
             <input
@@ -74,14 +73,14 @@ export function DepositModal({
               onClick={fund}
               disabled={!amount || Number(amount) <= 0}
             >
-              <Icon name="recv" size={18} /> Recibir {amount ? `$${amount}` : ""} MXNB
+              <Icon name="recv" size={18} /> Agregar {amount ? `$${amount}` : "dinero"}
             </button>
 
             <div className="divider" style={{ marginTop: 20 }} />
             <span className="field-label" style={{ marginTop: 0 }}>O recibe por SPEI a tu CLABE</span>
             <ClabeCard />
             <p className="modal-sub" style={{ marginTop: 10, marginBottom: 0 }}>
-              Deposita por SPEI a esta CLABE y Juno convierte el monto a MXNB. (En producción el webhook acredita a tu wallet automáticamente.)
+              Deposita por SPEI a esta CLABE y se acredita a tu cuenta automáticamente.
             </p>
 
             <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={onClose}>Cancelar</button>
@@ -93,8 +92,8 @@ export function DepositModal({
             <div className="logo-mark brand" style={{ margin: "8px auto 18px", background: "var(--accent-soft)", color: "var(--accent)" }}>
               <Icon name="recv" size={26} />
             </div>
-            <p className="modal-title" style={{ textAlign: "center" }}>Enviando MXNB…</p>
-            <p className="modal-sub" style={{ textAlign: "center" }}>Juno está emitiendo a tu wallet.</p>
+            <p className="modal-title" style={{ textAlign: "center" }}>Agregando dinero…</p>
+            <p className="modal-sub" style={{ textAlign: "center" }}>Estamos acreditando tu cuenta.</p>
             <div style={{ display: "flex", justifyContent: "center", margin: "20px 0 4px" }}>
               <span className="spin" style={{ width: 26, height: 26, color: "var(--accent)" }} />
             </div>

@@ -7,7 +7,7 @@ import { SubHeader, TxnRow } from "../shared";
 import { CARD_TXNS } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
-import { explorerBase, IS_TESTNET } from "@/lib/chain";
+import { explorerBase } from "@/lib/chain";
 import { ClabeCard } from "../ClabeCard";
 
 function shortAddr(a?: string) {
@@ -113,8 +113,8 @@ export function ScreenProfile({ go }: { go: Go }) {
         {wallet.enabled && wallet.authenticated && wallet.address && (
           <div className="card" style={{ marginTop: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p className="eyebrow">{wallet.gaslessReady ? "Cuenta inteligente" : "Wallet"} · Arbitrum{IS_TESTNET ? " Sepolia" : ""}</p>
-              <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>{wallet.gaslessReady ? "Gas patrocinado" : "Sin seed phrase"}</span>
+              <p className="eyebrow">Mi cuenta Seyf</p>
+              <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>Activa</span>
             </div>
             <div className="clabe-box" style={{ marginTop: 10 }}>
               <span className="clabe-val" style={{ fontSize: 15 }}>{shortAddr(wallet.address)}</span>
@@ -124,7 +124,7 @@ export function ScreenProfile({ go }: { go: Go }) {
               </div>
             </div>
             <p style={{ margin: "10px 2px 0", fontSize: 12, color: "var(--txt-dim)" }}>
-              Tu wallet se creó con tu login social. No necesitas firmar ni pagar gas.
+              Tu cuenta se creó con tu acceso. No necesitas contraseñas ni pasos extra.
             </p>
           </div>
         )}

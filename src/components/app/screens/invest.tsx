@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { Icon, Flag, Spark, Ring } from "../ui";
 import { SubHeader } from "../shared";
-import { BONDS, FX, FMT, type Bond } from "../data";
+import { BONDS, FX, FMT, VAULT_PLANS, planByApy, projectSavings, type Bond, type VaultPlan, type RiskLevel } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
@@ -141,63 +141,124 @@ export function ScreenBondDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   );
 }
 
-/* ---------------- BÓVEDAS ---------------- */
+/* ---------------- AHORRO (BÓVEDAS) ---------------- */
+const RISK_COLOR: Record<RiskLevel, string> = { Bajo: "var(--accent)", Medio: "#F5A623", Alto: "var(--neg)" };
+
+function RiskBadge({ risk }: { risk: RiskLevel }) {
+  return (
+    <span className="pos-pill" style={{ background: "transparent", border: `1px solid ${RISK_COLOR[risk]}`, color: RISK_COLOR[risk] }}>
+      Riesgo {risk.toLowerCase()}
+    </span>
+  );
+}
+
+function PlanCard({ plan, onPick }: { plan: VaultPlan; onPick: () => void }) {
+  return (
+    <div className="card bond-card" onClick={onPick} style={{ cursor: "pointer" }}>
+      <span style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 23 }}>{plan.emoji}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{plan.name}</p>
+        <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
+        <div style={{ marginTop: 6 }}><RiskBadge risk={plan.risk} /></div>
+      </div>
+      <div className="yield" style={{ textAlign: "right" }}>
+        <div className="num" style={{ fontWeight: 800, fontSize: 18, color: "var(--accent)" }}>{FMT(plan.apy, 1)}%</div>
+        <div className="lb">anual</div>
+      </div>
+    </div>
+  );
+}
+
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
   const { vaults, addVault, totalSaved } = useVaults(wallet.address);
-  const [adding, setAdding] = useState(false);
+  const [planPick, setPlanPick] = useState<VaultPlan | null>(null);
+
+  const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : 0;
+  const projection = projectSavings(totalSaved, 0, weightedApy || 10.5, 10);
+
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
       <div className="app-head" style={{ paddingTop: 4 }}>
-        <p className="name">Bóvedas</p>
-        <button className="icon-btn" onClick={() => setAdding(true)} aria-label="Nueva bóveda"><Icon name="plus" size={22} /></button>
+        <p className="name">Ahorro</p>
       </div>
       <div className="screen-pad">
+        {/* Hero */}
         <div className="card glow" style={{ padding: 22 }}>
-          <p className="eyebrow">Total ahorrado en bóvedas</p>
+          <p className="eyebrow">Tu ahorro total</p>
           <p className="amount num" style={{ fontSize: 38, marginTop: 12 }}>${FMT(totalSaved, 2).split(".")[0]}<span style={{ opacity: 0.5 }}>.{FMT(totalSaved, 2).split(".")[1]}</span></p>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <span className="chip" style={{ pointerEvents: "none" }}>{vaults.length} {vaults.length === 1 ? "meta" : "metas"}</span>
+          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            {totalSaved > 0 && <span className="pos-pill"><Icon name="leaf" size={12} /> {FMT(weightedApy, 1)}% anual promedio</span>}
+            <span className="chip" style={{ pointerEvents: "none" }}>{vaults.length} {vaults.length === 1 ? "bóveda" : "bóvedas"}</span>
           </div>
+          {totalSaved > 0 && (
+            <div className="card" style={{ marginTop: 16, background: "var(--accent-soft)", border: "none", display: "flex", alignItems: "center", gap: 12 }}>
+              <Icon name="trend" size={20} color="var(--accent)" />
+              <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                A este ritmo, en <b style={{ color: "var(--txt)" }}>10 años</b> tendrías <b className="num" style={{ color: "var(--accent)" }}>${FMT(projection, 0)}</b>.
+              </p>
+            </div>
+          )}
+          {/* Distribución por bóveda */}
+          {vaults.length > 1 && (
+            <>
+              <div className="alloc-bar" style={{ marginTop: 18 }}>
+                {vaults.map((v) => <span key={v.id} style={{ width: totalSaved > 0 ? `${(v.bal / totalSaved) * 100}%` : "0%", background: v.color }} />)}
+              </div>
+              <div className="alloc-legend">
+                {vaults.map((v) => (
+                  <div className="row" key={v.id}>
+                    <span className="dot" style={{ background: v.color }} />
+                    <div className="col"><span className="nm">{v.nm}</span><span className="vl num">${FMT(v.bal, 0)}</span></div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="sec-head"><h3>Tus metas</h3></div>
-
-        {vaults.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: 28 }}>
-            <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}><Icon name="vault" size={26} /></span>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>Aún no tienes bóvedas</p>
-            <p style={{ margin: "6px 0 16px", fontSize: 13, color: "var(--txt-muted)" }}>Crea una meta de ahorro y sigue tu progreso.</p>
-            <button className="btn btn-primary" onClick={() => setAdding(true)}><Icon name="plus" size={18} /> Crear mi primera bóveda</button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {vaults.map((v) => {
-              const pct = v.goal > 0 ? Math.round((v.bal / v.goal) * 100) : 0;
-              return (
-                <div key={v.id} className="vault card" onClick={() => go("boveda", v)}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <Ring pct={pct} size={58} color={v.color} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{v.nm}</p>
-                      <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>{FMT(v.apy, 1)}% anual</p>
-                      <p className="num" style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 800 }}>
-                        ${FMT(v.bal, 0)} <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}>/ ${FMT(v.goal, 0)}</span>
-                      </p>
+        {/* Tus bóvedas */}
+        {vaults.length > 0 && (
+          <>
+            <div className="sec-head"><h3>Tus bóvedas</h3></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {vaults.map((v) => {
+                const pct = v.goal > 0 ? Math.round((v.bal / v.goal) * 100) : 0;
+                const plan = planByApy(v.apy);
+                return (
+                  <div key={v.id} className="vault card" onClick={() => go("boveda", v)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <Ring pct={pct} size={58} color={v.color} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{v.nm}</p>
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.emoji} {plan.name} · {FMT(v.apy, 1)}% anual</p>
+                        <p className="num" style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 800 }}>
+                          ${FMT(v.bal, 0)} <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}>/ ${FMT(v.goal, 0)}</span>
+                        </p>
+                      </div>
+                      <Icon name="chevR" size={16} color="var(--txt-dim)" />
                     </div>
                   </div>
-                </div>
-              );
-            })}
-            <button className="card" onClick={() => setAdding(true)} style={{ textAlign: "center", cursor: "pointer", borderStyle: "dashed", color: "var(--txt-muted)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "transparent" }}>
-              <Icon name="plus" size={18} /> Crear nueva bóveda
-            </button>
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
+
+        {/* Catálogo de planes */}
+        <div className="sec-head"><h3>{vaults.length === 0 ? "Empieza a ahorrar para tu futuro" : "Abre otra bóveda"}</h3></div>
+        {vaults.length === 0 && (
+          <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            Elige cómo crece tu dinero. Divide tu ahorro en distintos planes según tu meta y tu horizonte.
+          </p>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {VAULT_PLANS.map((p) => <PlanCard key={p.id} plan={p} onPick={() => setPlanPick(p)} />)}
+        </div>
       </div>
       <div className="scroll-bottom" />
-      {adding && <AddVaultModal onClose={() => setAdding(false)} onCreate={(v) => { addVault(v); setAdding(false); }} />}
+      {planPick && <AddVaultModal plan={planPick} onClose={() => setPlanPick(null)} onCreate={(v) => { addVault(v); setPlanPick(null); }} />}
     </div>
   );
 }
@@ -239,6 +300,40 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           <div className="tile"><div className="k">Rendimiento</div><div className="v" style={{ color: "var(--accent)", fontSize: 20 }}>{FMT(v.apy, 1)}%</div></div>
           <div className="tile"><div className="k">Faltan</div><div className="v num" style={{ fontSize: 18 }}>${FMT(Math.max(0, v.goal - v.bal), 0)}</div></div>
         </div>
+
+        {/* Perfil del plan */}
+        {(() => {
+          const plan = planByApy(v.apy);
+          const projection = projectSavings(v.bal, 0, v.apy, 10);
+          return (
+            <>
+              <div className="card" style={{ marginTop: 16, textAlign: "left" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0 }}>{plan.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{plan.name}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
+                  </div>
+                  <RiskBadge risk={plan.risk} />
+                </div>
+                <div className="divider" />
+                <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>{plan.structured}</p>
+                <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--txt-dim)" }}>Horizonte: {plan.horizon}</p>
+              </div>
+              {v.bal > 0 && (
+                <div className="card" style={{ marginTop: 14, textAlign: "left", background: "var(--accent-soft)", border: "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Icon name="trend" size={18} color="var(--accent)" />
+                    <p className="eyebrow" style={{ color: "var(--accent)", margin: 0 }}>Proyección a 10 años</p>
+                  </div>
+                  <p className="num" style={{ fontSize: 30, fontWeight: 700, color: "var(--accent)", margin: "10px 0 0" }}>${FMT(projection, 0)}</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>si mantienes tu saldo actual a {FMT(v.apy, 1)}% anual</p>
+                </div>
+              )}
+            </>
+          );
+        })()}
+
         <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setAction("abonar")}><Icon name="plus" size={18} /> Abonar</button>
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAction("retirar")} disabled={v.bal <= 0}>Retirar</button>
@@ -261,7 +356,6 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
 /* ---------------- CONVERTIR (calculadora + acción real MXNB↔MXN) ---------------- */
 interface Asset { code: string; nm: string; mxn: number; flag: string | null }
 const ASSETS: Asset[] = [
-  { code: "MXNB", nm: "MXN Bitso (on-chain)", mxn: 1, flag: null },
   { code: "MXN", nm: "Peso mexicano", mxn: 1, flag: null },
   { code: "USD", nm: "Dólar estadounidense", mxn: 17.1252, flag: "us" },
   { code: "BRL", nm: "Real brasileño", mxn: 3.482, flag: "br" },
@@ -365,31 +459,37 @@ export function ScreenConvert({ go }: { go: Go }) {
 }
 
 /* ---------------- Modales de bóvedas ---------------- */
-const VAULT_COLORS = ["var(--accent)", "var(--accent-2)", "#5BD6C0", "#F5A623", "#FF7A7A"];
-
-function AddVaultModal({ onClose, onCreate }: { onClose: () => void; onCreate: (v: { nm: string; goal: number; apy: number; color: string }) => void }) {
+function AddVaultModal({ plan, onClose, onCreate }: { plan: VaultPlan; onClose: () => void; onCreate: (v: { nm: string; goal: number; apy: number; color: string }) => void }) {
   const [nm, setNm] = useState("");
   const [goal, setGoal] = useState("");
-  const [color, setColor] = useState(VAULT_COLORS[0]);
   const valid = nm.trim().length > 0 && Number(goal) > 0;
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
         <p className="modal-title">Nueva bóveda</p>
-        <p className="modal-sub">Ponle nombre y una meta. Tú decides cuánto abonar.</p>
-        <span className="field-label">Nombre</span>
-        <input className="input" placeholder="Ej. Viaje a Japón" value={nm} onChange={(e) => setNm(e.target.value)} />
+
+        {/* Plan elegido */}
+        <div className="card" style={{ display: "flex", gap: 12, alignItems: "center", padding: 14, background: "var(--surface-2)" }}>
+          <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--surface-3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{plan.emoji}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{plan.name}</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="num" style={{ fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>{FMT(plan.apy, 1)}%</div>
+            <div style={{ fontSize: 11, color: "var(--txt-muted)" }}>anual</div>
+          </div>
+        </div>
+        <p style={{ margin: "10px 2px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.45 }}>{plan.structured}</p>
+
+        <span className="field-label">Nombre de tu meta</span>
+        <input className="input" placeholder="Ej. Mi retiro, Casa propia…" value={nm} onChange={(e) => setNm(e.target.value)} />
         <span className="field-label">Meta (MXN)</span>
         <input className="input num-input" type="number" inputMode="decimal" placeholder="40,000" value={goal} onChange={(e) => setGoal(e.target.value)} />
-        <span className="field-label">Color</span>
-        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-          {VAULT_COLORS.map((c) => (
-            <button key={c} onClick={() => setColor(c)} aria-label="color" style={{ width: 34, height: 34, borderRadius: 999, background: c, border: color === c ? "3px solid var(--txt)" : "3px solid transparent", cursor: "pointer" }} />
-          ))}
-        </div>
-        <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={!valid} onClick={() => onCreate({ nm: nm.trim(), goal: Number(goal), apy: 9, color })}>
-          <Icon name="check" size={18} /> Crear bóveda
+
+        <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={!valid} onClick={() => onCreate({ nm: nm.trim(), goal: Number(goal), apy: plan.apy, color: plan.color })}>
+          <Icon name="check" size={18} /> Abrir bóveda {plan.name}
         </button>
         <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cancelar</button>
       </div>

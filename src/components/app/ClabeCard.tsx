@@ -31,7 +31,7 @@ export function ClabeCard() {
         </span>
         <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Tu CLABE de depósito</p>
         <p style={{ margin: "6px 0 14px", fontSize: 13, color: "var(--txt-muted)" }}>
-          Crea una CLABE única para recibir depósitos por SPEI. Se convierten a MXNB automáticamente.
+          Crea una CLABE única para recibir depósitos por SPEI. Se acreditan a tu cuenta automáticamente.
         </p>
         <button className="btn btn-primary" onClick={create} disabled={loading}>
           {loading ? <span className="spin" /> : <Icon name="plus" size={18} />} Crear mi CLABE
@@ -47,7 +47,7 @@ export function ClabeCard() {
       <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <p style={{ margin: 0, fontSize: 11, color: "var(--txt-muted)", letterSpacing: ".08em", textTransform: "uppercase" }}>CLABE de depósito</p>
-          <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>SPEI → MXNB</p>
+          <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>Depósito por SPEI</p>
         </div>
         <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--txt-muted)" }}>
           <Icon name="shield" size={14} color="var(--accent)" /> Juno

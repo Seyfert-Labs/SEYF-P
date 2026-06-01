@@ -46,13 +46,13 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
         <div className="modal-grab" />
         <p className="modal-title">Enviar a otra cuenta</p>
         <p className="modal-sub">
-          Transferencia <b style={{ color: "var(--txt)" }}>entre cuentas Seyf</b> (interna, on-chain). Pega la wallet del destinatario. <b style={{ color: "var(--accent)" }}>Sin firmar ni pagar gas.</b>
+          Transferencia <b style={{ color: "var(--txt)" }}>instantánea entre cuentas Seyf</b>. Ingresa la cuenta del destinatario.
         </p>
 
         {hash ? (
           <>
             <div className="alert alert-ok" style={{ marginTop: 6 }}>
-              ✓ Enviaste {amount} MXNB sin pagar gas. La transacción se está confirmando.
+              ✓ Enviaste ${amount} MXN. Tu transferencia se está confirmando.
             </div>
             <a className="btn btn-ghost" style={{ marginTop: 14 }} href={`${explorerBase}/tx/${hash}`} target="_blank" rel="noopener noreferrer">
               <Icon name="arrowR" size={18} /> Ver en el explorador
@@ -61,7 +61,7 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
           </>
         ) : (
           <>
-            <span className="field-label">Wallet de la cuenta Seyf destino (0x…)</span>
+            <span className="field-label">Cuenta Seyf del destinatario</span>
             <input
               className="input num-input"
               placeholder="0x0000000000000000000000000000000000000000"
@@ -72,7 +72,7 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
               <div className="alert alert-error">Dirección inválida (debe ser 0x + 40 hex).</div>
             )}
 
-            <span className="field-label">Monto (MXNB)</span>
+            <span className="field-label">Monto (MXN)</span>
             <input
               className="input num-input"
               type="number"
@@ -82,11 +82,11 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
               onChange={(e) => setAmount(e.target.value)}
             />
             <p className="modal-sub" style={{ margin: "8px 0 0" }}>
-              Disponible: {JunoService.formatMXNB(wallet.balance)} MXNB
+              Disponible: ${JunoService.formatMXNB(wallet.balance)} MXN
             </p>
 
             {!wallet.gaslessReady && (
-              <div className="alert alert-info">Preparando tu cuenta inteligente… intenta en unos segundos.</div>
+              <div className="alert alert-info">Preparando tu cuenta… intenta en unos segundos.</div>
             )}
             {error && <div className="alert alert-error">{error}</div>}
 
@@ -97,7 +97,7 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
               disabled={loading || !wallet.gaslessReady || !addrValid || !amountValid}
             >
               {loading ? <span className="spin" /> : <Icon name="send" size={18} />}
-              Enviar sin gas
+              Enviar
             </button>
             <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cancelar</button>
           </>

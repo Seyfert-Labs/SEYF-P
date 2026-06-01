@@ -27,8 +27,8 @@ export function TopBar({ go }: { go: Go }) {
         </p>
       </div>
       <div className="head-actions">
-        <button className="icon-btn" onClick={() => go("notifs")} aria-label="Notificaciones">
-          <Icon name="bell" size={20} />
+        <button className="icon-btn" onClick={() => go("bovedas")} aria-label="Bóvedas de ahorro">
+          <Icon name="vault" size={20} />
         </button>
         <button className="avatar" onClick={() => go("perfil")}>{initials}</button>
       </div>
@@ -97,7 +97,7 @@ export function PendingTxnRow({ p }: { p: { kind: "deposit" | "send"; amount: nu
         <span className="spin" style={{ width: 18, height: 18, color: "var(--accent)" }} />
       </div>
       <div className="mid">
-        <p className="ti">{pos ? "Depósito MXNB" : "Envío MXNB"}</p>
+        <p className="ti">{pos ? "Depósito" : "Envío"}</p>
         <p className="su" style={{ color: "var(--accent-2)" }}>Pendiente · confirmando…</p>
       </div>
       <div className="amt">

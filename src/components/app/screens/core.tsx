@@ -9,6 +9,7 @@ import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
+import { useVaults } from "@/hooks/useVaults";
 import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
@@ -82,6 +83,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
+  const { totalSaved } = useVaults(wallet.address);
   const refreshBal = wallet.refreshBalance;
 
   // Retira pendientes ya confirmados on-chain.
@@ -118,7 +120,7 @@ export function ScreenHome({ go }: { go: Go }) {
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
               {realData ? (
-                <span className="pos-pill"><Icon name="leaf" size={12} /> MXNB on-chain · Arbitrum</span>
+                <span className="pos-pill"><Icon name="leaf" size={12} /> Pesos digitales</span>
               ) : (
                 <>
                   <span className="pos-pill"><Icon name="send" size={12} /> +2.15%</span>
@@ -145,6 +147,22 @@ export function ScreenHome({ go }: { go: Go }) {
 
         <WelcomeBonus />
 
+        {/* Banner de ahorro a largo plazo */}
+        <div
+          className="card glow"
+          onClick={() => go("bovedas")}
+          style={{ marginTop: 18, cursor: "pointer", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 16 }}
+        >
+          <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--accent-2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 26 }}>🏦</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>Ahorra para tu futuro</p>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+              Planes de retiro y bóvedas desde <b style={{ color: "var(--accent)" }}>8%</b> hasta <b style={{ color: "var(--accent)" }}>14%</b> anual.
+            </p>
+            <span className="pos-pill" style={{ marginTop: 10 }}>Explorar planes →</span>
+          </div>
+        </div>
+
         <div className="quick-row" style={{ marginTop: 18 }}>
           <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
           <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
@@ -155,10 +173,9 @@ export function ScreenHome({ go }: { go: Go }) {
         <div className="sec-head"><h3>Mis cuentas</h3></div>
         <div className="card" style={{ padding: "6px 18px" }}>
           <div className="list">
-            <AcctRow go={go} to="wallet" ic="leaf" nm="Pesos digitales" su={realData ? "MXNB · on-chain" : "Rinde 9% anual"} vl={pesos} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
-            <AcctRow go={go} to="bonos" ic="globe" nm="Bonos de gobierno" su={realData ? "Próximamente · Etherfuse" : "4 países · hasta 11.75%"} vl={realData ? 0 : ALLOC[1].vl} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
-            <AcctRow go={go} to="bovedas" ic="vault" nm="Bóvedas de ahorro" su={realData ? "Próximamente" : "3 metas activas"} vl={realData ? 0 : ALLOC[2].vl} series={[18, 19, 21, 23, 24, 26, 28, 29]} />
-            <AcctRow go={go} to="bonos" ic="star" nm="Acciones premium" su={realData ? "Próximamente" : "Cartera curada"} vl={realData ? 0 : ALLOC[3].vl} series={[40, 38, 42, 44, 43, 46, 48, 47]} />
+            <AcctRow go={go} to="compras" ic="bag" nm="Compras" su="Lo que has apartado" vl={0} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
+            <AcctRow go={go} to="ventas" ic="store" nm="Ventas" su="Lo que has vendido" vl={0} series={[18, 19, 21, 23, 24, 26, 28, 29]} />
+            <AcctRow go={go} to="bovedas" ic="vault" nm="Bóveda de ahorro" su="Tus metas de ahorro" vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
           </div>
         </div>
 
@@ -210,7 +227,7 @@ function onchainToRow(t: OnchainTransfer, i: number): Txn {
   const pos = t.direction === "in";
   return {
     id: i + 1,
-    nm: pos ? "MXNB recibido" : "MXNB enviado",
+    nm: pos ? "Dinero recibido" : "Dinero enviado",
     su: t.timestamp
       ? new Date(t.timestamp).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
       : "Confirmando…",
@@ -258,8 +275,8 @@ export function ScreenWallet({ go }: { go: Go }) {
             </p>
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
-            <span className="pos-pill"><Icon name="leaf" size={12} /> {realMode ? "MXNB on-chain" : "+$12.40 hoy"}</span>
-            <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>{realMode ? "Arbitrum · tu wallet" : "9% anual · pagado diario"}</span>
+            <span className="pos-pill"><Icon name="leaf" size={12} /> {realMode ? "Pesos digitales" : "+$12.40 hoy"}</span>
+            <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>{realMode ? "Disponible al instante" : "9% anual · pagado diario"}</span>
           </div>
         </div>
 

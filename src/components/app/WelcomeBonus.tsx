@@ -89,12 +89,12 @@ export function WelcomeBonus() {
             <div style={{ flex: 1 }}>
               <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>🎁 Bono de bienvenida</p>
               <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
-                Recibe $1,500 MXNB para probar Seyf en testnet.
+                Recibe $1,500 de regalo para empezar en Seyf.
               </p>
             </div>
           </div>
           <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={claim}>
-            <Icon name="plus" size={18} /> Reclamar $1,500 MXNB
+            <Icon name="plus" size={18} /> Reclamar $1,500
           </button>
         </div>
       )}
@@ -114,8 +114,8 @@ export function WelcomeBonus() {
                 </p>
                 <p className="modal-sub" style={{ textAlign: "center" }}>
                   {status === "claiming"
-                    ? "Juno está emitiendo tus MXNB."
-                    : "Confirmando la transacción en Arbitrum. Esto toma unos segundos."}
+                    ? "Estamos acreditando tu saldo."
+                    : "Confirmando tu depósito. Esto toma unos segundos."}
                 </p>
                 <div style={{ display: "flex", justifyContent: "center", margin: "20px 0 4px" }}>
                   <span className="spin" style={{ width: 26, height: 26, color: "var(--accent)" }} />
@@ -131,10 +131,10 @@ export function WelcomeBonus() {
                 </p>
                 <p className="modal-sub" style={{ textAlign: "center" }}>
                   {status === "done" ? (
-                    <>Recibiste <b style={{ color: "var(--accent)" }}>$1,500 MXNB</b>. Saldo actual:{" "}
-                      <b className="num" style={{ color: "var(--txt)" }}>{JunoService.formatMXNB(wallet.balance)}</b>.</>
+                    <>Recibiste <b style={{ color: "var(--accent)" }}>$1,500</b>. Saldo actual:{" "}
+                      <b className="num" style={{ color: "var(--txt)" }}>${JunoService.formatMXNB(wallet.balance)}</b>.</>
                   ) : (
-                    <>La red está tardando un poco más. Tus <b style={{ color: "var(--accent)" }}>$1,500 MXNB</b> aparecerán pronto; puedes cerrar esta ventana.</>
+                    <>Está tardando un poco más. Tus <b style={{ color: "var(--accent)" }}>$1,500</b> aparecerán pronto; puedes cerrar esta ventana.</>
                   )}
                 </p>
                 <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setStatus("idle")}>Listo</button>

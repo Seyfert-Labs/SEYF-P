@@ -121,7 +121,7 @@ export function RedeemModal({
         <div className="modal-grab" />
         <p className="modal-title">Retirar a tu banco</p>
         <p className="modal-sub">
-          Convierte tus MXNB a pesos y recíbelos por <b style={{ color: "var(--txt)" }}>SPEI</b>. Disponible:{" "}
+          Recibe tu dinero en tu banco por <b style={{ color: "var(--txt)" }}>SPEI</b>. Disponible:{" "}
           <b className="num" style={{ color: "var(--accent)" }}>{JunoService.formatMXNB(available)}</b>
         </p>
 
@@ -153,7 +153,7 @@ export function RedeemModal({
               <Icon name="plus" size={18} /> Registrar otra cuenta
             </button>
 
-            <span className="field-label">2 · Monto a retirar (mín. 100 MXNB)</span>
+            <span className="field-label">2 · Monto a retirar (mín. $100 MXN)</span>
             <input
               className="input num-input"
               type="number"

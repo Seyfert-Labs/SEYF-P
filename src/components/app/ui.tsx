@@ -6,7 +6,8 @@ type IconName =
   | "lock" | "shield" | "finger" | "eye" | "chevR" | "chevL" | "chevD" | "check"
   | "bag" | "music" | "car" | "cup" | "bed" | "home" | "invest" | "vault" | "user"
   | "search" | "freeze" | "qr" | "arrowR" | "bolt" | "globe" | "info" | "clock"
-  | "star" | "doc" | "headset" | "logout" | "copy" | "in";
+  | "star" | "doc" | "headset" | "logout" | "copy" | "in"
+  | "store" | "tag" | "gift" | "trend";
 
 export function Icon({
   name,
@@ -69,6 +70,10 @@ export function Icon({
     doc: <><path d="M6 3h8l4 4v14H6z" {...p} /><path d="M14 3v4h4M9 13h6M9 17h6" {...p} /></>,
     headset: <><path d="M5 13v-1a7 7 0 0114 0v1" {...p} /><rect x="3.5" y="13" width="3.5" height="6" rx="1.5" {...p} /><rect x="17" y="13" width="3.5" height="6" rx="1.5" {...p} /><path d="M19 19a4 4 0 01-4 3h-2" {...p} /></>,
     logout: <><path d="M14 4H6v16h8" {...p} /><path d="M10 12h10M16 8l4 4-4 4" {...p} /></>,
+    store: <><path d="M4 9l1.2-4.5h13.6L20 9" {...p} /><path d="M4 9a2.4 2.4 0 004.5 1 2.4 2.4 0 007 0 2.4 2.4 0 004.5-1" {...p} /><path d="M5 11.5V20h14v-8.5" {...p} /><path d="M9.5 20v-5h5v5" {...p} /></>,
+    tag: <><path d="M4 4h7l9 9-7 7-9-9V4z" {...p} /><circle cx="8" cy="8" r="1.4" {...p} /></>,
+    gift: <><rect x="3.5" y="9" width="17" height="11" rx="1.5" {...p} /><path d="M3.5 13h17M12 9v11" {...p} /><path d="M12 9S10.5 4.5 8 5.5 9.5 9 12 9zM12 9s1.5-4.5 4-3.5S14.5 9 12 9z" {...p} /></>,
+    trend: <><path d="M4 16l5-5 3 3 7-8" {...p} /><path d="M16 6h4v4" {...p} /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} style={{ display: "block" }}>
