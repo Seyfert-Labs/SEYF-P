@@ -375,7 +375,6 @@ src/
     chain.ts                 # viem · MXNB · readBalance · readTransfers
   types/juno.ts
 docs/screenshots/            # capturas del README
-_prototype/                  # prototipo original (referencia de diseño)
 ```
 
 ---
@@ -402,7 +401,6 @@ _prototype/                  # prototipo original (referencia de diseño)
 ## Documentación
 
 - [`INTEGRATION.md`](./INTEGRATION.md) — integración Juno/Bitso + Privy (endpoints, env, flujos, changelog).
-- [`PLAN-NextJS-ClaudeCode.md`](./PLAN-NextJS-ClaudeCode.md) — plan de la landing.
 
 <div align="center">
 <br/>
