@@ -15,6 +15,9 @@ import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
 import { SendOnchainModal } from "../modals/SendOnchainModal";
 import { WelcomeBonus } from "../WelcomeBonus";
+import { RiskQuizBanner } from "../RiskQuiz";
+import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
+import { Portal } from "../Portal";
 
 /* ---------------- ONBOARDING ---------------- */
 export function Onboarding({ onDone }: { onDone: () => void }) {
@@ -79,12 +82,15 @@ function SecSetupRow({ icon, t, s, on, lock }: { icon: string; t: string; s: str
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
-  const [modal, setModal] = useState<null | "deposit" | "send" | "redeem">(null);
+  const [modal, setModal] = useState<null | "deposit" | "send" | "redeem" | "advance">(null);
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
-  const { totalSaved } = useVaults(wallet.address);
+  const { vaults, totalSaved } = useVaults(wallet.address);
   const refreshBal = wallet.refreshBalance;
+
+  // Rendimiento promedio ponderado del ahorro (para el adelanto de liquidez).
+  const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : 10.5;
 
   // Retira pendientes ya confirmados on-chain.
   useEffect(() => {
@@ -167,17 +173,22 @@ export function ScreenHome({ go }: { go: Go }) {
           <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
           <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
           <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="recv" /></span><span className="tx">Retirar</span></button>
+          <button className="quick" onClick={() => setModal("advance")}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
           <button className="quick" onClick={() => go("convertir")}><span className="ic"><Icon name="swap" /></span><span className="tx">Convertir</span></button>
         </div>
 
         <div className="sec-head"><h3>Mis cuentas</h3></div>
         <div className="card" style={{ padding: "6px 18px" }}>
           <div className="list">
-            <AcctRow go={go} to="compras" ic="bag" nm="Compras" su="Lo que has apartado" vl={0} series={[20, 22, 21, 24, 26, 25, 28, 30]} />
-            <AcctRow go={go} to="ventas" ic="store" nm="Ventas" su="Lo que has vendido" vl={0} series={[18, 19, 21, 23, 24, 26, 28, 29]} />
-            <AcctRow go={go} to="bovedas" ic="vault" nm="Bóveda de ahorro" su="Tus metas de ahorro" vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
+            <AcctRow go={go} to="wallet" ic="leaf" nm="Mi dinero" su="Disponible al instante" vl={pesos} series={[28, 30, 29, 32, 31, 33, 34, 36]} />
+            <AcctRow go={go} to="bonos" ic="chart" nm="Inversiones" su="Bonos y acciones" vl={0} series={[20, 22, 24, 26, 29, 32, 35, 39]} />
+            <AcctRow go={go} to="bovedas" ic="vault" nm="Ahorro" su="Tus metas" vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
+            <AcctRow go={go} to="card" ic="card" nm="Tarjeta" su="Gasta en divisas" vl={0} series={[24, 23, 25, 24, 26, 25, 27, 26]} />
           </div>
         </div>
+
+        {/* Cuestionario de perfil de riesgo — debajo de Mis cuentas */}
+        <RiskQuizBanner go={go} />
 
         <div className="sec-head"><h3>Movimientos recientes</h3><span className="link" onClick={() => go("wallet")}>Ver todo</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
@@ -203,9 +214,10 @@ export function ScreenHome({ go }: { go: Go }) {
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} />}
-      {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} />}
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} />}
+      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
+      {modal === "send" && <Portal><SendOnchainModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
+      {modal === "redeem" && <Portal><RedeemModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
+      {modal === "advance" && <Portal><LiquidityAdvanceModal saved={totalSaved} apy={weightedApy} onClose={() => setModal(null)} /></Portal>}
     </div>
   );
 }
@@ -319,9 +331,9 @@ export function ScreenWallet({ go }: { go: Go }) {
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} />}
-      {modal === "redeem" && <RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={realMode ? wallet.balance : undefined} />}
-      {modal === "send" && <SendOnchainModal onClose={() => setModal(null)} onSuccess={onSuccess} />}
+      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} /></Portal>}
+      {modal === "redeem" && <Portal><RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={realMode ? wallet.balance : undefined} /></Portal>}
+      {modal === "send" && <Portal><SendOnchainModal onClose={() => setModal(null)} onSuccess={onSuccess} /></Portal>}
     </div>
   );
 }

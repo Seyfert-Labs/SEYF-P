@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { Icon, Flag, Ring } from "../ui";
 import { SubHeader, TxnRow } from "../shared";
-import { CARD_TXNS } from "../data";
+import { CARD_TXNS, FMT } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { explorerBase } from "@/lib/chain";
@@ -14,36 +14,100 @@ function shortAddr(a?: string) {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
 }
 
+/* Ondas de pago sin contacto */
+function Contactless({ size = 22, color = "var(--txt-muted)" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" style={{ display: "block" }}>
+      <path d="M8.5 7a8 8 0 010 10" /><path d="M12 4.5a12 12 0 010 15" /><path d="M5 9.5a4.5 4.5 0 010 5" />
+    </svg>
+  );
+}
+
+/* Chip EMV */
+function Chip() {
+  return (
+    <div style={{ width: 42, height: 32, borderRadius: 7, background: "linear-gradient(135deg, #e9cf7a, #b8932f)", position: "relative", overflow: "hidden", boxShadow: "inset 0 0 0 1px rgba(0,0,0,.15)" }}>
+      <span style={{ position: "absolute", inset: "5px 0", borderTop: "1px solid rgba(0,0,0,.25)", borderBottom: "1px solid rgba(0,0,0,.25)" }} />
+      <span style={{ position: "absolute", inset: "0 14px", borderLeft: "1px solid rgba(0,0,0,.25)", borderRight: "1px solid rgba(0,0,0,.25)" }} />
+    </div>
+  );
+}
+
 /* ---------------- TARJETA ---------------- */
 export function ScreenCard({ go }: { go: Go }) {
+  const wallet = useWallet();
   const [frozen, setFrozen] = useState(false);
+  const [flip, setFlip] = useState(false);
   const [cur, setCur] = useState("MXN");
+
+  const realMode = wallet.enabled && wallet.authenticated;
+  const balance = realMode ? wallet.balance : 48250.4;
+  const holder = realMode ? (wallet.email?.split("@")[0]?.toUpperCase() || "TITULAR SEYF") : "DIEGO ROBLES";
+
+  // Saldo expresado en cada divisa (tipo de cambio de referencia).
+  const RATES: Record<string, { rate: number; sym: string; flag: string | null; dec: number }> = {
+    MXN: { rate: 1, sym: "$", flag: null, dec: 2 },
+    USD: { rate: 17.1252, sym: "$", flag: "us", dec: 2 },
+    BRL: { rate: 3.482, sym: "R$ ", flag: "br", dec: 2 },
+    KRW: { rate: 0.01243, sym: "₩ ", flag: "kr", dec: 0 },
+  };
+
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
       <div className="app-head" style={{ paddingTop: 4 }}>
         <p className="name">Tarjeta</p>
-        <button className="icon-btn" onClick={() => go("perfil")}><Icon name="gear" size={20} /></button>
       </div>
       <div className="screen-pad">
-        <div className="credit-card" style={{ filter: frozen ? "grayscale(.6) brightness(.7)" : "none", transition: "filter .3s" }}>
-          <div className="sheen" />
-          <div className="mesh" />
-          <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span className="brand" style={{ fontSize: 22, fontWeight: 800 }}>Seyf</span>
-            <Icon name="globe" size={24} color="var(--accent)" />
-          </div>
-          <div style={{ position: "relative" }}>
-            <p className="num" style={{ margin: 0, fontSize: 19, letterSpacing: "0.14em", color: "var(--txt)" }}>4821 ··· ··· 7‑903</p>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 14 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 10, color: "var(--txt-muted)", letterSpacing: ".08em" }}>TITULAR</p>
-                <p style={{ margin: "3px 0 0", fontSize: 14, fontWeight: 700 }}>DIEGO ROBLES</p>
+        <div className="card-flip" onClick={() => setFlip((f) => !f)}>
+          <div className={`card-flip-inner ${flip ? "flipped" : ""}`}>
+            {/* Frente */}
+            <div className="credit-card card-face" style={frozen ? { filter: "grayscale(.6) brightness(.7)" } : undefined}>
+              <div className="sheen" />
+              <div className="mesh" />
+              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <span className="brand" style={{ fontSize: 22, fontWeight: 800 }}>Seyf</span>
+                <Contactless size={22} color="var(--accent)" />
               </div>
-              <span className="brand" style={{ fontSize: 16, fontStyle: "italic", fontWeight: 800, color: "var(--accent)" }}>VISA</span>
+              <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, marginTop: -4 }}>
+                <Chip />
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, color: "var(--txt-muted)", letterSpacing: ".06em" }}>SALDO</p>
+                  <p className="num" style={{ margin: "2px 0 0", fontSize: 20, fontWeight: 800 }}>${FMT(balance, 2)}</p>
+                </div>
+              </div>
+              <div style={{ position: "relative" }}>
+                <p className="num" style={{ margin: 0, fontSize: 19, letterSpacing: "0.14em", color: "var(--txt)" }}>4821 ···· ···· 7903</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 14 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 10, color: "var(--txt-muted)", letterSpacing: ".08em" }}>TITULAR</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 180 }}>{holder}</p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <p style={{ margin: 0, fontSize: 10, color: "var(--txt-muted)", letterSpacing: ".08em" }}>VÁLIDA</p>
+                    <p className="num" style={{ margin: "3px 0 0", fontSize: 14, fontWeight: 700 }}>09/28</p>
+                  </div>
+                  <span className="brand" style={{ fontSize: 16, fontStyle: "italic", fontWeight: 800, color: "var(--accent)" }}>VISA</span>
+                </div>
+              </div>
+            </div>
+            {/* Reverso */}
+            <div className="credit-card card-face back" style={frozen ? { filter: "grayscale(.6) brightness(.7)" } : undefined}>
+              <div className="sheen" />
+              <div className="card-stripe" />
+              <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="card-sign"><span className="num" style={{ color: "#111", fontWeight: 700 }}>123</span></div>
+                <span style={{ fontSize: 10, color: "var(--txt-muted)", letterSpacing: ".06em" }}>CVV</span>
+              </div>
+              <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, color: "var(--txt-muted)", fontSize: 11 }}>
+                <Icon name="lock" size={13} color="var(--accent)" /> Cifrado AES‑256 · uso protegido
+              </div>
             </div>
           </div>
         </div>
+        <p style={{ textAlign: "center", fontSize: 12, color: "var(--txt-dim)", margin: "10px 0 0" }}>
+          Toca la tarjeta para ver el {flip ? "frente" : "reverso"}
+        </p>
 
         <div className="quick-row" style={{ marginTop: 18 }}>
           <button className="quick" onClick={() => setFrozen(!frozen)}>
@@ -52,25 +116,20 @@ export function ScreenCard({ go }: { go: Go }) {
           </button>
           <button className="quick"><span className="ic"><Icon name="lock" /></span><span className="tx">PIN</span></button>
           <button className="quick" onClick={() => go("cambio")}><span className="ic"><Icon name="globe" /></span><span className="tx">Divisas</span></button>
-          <button className="quick"><span className="ic"><Icon name="gear" /></span><span className="tx">Ajustes</span></button>
+          <button className="quick" onClick={() => go("perfil")}><span className="ic"><Icon name="gear" /></span><span className="tx">Ajustes</span></button>
         </div>
 
         <div className="sec-head"><h3>Gasta en cualquier divisa</h3></div>
         <div className="card" style={{ padding: 18 }}>
           <div className="seg" style={{ marginBottom: 4, border: "none", background: "transparent", padding: 0, gap: 8, flexWrap: "wrap" }}>
-            {[
-              { c: "MXN", f: null, v: "$48,250.40" },
-              { c: "USD", f: "us", v: "$1,204.00" },
-              { c: "BRL", f: "br", v: "R$ 860.00" },
-              { c: "KRW", f: "kr", v: "₩ 410,000" },
-            ].map((x) => (
-              <button key={x.c} onClick={() => setCur(x.c)}
-                style={{ flex: "1 1 44%", border: "1px solid var(--line)", borderRadius: 14, padding: 14, cursor: "pointer", textAlign: "left", background: cur === x.c ? "var(--accent-soft)" : "var(--surface-2)" }}>
+            {Object.entries(RATES).map(([c, r]) => (
+              <button key={c} onClick={() => setCur(c)}
+                style={{ flex: "1 1 44%", border: "1px solid var(--line)", borderRadius: 14, padding: 14, cursor: "pointer", textAlign: "left", background: cur === c ? "var(--accent-soft)" : "var(--surface-2)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {x.f ? <Flag code={x.f} cls="sm" /> : <span style={{ width: 26, height: 26, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13 }} className="num">$</span>}
-                  <span style={{ fontWeight: 800, fontSize: 13, color: cur === x.c ? "var(--accent)" : "var(--txt-muted)" }}>{x.c}</span>
+                  {r.flag ? <Flag code={r.flag} cls="sm" /> : <span style={{ width: 26, height: 26, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13 }} className="num">$</span>}
+                  <span style={{ fontWeight: 800, fontSize: 13, color: cur === c ? "var(--accent)" : "var(--txt-muted)" }}>{c}</span>
                 </div>
-                <p className="num" style={{ margin: "10px 0 0", fontSize: 18, fontWeight: 800 }}>{x.v}</p>
+                <p className="num" style={{ margin: "10px 0 0", fontSize: 18, fontWeight: 800 }}>{r.sym}{FMT(balance / r.rate, r.dec)}</p>
               </button>
             ))}
           </div>

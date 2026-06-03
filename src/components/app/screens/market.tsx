@@ -10,6 +10,7 @@ import { SubHeader } from "../shared";
 import { PRODUCTS, OFFERS, FMT, type MarketProduct, type MarketOffer, type MarketCat } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
+import { Portal } from "../Portal";
 import { useBusinesses } from "@/hooks/useBusinesses";
 
 const CATS: (MarketCat | "Todos")[] = ["Todos", "Verdura", "Fruta", "Chile"];
@@ -382,7 +383,7 @@ export function ScreenVender({ go }: { go: Go }) {
         )}
       </div>
       <div className="scroll-bottom" />
-      {adding && <AltaNegocioModal onClose={() => setAdding(false)} onCreate={(b) => { addBusiness(b); setAdding(false); }} />}
+      {adding && <Portal><AltaNegocioModal onClose={() => setAdding(false)} onCreate={(b) => { addBusiness(b); setAdding(false); }} /></Portal>}
     </div>
   );
 }

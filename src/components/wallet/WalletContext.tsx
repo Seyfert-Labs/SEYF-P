@@ -29,6 +29,8 @@ export interface WalletState {
   refreshBalance: () => void;
   /** Envía MXNB on-chain desde la smart wallet (gas patrocinado). Devuelve el hash. */
   sendMXNB: (to: string, amount: string) => Promise<string>;
+  /** Envía una transacción arbitraria (call a contrato) desde la smart wallet. Devuelve el hash. */
+  sendTx: (to: string, data: `0x${string}`) => Promise<string>;
 }
 
 export const defaultWalletState: WalletState = {
@@ -43,6 +45,9 @@ export const defaultWalletState: WalletState = {
   logout: () => {},
   refreshBalance: () => {},
   sendMXNB: async () => {
+    throw new Error("Wallet no disponible (modo demo)");
+  },
+  sendTx: async () => {
     throw new Error("Wallet no disponible (modo demo)");
   },
 };

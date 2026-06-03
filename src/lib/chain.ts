@@ -29,7 +29,7 @@ export const publicClient = createPublicClient({
   transport: http(process.env.NEXT_PUBLIC_ARBITRUM_RPC || undefined),
 });
 
-// ABI mínimo de ERC-20 (saldo + transferencia).
+// ABI mínimo de ERC-20 (saldo + transferencia + aprobación para las bóvedas).
 export const erc20Abi = [
   {
     type: "function",
@@ -48,6 +48,26 @@ export const erc20Abi = [
     ],
     outputs: [{ name: "", type: "bool" }],
   },
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "allowance",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 /** Lee el saldo de MXNB (en unidades, ya convertido por decimales) de una dirección. */
@@ -65,6 +85,119 @@ export const explorerBase = IS_TESTNET
   ? "https://sepolia.arbiscan.io"
   : "https://arbiscan.io";
 
+// ============================================================
+// Bóvedas on-chain (contrato SeyfVaults). Si NEXT_PUBLIC_SEYF_VAULTS_ADDRESS
+// está presente, las bóvedas son reales on-chain; si no, la app usa la capa
+// `store` (Supabase/localStorage) como degradación graceful.
+// ============================================================
+
+export const SEYF_VAULTS_ADDRESS = (process.env.NEXT_PUBLIC_SEYF_VAULTS_ADDRESS || "") as Address | "";
+export const VAULTS_ONCHAIN = Boolean(SEYF_VAULTS_ADDRESS);
+
+export const seyfVaultsAbi = [
+  {
+    type: "function",
+    name: "openVault",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "name", type: "string" },
+      { name: "goal", type: "uint256" },
+      { name: "apyBps", type: "uint16" },
+    ],
+    outputs: [{ name: "vaultId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "deposit",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "vaultId", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "withdraw",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "vaultId", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "closeVault",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "vaultId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getVaults",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [
+      {
+        type: "tuple[]",
+        components: [
+          { name: "name", type: "string" },
+          { name: "goal", type: "uint256" },
+          { name: "balance", type: "uint256" },
+          { name: "apyBps", type: "uint16" },
+          { name: "createdAt", type: "uint64" },
+          { name: "exists", type: "bool" },
+        ],
+      },
+    ],
+  },
+] as const;
+
+export interface OnchainVault {
+  vaultId: number;
+  name: string;
+  goal: number;    // unidades MXNB
+  balance: number; // unidades MXNB
+  apy: number;     // porcentaje (apyBps / 100)
+  createdAt: number; // ms
+}
+
+/** Lee las bóvedas on-chain del dueño (filtra las cerradas). */
+export async function readOnchainVaults(owner: Address): Promise<OnchainVault[]> {
+  if (!SEYF_VAULTS_ADDRESS) return [];
+  const raw = (await publicClient.readContract({
+    address: SEYF_VAULTS_ADDRESS,
+    abi: seyfVaultsAbi,
+    functionName: "getVaults",
+    args: [owner],
+  })) as readonly {
+    name: string; goal: bigint; balance: bigint; apyBps: number; createdAt: bigint; exists: boolean;
+  }[];
+  const result: OnchainVault[] = [];
+  raw.forEach((v, i) => {
+    if (!v.exists) return;
+    result.push({
+      vaultId: i,
+      name: v.name,
+      goal: Number(v.goal) / 10 ** MXNB_DECIMALS,
+      balance: Number(v.balance) / 10 ** MXNB_DECIMALS,
+      apy: v.apyBps / 100,
+      createdAt: Number(v.createdAt) * 1000,
+    });
+  });
+  return result;
+}
+
+/** Espera a que una transacción se confirme on-chain. */
+export async function waitForTx(hash: `0x${string}`) {
+  try {
+    await publicClient.waitForTransactionReceipt({ hash, timeout: 60_000 });
+  } catch {
+    /* si expira, el polling de saldo/bóvedas terminará reflejando el estado */
+  }
+}
+
 // ---------------- Historial on-chain (transferencias MXNB del usuario) ----------------
 
 const transferEvent = parseAbiItem(
@@ -81,42 +214,59 @@ export interface OnchainTransfer {
   blockNumber: bigint;
 }
 
-/** Lee las transferencias de MXNB hacia/desde una dirección (recientes). */
+/**
+ * Lee las transferencias de MXNB hacia/desde una dirección.
+ * Pagina hacia atrás en tramos de bloques (reduciendo el tramo si el RPC
+ * rechaza el rango) hasta juntar suficientes movimientos, alcanzar el límite
+ * de lookback o quedarse sin bloques. Así se ven también las transacciones
+ * más viejas sin depender de un único rango grande.
+ */
 export async function readMXNBTransfers(
   address: Address,
-  lookback = 500000n,
+  { maxLookback = 2_000_000n, targetCount = 25, maxRequests = 40 } = {},
 ): Promise<OnchainTransfer[]> {
   const latest = await publicClient.getBlockNumber();
-  const fromBlock = latest > lookback ? latest - lookback : 0n;
+  const floor = latest > maxLookback ? latest - maxLookback : 0n;
 
-  async function fetchPair(fb: bigint) {
-    const base = { address: MXNB_ADDRESS, event: transferEvent, fromBlock: fb, toBlock: "latest" as const };
-    return Promise.all([
-      publicClient.getLogs({ ...base, args: { to: address } }),
-      publicClient.getLogs({ ...base, args: { from: address } }),
-    ]);
-  }
+  // Movimientos crudos (ya extraídos de los logs tipados de viem).
+  const raw: { hash: string; from: string; to: string; value: bigint; dir: "in" | "out"; blockNumber: bigint; logIndex: number }[] = [];
+  let chunk = 100_000n;
+  let to = latest;
+  let requests = 0;
 
-  let incoming, outgoing;
-  try {
-    [incoming, outgoing] = await fetchPair(fromBlock);
-  } catch {
-    // Rango grande rechazado por el RPC → ventana corta.
-    const fb = latest > 9000n ? latest - 9000n : 0n;
+  while (to >= floor && requests < maxRequests && raw.length < targetCount) {
+    const tentativeFrom = to > chunk ? to - chunk + 1n : 0n;
+    const fromBlock = tentativeFrom < floor ? floor : tentativeFrom;
+    const base = { address: MXNB_ADDRESS, event: transferEvent, fromBlock, toBlock: to };
     try {
-      [incoming, outgoing] = await fetchPair(fb);
+      const [inc, out] = await Promise.all([
+        publicClient.getLogs({ ...base, args: { to: address } }),
+        publicClient.getLogs({ ...base, args: { from: address } }),
+      ]);
+      requests += 2;
+      for (const l of inc) {
+        raw.push({ hash: l.transactionHash ?? "", from: l.args.from ?? "", to: l.args.to ?? "", value: l.args.value ?? 0n, dir: "in", blockNumber: l.blockNumber ?? 0n, logIndex: l.logIndex ?? 0 });
+      }
+      for (const l of out) {
+        raw.push({ hash: l.transactionHash ?? "", from: l.args.from ?? "", to: l.args.to ?? "", value: l.args.value ?? 0n, dir: "out", blockNumber: l.blockNumber ?? 0n, logIndex: l.logIndex ?? 0 });
+      }
+      if (fromBlock === 0n) break;
+      to = fromBlock - 1n;
     } catch {
-      return [];
+      requests += 1;
+      // Rango rechazado por el RPC → reduce el tramo y reintenta el mismo `to`.
+      if (chunk > 2_000n) {
+        chunk = chunk / 2n;
+        continue;
+      }
+      // Ni con tramo chico: avanza para no quedarse atorado.
+      if (fromBlock === 0n) break;
+      to = fromBlock - 1n;
     }
   }
 
-  const tagged = [
-    ...incoming.map((l) => ({ l, dir: "in" as const })),
-    ...outgoing.map((l) => ({ l, dir: "out" as const })),
-  ];
-
   // Timestamps por bloque (dedupe).
-  const blockNums = [...new Set(tagged.map((t) => t.l.blockNumber))];
+  const blockNums = [...new Set(raw.map((t) => t.blockNumber))];
   const tsMap = new Map<bigint, number>();
   await Promise.all(
     blockNums.map(async (bn) => {
@@ -130,21 +280,21 @@ export async function readMXNBTransfers(
   );
 
   const seen = new Set<string>();
-  const out: OnchainTransfer[] = [];
-  for (const { l, dir } of tagged) {
-    const key = `${l.transactionHash}-${dir}-${l.logIndex}`;
+  const result: OnchainTransfer[] = [];
+  for (const t of raw) {
+    const key = `${t.hash}-${t.dir}-${t.logIndex}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({
-      hash: l.transactionHash,
-      from: l.args.from as string,
-      to: l.args.to as string,
-      value: Number(l.args.value) / 10 ** MXNB_DECIMALS,
-      direction: dir,
-      timestamp: tsMap.get(l.blockNumber) ?? 0,
-      blockNumber: l.blockNumber,
+    result.push({
+      hash: t.hash,
+      from: t.from,
+      to: t.to,
+      value: Number(t.value) / 10 ** MXNB_DECIMALS,
+      direction: t.dir,
+      timestamp: tsMap.get(t.blockNumber) ?? 0,
+      blockNumber: t.blockNumber,
     });
   }
-  out.sort((a, b) => Number(b.blockNumber - a.blockNumber));
-  return out;
+  result.sort((a, b) => Number(b.blockNumber - a.blockNumber));
+  return result;
 }

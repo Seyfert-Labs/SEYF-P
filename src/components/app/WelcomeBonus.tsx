@@ -10,6 +10,7 @@ import { junoService } from "@/services/junoService";
 import { JunoService } from "@/services/junoService";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { store } from "@/lib/store";
+import { Portal } from "./Portal";
 
 type Status = "idle" | "claiming" | "validating" | "done" | "slow" | "error";
 
@@ -100,7 +101,7 @@ export function WelcomeBonus() {
       )}
 
       {status !== "idle" && (
-        <div className="modal-overlay" onClick={() => (status === "done" || status === "error" || status === "slow") && setStatus("idle")}>
+        <Portal><div className="modal-overlay" onClick={() => (status === "done" || status === "error" || status === "slow") && setStatus("idle")}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", paddingBottom: 30 }}>
             <div className="modal-grab" />
 
@@ -150,7 +151,7 @@ export function WelcomeBonus() {
               </>
             )}
           </div>
-        </div>
+        </div></Portal>
       )}
     </>
   );

@@ -4,10 +4,14 @@
 import React, { useState } from "react";
 import { Icon, Flag, Spark, Ring } from "../ui";
 import { SubHeader } from "../shared";
-import { BONDS, FX, FMT, VAULT_PLANS, planByApy, projectSavings, type Bond, type VaultPlan, type RiskLevel } from "../data";
+import { BONDS, FMT, VAULT_PLANS, RISK_PROFILES, planByApy, planById, projectSavings, aforeVsSeyf, AFORE_COMMISSION, loadRiskProfile, type Bond, type VaultPlan, type RiskLevel } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
+import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
+import { Portal } from "../Portal";
+import { useBitsoRates, convertOnBitso } from "@/hooks/useBitsoRates";
+import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
 
 /* ---------------- BONOS LIST ---------------- */
 export function ScreenBonos({ go }: { go: Go }) {
@@ -152,12 +156,15 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
   );
 }
 
-function PlanCard({ plan, onPick }: { plan: VaultPlan; onPick: () => void }) {
+function PlanCard({ plan, onPick, recommended }: { plan: VaultPlan; onPick: () => void; recommended?: boolean }) {
   return (
-    <div className="card bond-card" onClick={onPick} style={{ cursor: "pointer" }}>
+    <div className="card bond-card" onClick={onPick} style={{ cursor: "pointer", border: recommended ? "1px solid var(--accent)" : undefined, background: recommended ? "var(--accent-soft)" : undefined }}>
       <span style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 23 }}>{plan.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{plan.name}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{plan.name}</p>
+          {recommended && <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>}
+        </div>
         <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
         <div style={{ marginTop: 6 }}><RiskBadge risk={plan.risk} /></div>
       </div>
@@ -169,21 +176,94 @@ function PlanCard({ plan, onPick }: { plan: VaultPlan; onPick: () => void }) {
   );
 }
 
+/* ---------------- DASHBOARD: TÚ vs AFORE (costo de la comisión) ---------------- */
+function VsAforeCard({ current, apy }: { current: number; apy: number }) {
+  // Sin ahorro aún → ejemplo ilustrativo de $2,000/mes. Con ahorro → tu saldo actual.
+  const usingExample = current <= 0;
+  const baseCurrent = usingExample ? 0 : current;
+  const baseMonthly = usingExample ? 2000 : 0;
+  const rows = aforeVsSeyf(baseCurrent, baseMonthly, apy, [10, 20, 30]);
+  const max = rows[rows.length - 1].seyf || 1;
+  const cost30 = rows[rows.length - 1].feesCost; // lo que cuesta la comisión a 30 años
+
+  return (
+    <>
+      <div className="sec-head"><h3>Tú vs una Afore tradicional</h3></div>
+      <div className="card" style={{ padding: 20 }}>
+        {/* Golpe: costo compuesto de la comisión */}
+        <div className="card" style={{ background: "var(--accent-soft)", border: "none", textAlign: "center", padding: 18 }}>
+          <p className="eyebrow" style={{ color: "var(--accent)" }}>Comisión que te cobra la Afore en 30 años</p>
+          <p className="num" style={{ fontSize: 32, fontWeight: 700, color: "var(--neg)", margin: "8px 0 0" }}>−${FMT(cost30, 0)}</p>
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
+            Por su <b style={{ color: "var(--txt)" }}>{FMT(AFORE_COMMISSION, 2)}%</b> anual sobre saldo. En Seyf: <b style={{ color: "var(--accent)" }}>$0 de comisión sobre tu saldo</b>.
+          </p>
+        </div>
+
+        <p style={{ fontSize: 12, color: "var(--txt-muted)", margin: "16px 2px 4px", lineHeight: 1.4 }}>
+          {usingExample
+            ? <>Mismo rendimiento (ej. <b className="num" style={{ color: "var(--txt)" }}>$2,000</b>/mes a {FMT(apy, 1)}%), saldo final:</>
+            : <>Mismo rendimiento ({FMT(apy, 1)}% sobre tu saldo), saldo final:</>}
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
+          {rows.map((r) => (
+            <div key={r.years}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{r.years} años</span>
+                <span className="num" style={{ fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>+${FMT(r.feesCost, 0)} a tu favor</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <span style={{ width: 38, fontSize: 10, color: "var(--txt-dim)", flexShrink: 0 }}>Afore</span>
+                <div style={{ flex: 1, height: 10, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${(r.afore / max) * 100}%`, background: "var(--txt-dim)", borderRadius: 999 }} />
+                </div>
+                <span className="num" style={{ width: 64, textAlign: "right", fontSize: 11, color: "var(--txt-muted)", flexShrink: 0 }}>${FMT(r.afore, 0)}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 38, fontSize: 10, color: "var(--accent)", fontWeight: 800, flexShrink: 0 }}>Seyf</span>
+                <div style={{ flex: 1, height: 10, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${(r.seyf / max) * 100}%`, background: "var(--accent)", borderRadius: 999 }} />
+                </div>
+                <span className="num" style={{ width: 64, textAlign: "right", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>${FMT(r.seyf, 0)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: "var(--txt-dim)", margin: "16px 2px 0", lineHeight: 1.5 }}>
+          Misma inversión y mismo rendimiento; la única diferencia es la comisión de {FMT(AFORE_COMMISSION, 2)}% anual sobre saldo. Rendimiento objetivo, no garantizado.
+        </p>
+      </div>
+    </>
+  );
+}
+
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
-  const { vaults, addVault, totalSaved } = useVaults(wallet.address);
+  const { vaults, addVault, totalSaved, busy, onchain } = useVaults(wallet.address);
   const [planPick, setPlanPick] = useState<VaultPlan | null>(null);
+  // Perfil recomendado por el cuestionario (si lo respondió).
+  const [recId] = useState<string | null>(() => loadRiskProfile());
+  const recPlan = recId ? planById(recId) : null;
 
   const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : 0;
   const projection = projectSavings(totalSaved, 0, weightedApy || 10.5, 10);
+  const compareApy = totalSaved > 0 ? (weightedApy || 11.5) : (recPlan?.apy ?? 11.5);
+  const afore = VAULT_PLANS.find((p) => p.id === "afore")!;
 
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
       <div className="app-head" style={{ paddingTop: 4 }}>
         <p className="name">Ahorro</p>
+        {onchain && <span className="pos-pill"><Icon name="shield" size={12} /> On-chain</span>}
       </div>
       <div className="screen-pad">
+        {busy && (
+          <div className="card" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--accent-soft)", border: "none" }}>
+            <span className="spin" style={{ color: "var(--accent)" }} />
+            <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)" }}>Procesando en la red… esto tarda unos segundos.</p>
+          </div>
+        )}
         {/* Hero */}
         <div className="card glow" style={{ padding: 22 }}>
           <p className="eyebrow">Tu ahorro total</p>
@@ -218,6 +298,18 @@ export function ScreenVaults({ go }: { go: Go }) {
           )}
         </div>
 
+        {!onchain && (
+          <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)" }}>
+            <Icon name="info" size={20} color="var(--txt-muted)" />
+            <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
+              Puedes planear tus metas y elegir estrategia. <b style={{ color: "var(--txt)" }}>Fondear con MXNB real</b> se activa al conectar el contrato on-chain.
+            </p>
+          </div>
+        )}
+
+        {/* Dashboard: proyección Seyf vs Afore tradicional */}
+        <VsAforeCard current={totalSaved} apy={compareApy} />
+
         {/* Tus bóvedas */}
         {vaults.length > 0 && (
           <>
@@ -246,19 +338,42 @@ export function ScreenVaults({ go }: { go: Go }) {
           </>
         )}
 
-        {/* Catálogo de planes */}
-        <div className="sec-head"><h3>{vaults.length === 0 ? "Empieza a ahorrar para tu futuro" : "Abre otra bóveda"}</h3></div>
-        {vaults.length === 0 && (
-          <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-            Elige cómo crece tu dinero. Divide tu ahorro en distintos planes según tu meta y tu horizonte.
-          </p>
-        )}
+        {/* Producto destacado: AFORE */}
+        <div className="sec-head"><h3>Para tu retiro</h3></div>
+        <div className="card glow" onClick={() => setPlanPick(afore)} style={{ cursor: "pointer", padding: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ width: 50, height: 50, borderRadius: 15, flexShrink: 0, background: "var(--accent-2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>{afore.emoji}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{afore.name}</p>
+              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{afore.tagline}</p>
+            </div>
+            <div className="yield" style={{ textAlign: "right" }}>
+              <div className="num" style={{ fontWeight: 800, fontSize: 20, color: "var(--accent)" }}>{FMT(afore.apy, 1)}%</div>
+              <div className="lb">anual</div>
+            </div>
+          </div>
+          {afore.blend && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, color: "var(--txt-muted)", fontSize: 12 }}>
+              <Icon name="globe" size={14} color="var(--accent)" /> {afore.blend}
+            </div>
+          )}
+        </div>
+
+        {/* Perfiles de riesgo (4 estrategias del cuestionario) */}
+        <div className="sec-head"><h3>Elige tu estrategia</h3></div>
+        <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+          {recPlan
+            ? <>Según tu perfil te recomendamos <b style={{ color: "var(--accent)" }}>{recPlan.name}</b>. También puedes elegir otra.</>
+            : <>Cada perfil ajusta tu mezcla de instrumentos soberanos según tu meta y horizonte.</>}
+        </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {VAULT_PLANS.map((p) => <PlanCard key={p.id} plan={p} onPick={() => setPlanPick(p)} />)}
+          {RISK_PROFILES.map((p) => (
+            <PlanCard key={p.id} plan={p} onPick={() => setPlanPick(p)} recommended={recPlan?.id === p.id} />
+          ))}
         </div>
       </div>
       <div className="scroll-bottom" />
-      {planPick && <AddVaultModal plan={planPick} onClose={() => setPlanPick(null)} onCreate={(v) => { addVault(v); setPlanPick(null); }} />}
+      {planPick && <Portal><AddVaultModal plan={planPick} onClose={() => setPlanPick(null)} onCreate={async (v) => { await addVault(v); setPlanPick(null); }} /></Portal>}
     </div>
   );
 }
@@ -266,10 +381,11 @@ export function ScreenVaults({ go }: { go: Go }) {
 /* ---------------- VAULT DETAIL ---------------- */
 export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   const wallet = useWallet();
-  const { vaults, updateBalance, removeVault } = useVaults(wallet.address);
+  const { vaults, updateBalance, removeVault, busy, onchain } = useVaults(wallet.address);
   const ctxV = ctx as UserVault | undefined;
   const v = vaults.find((x) => x.id === ctxV?.id) ?? ctxV;
   const [action, setAction] = useState<null | "abonar" | "retirar">(null);
+  const [advance, setAdvance] = useState(false);
 
   if (!v) {
     return (
@@ -334,42 +450,53 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           );
         })()}
 
+        {busy && (
+          <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, background: "var(--accent-soft)", border: "none" }}>
+            <span className="spin" style={{ color: "var(--accent)" }} />
+            <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)" }}>Procesando en la red…</p>
+          </div>
+        )}
         <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setAction("abonar")}><Icon name="plus" size={18} /> Abonar</button>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAction("retirar")} disabled={v.bal <= 0}>Retirar</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setAction("abonar")} disabled={!onchain || busy}><Icon name="plus" size={18} /> Abonar</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAction("retirar")} disabled={v.bal <= 0 || !onchain || busy}>Retirar</button>
         </div>
-        <button onClick={() => { removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Eliminar bóveda</button>
+        {!onchain && (
+          <p style={{ margin: "12px 4px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
+            Abonar y retirar con MXNB real se activan al conectar el contrato on-chain.
+          </p>
+        )}
+        {v.bal > 0 && (
+          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setAdvance(true)} disabled={busy}>
+            <Icon name="bolt" size={18} /> Adelantar rendimiento
+          </button>
+        )}
+        <button disabled={busy} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }}>Eliminar bóveda</button>
       </div>
       <div className="scroll-bottom" />
       {action && (
-        <VaultAmountModal
-          mode={action}
-          vault={v}
-          onClose={() => setAction(null)}
-          onConfirm={(amt) => { updateBalance(v.id, action === "abonar" ? amt : -amt); setAction(null); }}
-        />
+        <Portal>
+          <VaultAmountModal
+            mode={action}
+            vault={v}
+            onClose={() => setAction(null)}
+            onConfirm={async (amt) => { await updateBalance(v.id, action === "abonar" ? amt : -amt); setAction(null); }}
+          />
+        </Portal>
       )}
+      {advance && <Portal><LiquidityAdvanceModal saved={v.bal} apy={v.apy} onClose={() => setAdvance(false)} /></Portal>}
     </div>
   );
 }
 
-/* ---------------- CONVERTIR (calculadora + acción real MXNB↔MXN) ---------------- */
-interface Asset { code: string; nm: string; mxn: number; flag: string | null }
-const ASSETS: Asset[] = [
-  { code: "MXN", nm: "Peso mexicano", mxn: 1, flag: null },
-  { code: "USD", nm: "Dólar estadounidense", mxn: 17.1252, flag: "us" },
-  { code: "BRL", nm: "Real brasileño", mxn: 3.482, flag: "br" },
-  { code: "KRW", nm: "Won surcoreano", mxn: 0.01243, flag: "kr" },
-];
-
-function AssetBadge({ asset }: { asset: Asset }) {
-  if (asset.flag) return <Flag code={asset.flag} cls="sm" />;
+/* ---------------- CONVERTIR (FX real con Bitso · MXNB ↔ divisas) ---------------- */
+function ConvAssetBadge({ flag }: { flag: string | null }) {
+  if (flag) return <Flag code={flag} cls="sm" />;
   return (
     <span className="num" style={{ width: 40, height: 40, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>$</span>
   );
 }
 
-function AssetSelect({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude?: string }) {
+function ConvSelect({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude?: string }) {
   return (
     <select
       className="chip"
@@ -377,7 +504,7 @@ function AssetSelect({ value, onChange, exclude }: { value: string; onChange: (v
       onChange={(e) => onChange(e.target.value)}
       style={{ appearance: "none", WebkitAppearance: "none", cursor: "pointer", color: "var(--txt)", fontWeight: 700 }}
     >
-      {ASSETS.filter((a) => a.code !== exclude).map((a) => (
+      {BITSO_ASSETS.filter((a) => a.code !== exclude).map((a) => (
         <option key={a.code} value={a.code} style={{ color: "#000" }}>{a.code}</option>
       ))}
     </select>
@@ -385,16 +512,29 @@ function AssetSelect({ value, onChange, exclude }: { value: string; onChange: (v
 }
 
 export function ScreenConvert({ go }: { go: Go }) {
-  const [fromCode, setFromCode] = useState("USD");
-  const [toCode, setToCode] = useState("MXN");
-  const [amount, setAmount] = useState("100");
+  const { loading, error, quote, mxnPriceOf } = useBitsoRates();
+  const [fromCode, setFromCode] = useState("MXN");
+  const [toCode, setToCode] = useState("USDT");
+  const [amount, setAmount] = useState("1000");
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [msg, setMsg] = useState("");
 
-  const from = ASSETS.find((a) => a.code === fromCode)!;
-  const to = ASSETS.find((a) => a.code === toCode)!;
+  const from = assetByCode(fromCode)!;
+  const to = assetByCode(toCode)!;
   const amt = Number(amount) || 0;
-  const result = to.mxn > 0 ? (amt * from.mxn) / to.mxn : 0;
+  const result = quote(fromCode, toCode, amt);
+  const unitRate = quote(fromCode, toCode, 1);
+  const oneSideIsMXN = fromCode === "MXN" || toCode === "MXN";
 
-  const swap = () => { setFromCode(toCode); setToCode(fromCode); };
+  const swap = () => { setFromCode(toCode); setToCode(fromCode); setStatus("idle"); };
+
+  const doConvert = async () => {
+    if (!oneSideIsMXN || amt <= 0) return;
+    setStatus("sending");
+    const r = await convertOnBitso(fromCode, toCode, amt);
+    if (r.ok) { setStatus("done"); setMsg(r.oid || ""); }
+    else { setStatus("error"); setMsg(r.error || "No se pudo ejecutar la orden."); }
+  };
 
   return (
     <div className="screen screen-enter">
@@ -403,54 +543,86 @@ export function ScreenConvert({ go }: { go: Go }) {
       <div className="screen-pad">
         <div style={{ position: "relative" }}>
           <div className="conv-field">
-            <AssetBadge asset={from} />
+            <ConvAssetBadge flag={from.flag} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{from.nm}</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{from.name}</p>
               <input
                 className="big num"
                 value={amount}
                 inputMode="decimal"
-                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+                onChange={(e) => { setAmount(e.target.value.replace(/[^\d.]/g, "")); setStatus("idle"); }}
                 style={{ background: "none", border: "none", outline: "none", color: "var(--txt)", width: "100%", padding: 0, margin: "2px 0 0" }}
               />
             </div>
-            <AssetSelect value={fromCode} onChange={setFromCode} exclude={toCode} />
+            <ConvSelect value={fromCode} onChange={(v) => { setFromCode(v); setStatus("idle"); }} exclude={toCode} />
           </div>
           <div className="conv-swap" onClick={swap} style={{ cursor: "pointer" }}><Icon name="swap" size={20} /></div>
           <div className="conv-field">
-            <AssetBadge asset={to} />
+            <ConvAssetBadge flag={to.flag} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{to.nm}</p>
-              <p className="big num" style={{ margin: "2px 0 0" }}>{FMT(result, to.code === "KRW" ? 0 : 2)}</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{to.name}</p>
+              <p className="big num" style={{ margin: "2px 0 0" }}>{result == null ? "—" : FMT(result, to.dec)}</p>
             </div>
-            <AssetSelect value={toCode} onChange={setToCode} exclude={fromCode} />
+            <ConvSelect value={toCode} onChange={(v) => { setToCode(v); setStatus("idle"); }} exclude={fromCode} />
           </div>
         </div>
 
         <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="gmatch"><Icon name="globe" size={16} color="var(--accent)" /> 1 {from.code} = <b>{FMT(from.mxn / to.mxn, 4)} {to.code}</b></div>
-          <span className="pos-pill">Tipo real</span>
+          <div className="gmatch">
+            <Icon name="globe" size={16} color="var(--accent)" /> 1 {from.code} = <b>{unitRate == null ? "—" : FMT(unitRate, 4)} {to.code}</b>
+          </div>
+          <span className="pos-pill">{loading ? "Bitso…" : "Tipo Bitso"}</span>
         </div>
 
+        {/* Acción real: ejecuta la conversión como orden de mercado en Bitso */}
+        <button
+          className="btn btn-primary"
+          style={{ marginTop: 14 }}
+          disabled={!oneSideIsMXN || amt <= 0 || status === "sending" || result == null}
+          onClick={doConvert}
+        >
+          {status === "sending" ? <span className="spin" /> : <><Icon name="swap" size={18} /> Convertir {amt > 0 ? `${FMT(amt, from.dec)} ${from.code}` : ""}</>}
+        </button>
+
+        {!oneSideIsMXN && (
+          <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0" }}>Una de las divisas debe ser MXN (MXNB) para ejecutar la conversión.</p>
+        )}
+        {status === "done" && (
+          <div className="card" style={{ marginTop: 12, background: "var(--accent-soft)", border: "none" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--accent)", fontWeight: 800 }}>✓ Orden ejecutada en Bitso</p>
+            <p className="num" style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)", wordBreak: "break-all" }}>OID: {msg}</p>
+          </div>
+        )}
+        {status === "error" && (
+          <div className="card" style={{ marginTop: 12 }}>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+              La tasa mostrada es real de Bitso. La ejecución no se completó: <b style={{ color: "var(--txt)" }}>{msg}</b>
+            </p>
+          </div>
+        )}
+
         <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "14px 4px 0", lineHeight: 1.5 }}>
-          Calculadora de tipo de cambio en tiempo real, igual al mercado y sin comisión. Para mover dinero usa <b style={{ color: "var(--txt)" }}>Agregar</b>, <b style={{ color: "var(--txt)" }}>Enviar</b> o <b style={{ color: "var(--txt)" }}>Retirar</b> en Inicio.
+          Tasas y ejecución vía <b style={{ color: "var(--txt)" }}>Bitso</b> en tiempo real. MXN = MXNB (peso digital). USDC no opera contra MXN en Bitso; el dólar digital disponible es USDT.
         </p>
 
-        <div className="sec-head"><h3>Tipos de cambio</h3></div>
+        <div className="sec-head"><h3>Tipos de cambio (Bitso)</h3>{error && <span className="link" style={{ color: "var(--neg)" }}>sin conexión</span>}</div>
         <div className="card" style={{ padding: "4px 18px" }}>
-          {FX.map((f) => (
-            <div className="fx-row" key={f.code}>
-              <Flag code={f.flag} cls="sm" />
-              <div>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{f.code}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{f.nm}</p>
+          {BITSO_ASSETS.filter((a) => a.book).map((a) => {
+            const price = mxnPriceOf(a.code);
+            return (
+              <div className="fx-row" key={a.code}>
+                <Flag code={a.flag || "us"} cls="sm" />
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{a.code}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{a.name}</p>
+                </div>
+                <div className="fx-rate">
+                  <div className="r num">{price == null ? "—" : `$${FMT(price, 4)}`}</div>
+                  <div className="num" style={{ fontSize: 11, color: "var(--txt-dim)" }}>MXN</div>
+                </div>
               </div>
-              <div className="fx-rate">
-                <div className="r num">${FMT(f.rate, 4)}</div>
-                <div className="d num" style={{ color: f.chg >= 0 ? "var(--accent)" : "var(--neg)" }}>{f.chg >= 0 ? "+" : ""}{FMT(f.chg, 2)}%</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       <div className="scroll-bottom" />
@@ -459,10 +631,19 @@ export function ScreenConvert({ go }: { go: Go }) {
 }
 
 /* ---------------- Modales de bóvedas ---------------- */
-function AddVaultModal({ plan, onClose, onCreate }: { plan: VaultPlan; onClose: () => void; onCreate: (v: { nm: string; goal: number; apy: number; color: string }) => void }) {
+function AddVaultModal({ plan, onClose, onCreate }: { plan: VaultPlan; onClose: () => void; onCreate: (v: { nm: string; goal: number; apy: number; color: string }) => void | Promise<void> }) {
   const [nm, setNm] = useState("");
   const [goal, setGoal] = useState("");
-  const valid = nm.trim().length > 0 && Number(goal) > 0;
+  const [submitting, setSubmitting] = useState(false);
+  const valid = nm.trim().length > 0 && Number(goal) > 0 && !submitting;
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      await onCreate({ nm: nm.trim(), goal: Number(goal), apy: plan.apy, color: plan.color });
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
@@ -488,30 +669,39 @@ function AddVaultModal({ plan, onClose, onCreate }: { plan: VaultPlan; onClose: 
         <span className="field-label">Meta (MXN)</span>
         <input className="input num-input" type="number" inputMode="decimal" placeholder="40,000" value={goal} onChange={(e) => setGoal(e.target.value)} />
 
-        <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={!valid} onClick={() => onCreate({ nm: nm.trim(), goal: Number(goal), apy: plan.apy, color: plan.color })}>
-          <Icon name="check" size={18} /> Abrir bóveda {plan.name}
+        <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={!valid} onClick={submit}>
+          {submitting ? <span className="spin" /> : <><Icon name="check" size={18} /> Abrir bóveda {plan.name}</>}
         </button>
-        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cancelar</button>
+        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose} disabled={submitting}>Cancelar</button>
       </div>
     </div>
   );
 }
 
-function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; onClose: () => void; onConfirm: (amt: number) => void }) {
+function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; onClose: () => void; onConfirm: (amt: number) => void | Promise<void> }) {
   const [amount, setAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const max = mode === "abonar" ? Math.max(0, vault.goal - vault.bal) : vault.bal;
   const n = Number(amount);
-  const valid = n > 0 && n <= max;
+  const valid = n > 0 && n <= max && !submitting;
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      await onConfirm(n);
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={submitting ? undefined : onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
         <p className="modal-title">{mode === "abonar" ? "Abonar a" : "Retirar de"} {vault.nm}</p>
         <span className="field-label">Monto (MXN)</span>
         <input className="input num-input" type="number" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <p className="modal-sub" style={{ margin: "8px 0 0" }}>{mode === "abonar" ? `Falta para la meta: $${FMT(max, 2)}` : `Disponible: $${FMT(max, 2)}`}</p>
-        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={!valid} onClick={() => onConfirm(n)}>{mode === "abonar" ? "Abonar" : "Retirar"}</button>
-        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cancelar</button>
+        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={!valid} onClick={submit}>{submitting ? <span className="spin" /> : mode === "abonar" ? "Abonar" : "Retirar"}</button>
+        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose} disabled={submitting}>Cancelar</button>
       </div>
     </div>
   );

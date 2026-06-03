@@ -87,6 +87,18 @@ export default function PrivyBridge({ children }: { children: React.ReactNode })
     [client, refreshBalance],
   );
 
+  // Llamada arbitraria a contrato (bóvedas: openVault, deposit, withdraw, close, approve).
+  const sendTx = useCallback(
+    async (to: string, data: `0x${string}`): Promise<string> => {
+      if (!client) throw new Error("La cuenta inteligente aún no está lista.");
+      const result = await client.sendTransaction({ chain: activeChain, to: to as Address, data });
+      const hash = typeof result === "string" ? result : (result as { hash?: string })?.hash ?? "";
+      setTimeout(() => void refreshBalance(), 4000);
+      return hash;
+    },
+    [client, refreshBalance],
+  );
+
   const value: WalletState = {
     enabled: true,
     ready,
@@ -102,6 +114,7 @@ export default function PrivyBridge({ children }: { children: React.ReactNode })
     logout,
     refreshBalance,
     sendMXNB,
+    sendTx,
   };
 
   return <WalletCtx.Provider value={value}>{children}</WalletCtx.Provider>;
