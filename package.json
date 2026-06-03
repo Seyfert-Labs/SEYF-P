@@ -1,8 +1,8 @@
 {
-  "name": "seyf2",
+  "name": "reyf2",
   "version": "0.1.0",
   "private": true,
-  "description": "Seyf — super app de finanzas con integración Bitso Business / Juno (MXNB) y wallets sociales (Privy).",
+  "description": "Reyf — super app de finanzas con integración Bitso Business / Juno (MXNB) y wallets sociales (Privy).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

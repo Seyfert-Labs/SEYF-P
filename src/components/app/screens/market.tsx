@@ -94,9 +94,9 @@ export function ScreenMercado({ go }: { go: Go }) {
                   ${FMT(p.low, 0)}–${FMT(p.high, 0)} / {p.unit} · {p.offers} negocios
                 </p>
                 <div style={{ marginTop: 6 }}>
-                  {p.seyfBase ? (
+                  {p.reyfBase ? (
                     <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>
-                      <Icon name="leaf" size={11} /> Precio Seyf
+                      <Icon name="leaf" size={11} /> Precio Reyf
                     </span>
                   ) : (
                     <span className="pos-pill"><Icon name="check" size={11} /> {p.verified} verificados</span>
@@ -154,7 +154,7 @@ export function ScreenProductDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           <div className="tile"><div className="k">Rango hoy</div><div className="v num" style={{ fontSize: 18 }}>${FMT(p.low, 0)}–${FMT(p.high, 0)}</div></div>
           <div className="tile"><div className="k">Negocios</div><div className="v num" style={{ fontSize: 18 }}>{p.offers}</div></div>
           <div className="tile"><div className="k">Verificados</div><div className="v num" style={{ fontSize: 18 }}>{p.verified}</div></div>
-          <div className="tile"><div className="k">Fuente</div><div className="v" style={{ fontSize: 15 }}>{p.seyfBase ? "Seyf" : "Mercado"}</div></div>
+          <div className="tile"><div className="k">Fuente</div><div className="v" style={{ fontSize: 15 }}>{p.reyfBase ? "Reyf" : "Mercado"}</div></div>
         </div>
 
         <div className="sec-head"><h3>Quién lo vende</h3><span style={{ fontSize: 12, color: "var(--txt-dim)" }}>menor precio primero</span></div>

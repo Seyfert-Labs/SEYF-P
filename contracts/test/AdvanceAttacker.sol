@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {SeyfVaults} from "../SeyfVaults.sol";
-import {SeyfAdvance} from "../SeyfAdvance.sol";
+import {ReyfVaults} from "../ReyfVaults.sol";
+import {ReyfAdvance} from "../ReyfAdvance.sol";
 import {ReentrantToken, IReentered} from "./ReentrantToken.sol";
 
 /// @notice Intenta reentrar `requestAdvance` al recibir los MXNB del adelanto.
 contract AdvanceAttacker is IReentered {
-    SeyfVaults public vault;
-    SeyfAdvance public advance;
+    ReyfVaults public vault;
+    ReyfAdvance public advance;
     ReentrantToken public token;
     uint256 public vid;
     bool internal attacking;
 
-    constructor(SeyfVaults v, SeyfAdvance a, ReentrantToken t) {
+    constructor(ReyfVaults v, ReyfAdvance a, ReentrantToken t) {
         vault = v;
         advance = a;
         token = t;

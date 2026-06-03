@@ -22,7 +22,7 @@ export interface StoreBank {
   recipient_legal_name: string;
 }
 
-const key = (ns: string, addr?: string) => `seyf_${ns}_${(addr ?? "anon").toLowerCase()}`;
+const key = (ns: string, addr?: string) => `reyf_${ns}_${(addr ?? "anon").toLowerCase()}`;
 
 const LS = {
   get<T>(k: string, def: T): T {

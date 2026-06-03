@@ -14,7 +14,7 @@ export interface Business {
   createdAt: number;
 }
 
-const key = (addr?: string) => `seyf_business_${(addr ?? "anon").toLowerCase()}`;
+const key = (addr?: string) => `reyf_business_${(addr ?? "anon").toLowerCase()}`;
 
 async function read(addr?: string): Promise<Business[]> {
   try {

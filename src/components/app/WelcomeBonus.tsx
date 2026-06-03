@@ -90,7 +90,7 @@ export function WelcomeBonus() {
             <div style={{ flex: 1 }}>
               <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>🎁 Bono de bienvenida</p>
               <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
-                Recibe $1,500 de regalo para empezar en Seyf.
+                Recibe $1,500 de regalo para empezar en Reyf.
               </p>
             </div>
           </div>

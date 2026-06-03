@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Seyf — super app fintech (MXNB + Privy + Supabase)
+# Reyf — super app fintech (MXNB + Privy + Supabase)
 
 ## Stack
 - Next.js 16.2 (App Router), React 19, TypeScript 5, Tailwind v4
@@ -36,7 +36,7 @@ src/
 - Los secrets de Juno (`BITSO_APIKEY`, `BITSO_SECRET_APIKEY`) **solo viven en el servidor**. Nunca bajo `NEXT_PUBLIC_*`.
 - Las API routes de Juno (`/api/juno/*`) son el único punto que firma HMAC. El cliente nunca llama a Juno directamente.
 - La capa `store.ts` es el único lugar que decide Supabase vs localStorage — no duplicar esa lógica en componentes.
-- Pantallas de la app (screens) son componentes dentro de `SeyfApp.tsx`; el router es el estado `route` interno, no Next.js router.
+- Pantallas de la app (screens) son componentes dentro de `ReyfApp.tsx`; el router es el estado `route` interno, no Next.js router.
 - `WalletContext` abstrae Privy — las screens no importan hooks de Privy directamente.
 - El Mercado (`screens/market.tsx`) está oculto del tab bar por decisión de negocio, pero las rutas están activas.
 

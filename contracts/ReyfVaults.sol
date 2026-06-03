@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import {IERC20} from "./IERC20.sol";
 import {ReentrancyGuard} from "./ReentrancyGuard.sol";
 
-/// @title SeyfVaults
-/// @notice Bóvedas de ahorro de Seyf. Cada usuario abre bóvedas con nombre,
+/// @title ReyfVaults
+/// @notice Bóvedas de ahorro de Reyf. Cada usuario abre bóvedas con nombre,
 ///         meta y estrategia (apyBps); deposita y retira MXNB libremente.
 ///         El contrato custodia el principal; el rendimiento proyectado se
 ///         calcula en el cliente a partir de `apyBps`.
@@ -14,18 +14,18 @@ import {ReentrancyGuard} from "./ReentrancyGuard.sol";
 ///         mueve sus propias bóvedas.
 ///
 ///         Soporte de "lien": un contrato autorizado (`advanceManager`, p. ej.
-///         SeyfAdvance) puede bloquear parte del saldo como colateral. Lo
+///         ReyfAdvance) puede bloquear parte del saldo como colateral. Lo
 ///         bloqueado no se puede retirar hasta que se libere. Las firmas
 ///         externas existentes (openVault/deposit/withdraw/closeVault/getVaults)
 ///         no cambian, así el frontend ya integrado sigue funcionando.
-contract SeyfVaults is ReentrancyGuard {
+contract ReyfVaults is ReentrancyGuard {
     /// @notice Token custodiado (MXNB).
     IERC20 public immutable token;
 
     /// @notice Dueño del contrato (puede designar el advanceManager).
     address public owner;
 
-    /// @notice Contrato autorizado a bloquear/liberar colateral (SeyfAdvance).
+    /// @notice Contrato autorizado a bloquear/liberar colateral (ReyfAdvance).
     address public advanceManager;
 
     struct Vault {

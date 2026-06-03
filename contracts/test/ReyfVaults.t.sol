@@ -2,13 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {SeyfVaults} from "../SeyfVaults.sol";
+import {ReyfVaults} from "../ReyfVaults.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {ReentrantToken} from "./ReentrantToken.sol";
 import {ReentrancyAttacker} from "./ReentrancyAttacker.sol";
 
-contract SeyfVaultsTest is Test {
-    SeyfVaults vault;
+contract ReyfVaultsTest is Test {
+    ReyfVaults vault;
     MockERC20 token;
 
     address alice = address(0xA11CE);
@@ -19,7 +19,7 @@ contract SeyfVaultsTest is Test {
 
     function setUp() public {
         token = new MockERC20();
-        vault = new SeyfVaults(address(token)); // este test es el owner
+        vault = new ReyfVaults(address(token)); // este test es el owner
         token.mint(alice, 1_000 * UNIT);
         token.mint(bob, 1_000 * UNIT);
     }
@@ -40,7 +40,7 @@ contract SeyfVaultsTest is Test {
         uint256 id = _open(alice, 100 * UNIT, 1150);
         _deposit(alice, id, 40 * UNIT);
 
-        SeyfVaults.Vault memory v = vault.getVault(alice, id);
+        ReyfVaults.Vault memory v = vault.getVault(alice, id);
         assertEq(v.balance, 40 * UNIT);
         assertEq(v.apyBps, 1150);
         assertEq(token.balanceOf(address(vault)), 40 * UNIT);
@@ -155,7 +155,7 @@ contract SeyfVaultsTest is Test {
 
     function test_ReentrancyOnWithdrawIsBlocked() public {
         ReentrantToken evil = new ReentrantToken();
-        SeyfVaults evilVault = new SeyfVaults(address(evil));
+        ReyfVaults evilVault = new ReyfVaults(address(evil));
         ReentrancyAttacker attacker = new ReentrancyAttacker(evilVault, evil);
 
         evil.mint(address(attacker), 100 * UNIT);

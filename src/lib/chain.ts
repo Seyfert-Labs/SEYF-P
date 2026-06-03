@@ -86,7 +86,7 @@ export const explorerBase = IS_TESTNET
   : "https://arbiscan.io";
 
 // ============================================================
-// Bóvedas on-chain (contrato SeyfVaults). Si NEXT_PUBLIC_SEYF_VAULTS_ADDRESS
+// Bóvedas on-chain (contrato ReyfVaults). Si NEXT_PUBLIC_SEYF_VAULTS_ADDRESS
 // está presente, las bóvedas son reales on-chain; si no, la app usa la capa
 // `store` (Supabase/localStorage) como degradación graceful.
 // ============================================================
@@ -94,7 +94,7 @@ export const explorerBase = IS_TESTNET
 export const SEYF_VAULTS_ADDRESS = (process.env.NEXT_PUBLIC_SEYF_VAULTS_ADDRESS || "") as Address | "";
 export const VAULTS_ONCHAIN = Boolean(SEYF_VAULTS_ADDRESS);
 
-export const seyfVaultsAbi = [
+export const reyfVaultsAbi = [
   {
     type: "function",
     name: "openVault",
@@ -168,7 +168,7 @@ export async function readOnchainVaults(owner: Address): Promise<OnchainVault[]>
   if (!SEYF_VAULTS_ADDRESS) return [];
   const raw = (await publicClient.readContract({
     address: SEYF_VAULTS_ADDRESS,
-    abi: seyfVaultsAbi,
+    abi: reyfVaultsAbi,
     functionName: "getVaults",
     args: [owner],
   })) as readonly {

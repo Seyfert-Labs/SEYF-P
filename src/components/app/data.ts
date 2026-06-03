@@ -184,25 +184,25 @@ export function projectSavings(current: number, monthly: number, apy: number, ye
 /** Comisión anual sobre saldo de una Afore (Profuturo: 0.54%). Se cobra sobre
    TODO el saldo cada año, así que su costo compuesto a 30 años es enorme. */
 export const AFORE_COMMISSION = 0.54;
-/** Comisión de Seyf sobre el saldo: 0%. (El modelo de negocio es spread, no saldo.) */
+/** Comisión de Reyf sobre el saldo: 0%. (El modelo de negocio es spread, no saldo.) */
 export const SEYF_COMMISSION = 0;
 /** Tasa de referencia de un préstamo sobre pensión/nómina (Profuturo: 16–40% + IVA). */
 export const AFORE_LOAN_RATE = 35;
 
-export interface AforeVsSeyf { years: number; afore: number; seyf: number; feesCost: number; }
+export interface AforeVsReyf { years: number; afore: number; reyf: number; feesCost: number; }
 
 /** Mismo rendimiento bruto para ambos: la ÚNICA diferencia es la comisión sobre
    saldo. `feesCost` = cuánto te cuesta esa comisión (diferencia de saldo final). */
-export function aforeVsSeyf(
+export function aforeVsReyf(
   current: number,
   monthly: number,
   grossApy: number,
   horizons: number[] = [10, 20, 30],
-): AforeVsSeyf[] {
+): AforeVsReyf[] {
   return horizons.map((years) => {
-    const seyf = projectSavings(current, monthly, grossApy - SEYF_COMMISSION, years);
+    const reyf = projectSavings(current, monthly, grossApy - SEYF_COMMISSION, years);
     const afore = projectSavings(current, monthly, grossApy - AFORE_COMMISSION, years);
-    return { years, afore, seyf, feesCost: seyf - afore };
+    return { years, afore, reyf, feesCost: reyf - afore };
   });
 }
 
@@ -265,7 +265,7 @@ export function recommendPlan(totalScore: number): VaultPlan {
 }
 
 /* Persistencia ligera del perfil recomendado (cliente). */
-const RISK_KEY = "seyf_risk_profile";
+const RISK_KEY = "reyf_risk_profile";
 
 export function saveRiskProfile(planId: string) {
   if (typeof window !== "undefined") {
@@ -285,7 +285,7 @@ export function loadRiskProfile(): string | null {
 export type MarketCat = "Verdura" | "Fruta" | "Chile" | "Abarrote";
 
 /** Producto del índice. `avg` es el precio de referencia del día (mediana
-   ponderada); `seyfBase` indica que Seyf trackea ese precio de forma
+   ponderada); `reyfBase` indica que Reyf trackea ese precio de forma
    independiente cuando aún no hay suficientes registros de usuarios. */
 export interface MarketProduct {
   id: string;
@@ -299,7 +299,7 @@ export interface MarketProduct {
   trend: number;       // % vs ayer
   verified: number;    // registros verificados hoy
   offers: number;      // negocios que lo ofrecen
-  seyfBase: boolean;   // precio establecido por Seyf (no por usuarios)
+  reyfBase: boolean;   // precio establecido por Reyf (no por usuarios)
   series: number[];    // últimos días (spark)
 }
 
@@ -317,14 +317,14 @@ export interface MarketOffer {
 }
 
 export const PRODUCTS: MarketProduct[] = [
-  { id: "jitomate", name: "Jitomate bola", emoji: "🍅", cat: "Verdura", unit: "kg", avg: 13.5, low: 12, high: 16, trend: +4.2, verified: 47, offers: 9, seyfBase: false, series: [11, 12, 12.5, 12, 13, 13.5, 14, 13.5] },
-  { id: "aguacate", name: "Aguacate Hass", emoji: "🥑", cat: "Fruta", unit: "kg", avg: 30, low: 28, high: 34, trend: -1.1, verified: 23, offers: 6, seyfBase: false, series: [33, 32, 31, 31, 30, 30, 29, 30] },
-  { id: "serrano", name: "Chile serrano", emoji: "🌶️", cat: "Chile", unit: "kg", avg: 22, low: 19, high: 26, trend: +6.8, verified: 18, offers: 5, seyfBase: false, series: [18, 19, 20, 20, 21, 21, 22, 22] },
-  { id: "cebolla", name: "Cebolla blanca", emoji: "🧅", cat: "Verdura", unit: "kg", avg: 16, low: 14, high: 18, trend: 0, verified: 31, offers: 7, seyfBase: false, series: [16, 16, 15.5, 16, 16, 16, 16, 16] },
-  { id: "limon", name: "Limón sin semilla", emoji: "🍋", cat: "Fruta", unit: "kg", avg: 19.5, low: 17, high: 23, trend: +2.4, verified: 28, offers: 8, seyfBase: false, series: [18, 18, 19, 19, 19, 20, 19, 19.5] },
-  { id: "papa", name: "Papa blanca", emoji: "🥔", cat: "Verdura", unit: "kg", avg: 17, low: 15, high: 19, trend: -0.8, verified: 14, offers: 5, seyfBase: true, series: [17.5, 17, 17, 17, 17, 17, 17, 17] },
-  { id: "platano", name: "Plátano Tabasco", emoji: "🍌", cat: "Fruta", unit: "kg", avg: 14, low: 12, high: 16, trend: +1.5, verified: 12, offers: 4, seyfBase: true, series: [13.5, 14, 14, 13.5, 14, 14, 14, 14] },
-  { id: "zanahoria", name: "Zanahoria", emoji: "🥕", cat: "Verdura", unit: "kg", avg: 12, low: 10, high: 14, trend: -2.3, verified: 9, offers: 3, seyfBase: true, series: [13, 12.5, 12, 12, 12, 12, 12, 12] },
+  { id: "jitomate", name: "Jitomate bola", emoji: "🍅", cat: "Verdura", unit: "kg", avg: 13.5, low: 12, high: 16, trend: +4.2, verified: 47, offers: 9, reyfBase: false, series: [11, 12, 12.5, 12, 13, 13.5, 14, 13.5] },
+  { id: "aguacate", name: "Aguacate Hass", emoji: "🥑", cat: "Fruta", unit: "kg", avg: 30, low: 28, high: 34, trend: -1.1, verified: 23, offers: 6, reyfBase: false, series: [33, 32, 31, 31, 30, 30, 29, 30] },
+  { id: "serrano", name: "Chile serrano", emoji: "🌶️", cat: "Chile", unit: "kg", avg: 22, low: 19, high: 26, trend: +6.8, verified: 18, offers: 5, reyfBase: false, series: [18, 19, 20, 20, 21, 21, 22, 22] },
+  { id: "cebolla", name: "Cebolla blanca", emoji: "🧅", cat: "Verdura", unit: "kg", avg: 16, low: 14, high: 18, trend: 0, verified: 31, offers: 7, reyfBase: false, series: [16, 16, 15.5, 16, 16, 16, 16, 16] },
+  { id: "limon", name: "Limón sin semilla", emoji: "🍋", cat: "Fruta", unit: "kg", avg: 19.5, low: 17, high: 23, trend: +2.4, verified: 28, offers: 8, reyfBase: false, series: [18, 18, 19, 19, 19, 20, 19, 19.5] },
+  { id: "papa", name: "Papa blanca", emoji: "🥔", cat: "Verdura", unit: "kg", avg: 17, low: 15, high: 19, trend: -0.8, verified: 14, offers: 5, reyfBase: true, series: [17.5, 17, 17, 17, 17, 17, 17, 17] },
+  { id: "platano", name: "Plátano Tabasco", emoji: "🍌", cat: "Fruta", unit: "kg", avg: 14, low: 12, high: 16, trend: +1.5, verified: 12, offers: 4, reyfBase: true, series: [13.5, 14, 14, 13.5, 14, 14, 14, 14] },
+  { id: "zanahoria", name: "Zanahoria", emoji: "🥕", cat: "Verdura", unit: "kg", avg: 12, low: 10, high: 14, trend: -2.3, verified: 9, offers: 3, reyfBase: true, series: [13, 12.5, 12, 12, 12, 12, 12, 12] },
 ];
 
 export const OFFERS: MarketOffer[] = [

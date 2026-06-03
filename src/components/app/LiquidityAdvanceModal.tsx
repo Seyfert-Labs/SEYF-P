@@ -85,7 +85,7 @@ export function LiquidityAdvanceModal({
               <p style={{ margin: "2px 0 0", fontSize: 10, color: "var(--txt-dim)" }}>interés anual · deuda</p>
             </div>
             <div style={{ flex: 1, padding: "10px 12px", borderRadius: 12, background: "var(--accent-soft)", border: "1px solid var(--accent)" }}>
-              <p style={{ margin: 0, fontSize: 11, color: "var(--accent)" }}>Adelanto Seyf</p>
+              <p style={{ margin: 0, fontSize: 11, color: "var(--accent)" }}>Adelanto Reyf</p>
               <p className="num" style={{ margin: "4px 0 0", fontSize: 18, fontWeight: 800, color: "var(--accent)" }}>0%<span style={{ fontSize: 11, fontWeight: 600 }}> interés</span></p>
               <p style={{ margin: "2px 0 0", fontSize: 10, color: "var(--txt-dim)" }}>es tu propio rendimiento</p>
             </div>

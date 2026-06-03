@@ -1,6 +1,6 @@
 <div align="center">
 
-# Seyf
+# Reyf
 
 ### La super app de finanzas para ahorrar, invertir y gastar sin fronteras
 
@@ -37,7 +37,7 @@ Construida sobre **MXNB** (Bitso Business / Juno), wallets sociales sin seed phr
 
 ## Tabla de contenidos
 
-- [Qué es Seyf](#qué-es-seyf)
+- [Qué es Reyf](#qué-es-reyf)
 - [Tecnologías](#tecnologías)
 - [Arquitectura](#arquitectura)
 - [Flujos](#flujos)
@@ -53,9 +53,9 @@ Construida sobre **MXNB** (Bitso Business / Juno), wallets sociales sin seed phr
 
 ---
 
-## Qué es Seyf
+## Qué es Reyf
 
-Seyf es una wallet de finanzas personales que une tres mundos en una sola app:
+Reyf es una wallet de finanzas personales que une tres mundos en una sola app:
 
 | | |
 |---|---|
@@ -338,7 +338,7 @@ Probar los rieles fiat de Juno:
 curl -s localhost:3000/api/juno/account-details          # CLABE del negocio
 curl -s -X POST localhost:3000/api/juno/mock-deposit \
   -H 'content-type: application/json' \
-  -d '{"amount":"2000","receiver_clabe":"<CLABE>","receiver_name":"Seyf","sender_name":"Test"}'
+  -d '{"amount":"2000","receiver_clabe":"<CLABE>","receiver_name":"Reyf","sender_name":"Test"}'
 curl -s localhost:3000/api/juno/balance                  # confirma MXNB
 ```
 
@@ -363,7 +363,7 @@ src/
     Providers.tsx            # PrivyProvider + SmartWalletsProvider
     wallet/                  # WalletContext + PrivyBridge (auth · saldo · gasless)
     app/
-      SeyfApp.tsx            # shell + router + tabbar
+      ReyfApp.tsx            # shell + router + tabbar
       screens/               # core · invest · account
       modals/                # Deposit · Redeem · SendOnchain
       ClabeCard.tsx          # tarjeta de depósito (CLABE)

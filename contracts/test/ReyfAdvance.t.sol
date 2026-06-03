@@ -2,15 +2,15 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {SeyfVaults} from "../SeyfVaults.sol";
-import {SeyfAdvance} from "../SeyfAdvance.sol";
+import {ReyfVaults} from "../ReyfVaults.sol";
+import {ReyfAdvance} from "../ReyfAdvance.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {ReentrantToken} from "./ReentrantToken.sol";
 import {AdvanceAttacker} from "./AdvanceAttacker.sol";
 
-contract SeyfAdvanceTest is Test {
-    SeyfVaults vault;
-    SeyfAdvance advance;
+contract ReyfAdvanceTest is Test {
+    ReyfVaults vault;
+    ReyfAdvance advance;
     MockERC20 token;
 
     address alice = address(0xA11CE);
@@ -20,8 +20,8 @@ contract SeyfAdvanceTest is Test {
 
     function setUp() public {
         token = new MockERC20();
-        vault = new SeyfVaults(address(token));
-        advance = new SeyfAdvance(address(vault), address(token));
+        vault = new ReyfVaults(address(token));
+        advance = new ReyfAdvance(address(vault), address(token));
         vault.setAdvanceManager(address(advance));
 
         // tesorería del adelanto (este test = owner del advance)
@@ -140,8 +140,8 @@ contract SeyfAdvanceTest is Test {
 
     function test_ReentrancyOnAdvanceIsBlocked() public {
         ReentrantToken evil = new ReentrantToken();
-        SeyfVaults evilVault = new SeyfVaults(address(evil));
-        SeyfAdvance evilAdv = new SeyfAdvance(address(evilVault), address(evil));
+        ReyfVaults evilVault = new ReyfVaults(address(evil));
+        ReyfAdvance evilAdv = new ReyfAdvance(address(evilVault), address(evil));
         evilVault.setAdvanceManager(address(evilAdv));
 
         evil.mint(address(this), 1_000 * UNIT);

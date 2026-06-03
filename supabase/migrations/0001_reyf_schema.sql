@@ -1,5 +1,5 @@
 -- ============================================================
--- Seyf — esquema de base de datos (Supabase / Postgres)
+-- Reyf — esquema de base de datos (Supabase / Postgres)
 -- Persiste lo que antes vivía en localStorage, por usuario
 -- (identificado por la dirección de su smart wallet).
 --

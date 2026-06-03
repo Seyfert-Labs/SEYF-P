@@ -1,10 +1,10 @@
-# Contratos de Seyf
+# Contratos de Reyf
 
 Dos contratos simples para el ahorro on-chain en MXNB (ERC-20, 6 decimales),
 pensados para usarse desde la smart wallet del usuario (ERC-4337, gas
 patrocinado vía Privy).
 
-## 1. `SeyfVaults.sol` — bóvedas de ahorro
+## 1. `ReyfVaults.sol` — bóvedas de ahorro
 Custodia MXNB en bóvedas con nombre, meta y estrategia (`apyBps`) por usuario.
 Cada quien solo mueve sus propias bóvedas; sin admin sobre los fondos.
 
@@ -22,7 +22,7 @@ contrato designa ese manager con `setAdvanceManager`.
 `apyBps` = rendimiento anual en basis points (1150 = 11.5%). Es informativo: el
 contrato custodia el **principal** y el front proyecta el rendimiento.
 
-## 2. `SeyfAdvance.sol` — adelanto de liquidez
+## 2. `ReyfAdvance.sol` — adelanto de liquidez
 Adelanta MXNB hoy contra el rendimiento futuro del ahorro, **sin vender el
 principal** y a **0% de interés**.
 
@@ -32,7 +32,7 @@ principal** y a **0% de interés**.
 - `fundTreasury(amount)` / `withdrawTreasury(amount)` → owner gestiona la tesorería
 - `treasuryBalance()` → MXNB disponible para adelantos
 
-La tesorería la fondea Seyf (el `owner`). El colateral vive en la bóveda del
+La tesorería la fondea Reyf (el `owner`). El colateral vive en la bóveda del
 usuario (no en este contrato), así que retirar tesorería sobrante no toca
 garantías de nadie.
 
@@ -78,13 +78,13 @@ export RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
 export MXNB=0x82B9e52b26A2954E113F94Ff26647754d5a4247D
 
 # 1) Bóvedas
-forge create SeyfVaults.sol:SeyfVaults \
+forge create ReyfVaults.sol:ReyfVaults \
   --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
   --constructor-args $MXNB --broadcast
 # => guarda la dirección: export VAULTS=0x...
 
 # 2) Adelanto (apunta a la bóveda y al token)
-forge create SeyfAdvance.sol:SeyfAdvance \
+forge create ReyfAdvance.sol:ReyfAdvance \
   --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
   --constructor-args $VAULTS $MXNB --broadcast
 # => export ADVANCE=0x...
@@ -103,7 +103,7 @@ cast send $ADVANCE "fundTreasury(uint256)" 10000000000 \
 ## Conectar al frontend
 En `.env.local`:
 ```bash
-NEXT_PUBLIC_SEYF_VAULTS_ADDRESS=0x...   # dirección de SeyfVaults
+NEXT_PUBLIC_SEYF_VAULTS_ADDRESS=0x...   # dirección de ReyfVaults
 # (cuando se cablee el adelanto on-chain)
 # NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS=0x...
 ```

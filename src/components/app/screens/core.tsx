@@ -60,7 +60,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         <Icon name="lock" size={15} color="var(--accent)" />
         <span>Cifrado AES-256 · Regulado y supervisado</span>
       </div>
-      <button className="btn btn-primary" onClick={onDone}>Entrar a Seyf</button>
+      <button className="btn btn-primary" onClick={onDone}>Entrar a Reyf</button>
     </div>
   );
 }

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {SeyfVaults} from "../SeyfVaults.sol";
+import {ReyfVaults} from "../ReyfVaults.sol";
 import {ReentrantToken, IReentered} from "./ReentrantToken.sol";
 
 /// @notice Contrato que intenta drenar la bóveda reentrando `withdraw` cuando
 ///         recibe tokens (vía el hook del token malicioso). Si el guard funciona,
 ///         la reentrada revierte y todo el `attack()` aborta.
 contract ReentrancyAttacker is IReentered {
-    SeyfVaults public vault;
+    ReyfVaults public vault;
     ReentrantToken public token;
     uint256 public vid;
     bool internal attacking;
 
-    constructor(SeyfVaults v, ReentrantToken t) {
+    constructor(ReyfVaults v, ReentrantToken t) {
         vault = v;
         token = t;
     }

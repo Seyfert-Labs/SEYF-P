@@ -52,7 +52,7 @@ function Splash() {
   );
 }
 
-export default function SeyfApp() {
+export default function ReyfApp() {
   const wallet = useWallet();
   const [enteredDemo, setEnteredDemo] = useState(false);
   const [route, setRoute] = useState<{ screen: Screen; ctx: unknown }>({ screen: "home", ctx: null });

@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { Icon, Flag, Spark, Ring } from "../ui";
 import { SubHeader } from "../shared";
-import { BONDS, FMT, VAULT_PLANS, RISK_PROFILES, planByApy, planById, projectSavings, aforeVsSeyf, AFORE_COMMISSION, loadRiskProfile, type Bond, type VaultPlan, type RiskLevel } from "../data";
+import { BONDS, FMT, VAULT_PLANS, RISK_PROFILES, planByApy, planById, projectSavings, aforeVsReyf, AFORE_COMMISSION, loadRiskProfile, type Bond, type VaultPlan, type RiskLevel } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
@@ -182,8 +182,8 @@ function VsAforeCard({ current, apy }: { current: number; apy: number }) {
   const usingExample = current <= 0;
   const baseCurrent = usingExample ? 0 : current;
   const baseMonthly = usingExample ? 2000 : 0;
-  const rows = aforeVsSeyf(baseCurrent, baseMonthly, apy, [10, 20, 30]);
-  const max = rows[rows.length - 1].seyf || 1;
+  const rows = aforeVsReyf(baseCurrent, baseMonthly, apy, [10, 20, 30]);
+  const max = rows[rows.length - 1].reyf || 1;
   const cost30 = rows[rows.length - 1].feesCost; // lo que cuesta la comisión a 30 años
 
   return (
@@ -195,7 +195,7 @@ function VsAforeCard({ current, apy }: { current: number; apy: number }) {
           <p className="eyebrow" style={{ color: "var(--accent)" }}>Comisión que te cobra la Afore en 30 años</p>
           <p className="num" style={{ fontSize: 32, fontWeight: 700, color: "var(--neg)", margin: "8px 0 0" }}>−${FMT(cost30, 0)}</p>
           <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
-            Por su <b style={{ color: "var(--txt)" }}>{FMT(AFORE_COMMISSION, 2)}%</b> anual sobre saldo. En Seyf: <b style={{ color: "var(--accent)" }}>$0 de comisión sobre tu saldo</b>.
+            Por su <b style={{ color: "var(--txt)" }}>{FMT(AFORE_COMMISSION, 2)}%</b> anual sobre saldo. En Reyf: <b style={{ color: "var(--accent)" }}>$0 de comisión sobre tu saldo</b>.
           </p>
         </div>
 
@@ -220,11 +220,11 @@ function VsAforeCard({ current, apy }: { current: number; apy: number }) {
                 <span className="num" style={{ width: 64, textAlign: "right", fontSize: 11, color: "var(--txt-muted)", flexShrink: 0 }}>${FMT(r.afore, 0)}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 38, fontSize: 10, color: "var(--accent)", fontWeight: 800, flexShrink: 0 }}>Seyf</span>
+                <span style={{ width: 38, fontSize: 10, color: "var(--accent)", fontWeight: 800, flexShrink: 0 }}>Reyf</span>
                 <div style={{ flex: 1, height: 10, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${(r.seyf / max) * 100}%`, background: "var(--accent)", borderRadius: 999 }} />
+                  <div style={{ height: "100%", width: `${(r.reyf / max) * 100}%`, background: "var(--accent)", borderRadius: 999 }} />
                 </div>
-                <span className="num" style={{ width: 64, textAlign: "right", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>${FMT(r.seyf, 0)}</span>
+                <span className="num" style={{ width: 64, textAlign: "right", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>${FMT(r.reyf, 0)}</span>
               </div>
             </div>
           ))}
@@ -307,7 +307,7 @@ export function ScreenVaults({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* Dashboard: proyección Seyf vs Afore tradicional */}
+        {/* Dashboard: proyección Reyf vs Afore tradicional */}
         <VsAforeCard current={totalSaved} apy={compareApy} />
 
         {/* Tus bóvedas */}

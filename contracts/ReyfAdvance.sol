@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import {IERC20} from "./IERC20.sol";
 import {ReentrancyGuard} from "./ReentrancyGuard.sol";
 
-/// @notice Interfaz hacia SeyfVaults (solo lo que el adelanto necesita).
-interface ISeyfVaults {
+/// @notice Interfaz hacia ReyfVaults (solo lo que el adelanto necesita).
+interface IReyfVaults {
     struct Vault {
         string name;
         uint256 goal;
@@ -19,16 +19,16 @@ interface ISeyfVaults {
     function unlock(address user, uint256 vaultId, uint256 amount) external;
 }
 
-/// @title SeyfAdvance
+/// @title ReyfAdvance
 /// @notice Adelanto de liquidez sobre el rendimiento futuro del ahorro.
-///         El usuario recibe MXNB hoy (de una tesorería que Seyf fondea) sin
+///         El usuario recibe MXNB hoy (de una tesorería que Reyf fondea) sin
 ///         vender su principal: se bloquea un colateral 1:1 en su bóveda y el
 ///         adelanto es a 0% de interés. Al repagar, se libera el colateral.
 /// @dev    Tope = saldo de la bóveda × apyBps / 10000 (≈ 1 año de rendimiento
 ///         proyectado), menos lo ya adeudado. Debe registrarse como
-///         `advanceManager` en SeyfVaults para poder bloquear colateral.
-contract SeyfAdvance is ReentrancyGuard {
-    ISeyfVaults public immutable vaults;
+///         `advanceManager` en ReyfVaults para poder bloquear colateral.
+contract ReyfAdvance is ReentrancyGuard {
+    IReyfVaults public immutable vaults;
     IERC20 public immutable token;
     address public owner;
 
@@ -47,7 +47,7 @@ contract SeyfAdvance is ReentrancyGuard {
 
     constructor(address vaults_, address token_) {
         require(vaults_ != address(0) && token_ != address(0), "zero addr");
-        vaults = ISeyfVaults(vaults_);
+        vaults = IReyfVaults(vaults_);
         token = IERC20(token_);
         owner = msg.sender;
     }
@@ -56,7 +56,7 @@ contract SeyfAdvance is ReentrancyGuard {
 
     /// @notice Adelanto máximo disponible para una bóveda (≈ 1 año de rendimiento, menos deuda).
     function maxAdvance(address user, uint256 vaultId) public view returns (uint256) {
-        ISeyfVaults.Vault memory v = vaults.getVault(user, vaultId);
+        IReyfVaults.Vault memory v = vaults.getVault(user, vaultId);
         if (!v.exists) return 0;
         uint256 cap = (v.balance * v.apyBps) / 10000; // 1 año de rendimiento proyectado
         uint256 owed = debt[user][vaultId];

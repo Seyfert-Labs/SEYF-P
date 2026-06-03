@@ -2,7 +2,7 @@
 
 /* SEYF — Cuestionario de perfil de riesgo.
    Banner (estilo "Ahorra para tu futuro") + modal de 3 preguntas que al
-   terminar recomienda una de las 4 estrategias de Seyf para el ahorrador. */
+   terminar recomienda una de las 4 estrategias de Reyf para el ahorrador. */
 import React, { useState } from "react";
 import { Icon } from "./ui";
 import {
