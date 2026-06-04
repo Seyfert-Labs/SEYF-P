@@ -79,6 +79,11 @@ export function OnboardingQuiz({ onDone }: OnboardingQuizProps) {
 
       {/* Pregunta */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%" }}>
+        {step === 0 && (
+          <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--txt-muted)", fontWeight: 600 }}>
+            5 preguntas · ~30 segundos
+          </p>
+        )}
         <div style={{ marginBottom: 28 }}>
           <span style={{ fontSize: 40 }}>{q.emoji}</span>
           <h2 style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 800, lineHeight: 1.25 }}>{q.q}</h2>

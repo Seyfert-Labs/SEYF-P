@@ -17,12 +17,13 @@ import { SendOnchainModal } from "../modals/SendOnchainModal";
 import { WelcomeBonus } from "../WelcomeBonus";
 import { RiskQuizBanner, OnboardingQuiz } from "../RiskQuiz";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
-import { loadRiskProfile } from "../data";
+import { loadRiskProfile, planById } from "../data";
 import { Portal } from "../Portal";
 import { ClabeCard } from "../ClabeCard";
+import { ProjectionCard } from "../ProjectionCard";
 
 /* ---------------- ONBOARDING ---------------- */
-// Fases: 0 = Hero, 1 = Seguridad, 2 = Quiz de perfil (5 preguntas full-screen)
+// Fases: 0 = Hero, 1 = Quiz de perfil (5 preguntas full-screen)
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState(0);
 
@@ -46,45 +47,10 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       </div>
     );
 
-  if (phase === 1)
-    return (
-      <div className="onb screen-enter">
-        <div className="logo-mark" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>
-          <Icon name="shield" size={28} />
-        </div>
-        <h1 style={{ fontSize: 30, marginTop: 22 }}>Activa tu seguridad</h1>
-        <p className="sub" style={{ marginBottom: 28 }}>Protegemos cada movimiento con varias capas. Actívalas en segundos.</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-          <SecSetupRow icon="finger" t="Acceso con Face ID" s="Entra sin contraseña" on />
-          <SecSetupRow icon="lock" t="PIN de 6 dígitos" s="Respaldo de tu cuenta" on />
-          <SecSetupRow icon="bell" t="Alertas en tiempo real" s="Notificación de cada cargo" on />
-          <SecSetupRow icon="shield" t="Saldo asegurado" s="Protección hasta $3,000,000 MXN" on lock />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 0", color: "var(--txt-muted)", fontSize: 13 }}>
-          <Icon name="lock" size={15} color="var(--accent)" />
-          <span>Cifrado AES-256 · Regulado y supervisado</span>
-        </div>
-        <button className="btn btn-primary" onClick={() => setPhase(2)}>Continuar</button>
-      </div>
-    );
-
-  // Fase 2: quiz full-screen — al terminar llama a onDone (trigger login)
+  // Fase 1: quiz full-screen — al terminar llama a onDone (trigger login)
   return <OnboardingQuiz onDone={onDone} />;
 }
 
-function SecSetupRow({ icon, t, s, on, lock }: { icon: string; t: string; s: string; on?: boolean; lock?: boolean }) {
-  const [v, setV] = useState(!!on);
-  return (
-    <div className="card sec-row" style={{ padding: 16 }}>
-      <span className="ic"><Icon name={icon} size={22} /></span>
-      <div style={{ flex: 1 }}>
-        <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{t}</p>
-        <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>{s}</p>
-      </div>
-      {lock ? <span className="pos-pill">Incluido</span> : <div className={`tgl ${v ? "on" : ""}`} onClick={() => setV(!v)} />}
-    </div>
-  );
-}
 
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
@@ -98,6 +64,13 @@ export function ScreenHome({ go }: { go: Go }) {
 
   // Rendimiento promedio ponderado del ahorro (para el adelanto de liquidez).
   const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : 10.5;
+
+  // APY del perfil de riesgo asignado (para la proyección).
+  const profileApy = (() => {
+    const id = loadRiskProfile();
+    if (id) { try { return planById(id).apy; } catch {} }
+    return weightedApy;
+  })();
 
   // Retira pendientes ya confirmados on-chain.
   useEffect(() => {
@@ -160,21 +133,19 @@ export function ScreenHome({ go }: { go: Go }) {
 
         <WelcomeBonus />
 
-        {/* Banner de ahorro a largo plazo */}
-        <div
-          className="card glow"
-          onClick={() => go("bovedas")}
-          style={{ marginTop: 18, cursor: "pointer", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 16 }}
-        >
-          <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--accent-2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 26 }}>🏦</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>Ahorra para tu futuro</p>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-              Planes de retiro y bóvedas desde <b style={{ color: "var(--accent)" }}>8%</b> hasta <b style={{ color: "var(--accent)" }}>14%</b> anual.
-            </p>
-            <span className="pos-pill" style={{ marginTop: 10 }}>Explorar planes →</span>
-          </div>
+        {/* Proyección Reyf vs Afore — módulo prominente (PRD §B2) */}
+        <div style={{ marginTop: 18 }}>
+          <ProjectionCard current={totalSaved} apy={profileApy} />
         </div>
+
+        {/* CTA a bóvedas debajo de la proyección */}
+        <button
+          className="btn btn-primary"
+          style={{ marginTop: 12 }}
+          onClick={() => go("bovedas")}
+        >
+          Abrir mi bóveda de retiro →
+        </button>
 
         <div className="quick-row" style={{ marginTop: 18 }}>
           <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
