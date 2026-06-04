@@ -92,88 +92,50 @@ export function ScreenHome({ go }: { go: Go }) {
       <div className="safe-top" />
       <TopBar go={go} />
       <div className="screen-pad">
+
+        {/* ── 1. HERO: balance + quick row ── */}
         <div className="card glow" style={{ padding: 22 }}>
-          <div className="hero-bal">
-            <div className="lbl">
-              <p className="eyebrow">Patrimonio total</p>
-              <button className="icon-btn" style={{ width: 24, height: 24, background: "none", border: "none" }} onClick={() => setHide(!hide)}>
-                <Icon name="eye" size={16} color="var(--txt-dim)" />
-              </button>
-            </div>
-            <p className="amount num">
-              {hide ? "••••••" : <><span>${FMT(total, 2).split(".")[0]}</span><span className="cents">.{FMT(total, 2).split(".")[1]}</span></>}
-              <span className="cur">MXN</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <p className="eyebrow">Saldo disponible</p>
+            <button className="icon-btn" style={{ width: 24, height: 24, background: "none", border: "none" }} onClick={() => setHide(!hide)}>
+              <Icon name="eye" size={16} color="var(--txt-dim)" />
+            </button>
+          </div>
+          <p className="amount num" style={{ marginTop: 8 }}>
+            {hide ? "••••••" : <><span>${FMT(pesos, 2).split(".")[0]}</span><span className="cents">.{FMT(pesos, 2).split(".")[1]}</span></>}
+            <span className="cur">MXN</span>
+          </p>
+          {totalSaved > 0 && (
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
+              + <span className="num" style={{ color: "var(--accent)", fontWeight: 700 }}>${FMT(totalSaved, 0)}</span> en ahorro
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
-              {realData ? (
-                <span className="pos-pill"><Icon name="leaf" size={12} /> Pesos digitales</span>
-              ) : (
-                <>
-                  <span className="pos-pill"><Icon name="send" size={12} /> +2.15%</span>
-                  <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>+<span className="num">$12,340</span> este mes</span>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="alloc-bar" style={{ marginTop: 20 }}>
-            {alloc.map((a) => <span key={a.key} style={{ width: total > 0 ? `${(a.vl / total) * 100}%` : "0%", background: a.color }} />)}
-          </div>
-          <div className="alloc-legend">
-            {alloc.map((a) => (
-              <div className="row" key={a.key}>
-                <span className="dot" style={{ background: a.color }} />
-                <div className="col">
-                  <span className="nm">{a.nm}</span>
-                  <span className="vl num">${FMT(a.vl, 0)}</span>
-                </div>
-              </div>
-            ))}
+          )}
+
+          <div className="quick-row" style={{ marginTop: 18, gap: 6 }}>
+            <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
+            <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
+            <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="recv" /></span><span className="tx">Retirar</span></button>
+            <button className="quick" onClick={() => setModal("advance")}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
           </div>
         </div>
 
         <WelcomeBonus />
 
-        {/* Proyección Reyf vs Afore — módulo prominente (PRD §B2) */}
-        <div style={{ marginTop: 18 }}>
-          <ProjectionCard current={totalSaved} apy={profileApy} />
+        {/* ── 2. MOVIMIENTOS ── */}
+        <div className="sec-head" style={{ marginTop: 22 }}>
+          <h3>Movimientos recientes</h3>
+          <span className="link" onClick={() => go("wallet")}>Ver todo</span>
         </div>
-
-        {/* CTA a bóvedas debajo de la proyección */}
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: 12 }}
-          onClick={() => go("bovedas")}
-        >
-          Abrir mi bóveda de retiro →
-        </button>
-
-        <div className="quick-row" style={{ marginTop: 18 }}>
-          <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
-          <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
-          <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="recv" /></span><span className="tx">Retirar</span></button>
-          <button className="quick" onClick={() => setModal("advance")}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
-        </div>
-
-        <div className="sec-head"><h3>Mis cuentas</h3></div>
-        <div className="card" style={{ padding: "6px 18px" }}>
-          <div className="list">
-            <AcctRow go={go} to="wallet" ic="leaf" nm="Mi dinero" su="Disponible al instante" vl={pesos} series={[28, 30, 29, 32, 31, 33, 34, 36]} />
-            <AcctRow go={go} to="bovedas" ic="vault" nm="Ahorro" su="Bóveda de retiro" vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
-          </div>
-        </div>
-
-        {/* Cuestionario solo si el usuario no hizo el quiz en onboarding */}
-        {!loadRiskProfile() && <RiskQuizBanner go={go} />}
-
-        <div className="sec-head"><h3>Movimientos recientes</h3><span className="link" onClick={() => go("wallet")}>Ver todo</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
           {realData ? (
             pend.pending.length === 0 && homeTxns.txns.length === 0 ? (
               homeTxns.loading ? (
-                <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
+                <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}>
+                  <span className="spin" style={{ color: "var(--accent)" }} />
+                </div>
               ) : (
                 <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
-                  Aún no tienes movimientos. Reclama tu bono o agrega fondos para empezar.
+                  Aún no tienes movimientos. Agrega fondos para empezar.
                 </p>
               )
             ) : (
@@ -186,6 +148,25 @@ export function ScreenHome({ go }: { go: Go }) {
             <div className="list">{TXNS.slice(0, 3).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
           )}
         </div>
+
+        {/* ── 3. PROYECCIÓN (colapsable) ── */}
+        <div style={{ marginTop: 18 }}>
+          <ProjectionCard current={totalSaved} apy={profileApy} />
+        </div>
+
+        {/* ── 4. AHORRO — solo si tiene bóveda activa ── */}
+        {totalSaved > 0 && (
+          <>
+            <div className="sec-head" style={{ marginTop: 22 }}><h3>Mi ahorro</h3></div>
+            <div className="card" style={{ padding: "6px 18px" }}>
+              <AcctRow go={go} to="bovedas" ic="vault" nm="Bóveda de retiro" su={`${FMT(weightedApy, 1)}% anual`} vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
+            </div>
+          </>
+        )}
+
+        {/* Quiz solo si no completó onboarding */}
+        {!loadRiskProfile() && <RiskQuizBanner go={go} />}
+
       </div>
       <div className="scroll-bottom" />
 

@@ -14,13 +14,24 @@ import { Portal } from "./Portal";
 
 type Status = "idle" | "claiming" | "validating" | "done" | "slow" | "error";
 
+const DISMISS_KEY = "reyf_bonus_dismissed";
+
 export function WelcomeBonus() {
   const wallet = useWallet();
   const pending = usePendingTxns(wallet.address);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [alreadyClaimed, setAlreadyClaimed] = useState(true); // asume reclamado hasta verificar
+  const [alreadyClaimed, setAlreadyClaimed] = useState(true);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(DISMISS_KEY) === "1";
+  });
   const balanceBefore = useRef(0);
+
+  const dismiss = () => {
+    try { window.localStorage.setItem(DISMISS_KEY, "1"); } catch {}
+    setDismissed(true);
+  };
 
   // Verifica si ya reclamó el bono (Supabase / local).
   useEffect(() => {
@@ -70,32 +81,49 @@ export function WelcomeBonus() {
     }
   };
 
-  // El banner solo aparece para usuarios con sesión, wallet y saldo en cero.
   const showBanner =
     wallet.enabled &&
     wallet.authenticated &&
     !!wallet.address &&
     wallet.balance === 0 &&
     !alreadyClaimed &&
+    !dismissed &&
     status === "idle";
 
   return (
     <>
       {showBanner && (
-        <div className="card glow" style={{ marginTop: 18, background: "var(--accent-soft)", border: "none", padding: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ width: 46, height: 46, borderRadius: 14, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Icon name="leaf" size={24} />
-            </span>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>🎁 Bono de bienvenida</p>
-              <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
-                Recibe $1,500 de regalo para empezar en Reyf.
-              </p>
-            </div>
-          </div>
-          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={claim}>
-            <Icon name="plus" size={18} /> Reclamar $1,500
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          marginTop: 14, padding: "10px 14px",
+          background: "var(--accent-soft)", borderRadius: 14,
+          border: "1px solid var(--accent)",
+        }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }}>🎁</span>
+          <p style={{ margin: 0, flex: 1, fontSize: 13, fontWeight: 700, color: "var(--accent)", lineHeight: 1.3 }}>
+            Tienes <span className="num">$1,500</span> de bienvenida
+          </p>
+          <button
+            onClick={claim}
+            style={{
+              flexShrink: 0, padding: "6px 14px", borderRadius: 10,
+              background: "var(--accent)", color: "var(--on-accent)",
+              border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer",
+            }}
+          >
+            Reclamar
+          </button>
+          <button
+            onClick={dismiss}
+            aria-label="En otro momento"
+            style={{
+              flexShrink: 0, width: 28, height: 28, borderRadius: 8,
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 18, lineHeight: 1, color: "var(--txt-muted)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            ×
           </button>
         </div>
       )}
