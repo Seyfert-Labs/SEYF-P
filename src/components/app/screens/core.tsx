@@ -14,8 +14,7 @@ import { assetByCode } from "@/lib/bitso/assets";
 import { useVaults } from "@/hooks/useVaults";
 import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
-import { RedeemModal } from "../modals/RedeemModal";
-import { SendOnchainModal } from "../modals/SendOnchainModal";
+import { SendModal } from "../modals/SendModal";
 import { WelcomeBonus } from "../WelcomeBonus";
 import { RiskQuizBanner, OnboardingQuiz } from "../RiskQuiz";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
@@ -58,7 +57,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
-  const [modal, setModal] = useState<null | "deposit" | "send" | "redeem" | "advance">(null);
+  const [modal, setModal] = useState<null | "deposit" | "send" | "advance">(null);
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
@@ -131,7 +130,6 @@ export function ScreenHome({ go }: { go: Go }) {
           <div className="quick-row" style={{ marginTop: 18, gap: 6 }}>
             <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
             <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
-            <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="recv" /></span><span className="tx">Retirar</span></button>
             <button className="quick" onClick={() => setModal("advance")}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
           </div>
         </div>
@@ -205,8 +203,7 @@ export function ScreenHome({ go }: { go: Go }) {
       <div className="scroll-bottom" />
 
       {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
-      {modal === "send" && <Portal><SendOnchainModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
-      {modal === "redeem" && <Portal><RedeemModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
+      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
       {modal === "advance" && <Portal><LiquidityAdvanceModal saved={totalSaved} apy={weightedApy} onClose={() => setModal(null)} /></Portal>}
     </div>
   );
@@ -264,7 +261,7 @@ export function ScreenWallet({ go }: { go: Go }) {
   const { txns: onchainTxns, loading: loadingTxns, refresh: refreshTxns } = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
-  const [modal, setModal] = useState<null | "deposit" | "redeem" | "send">(null);
+  const [modal, setModal] = useState<null | "deposit" | "send">(null);
 
   useEffect(() => {
     pend.reconcile(onchainTxns);
@@ -305,12 +302,6 @@ export function ScreenWallet({ go }: { go: Go }) {
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setModal("send")}><Icon name="send" size={18} /> Enviar</button>
         </div>
 
-        {realMode && (
-          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setModal("redeem")}>
-            <Icon name="recv" size={18} /> Retirar a mi banco (SPEI)
-          </button>
-        )}
-
         {!realMode && (
           <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 14, background: "var(--accent-soft)", border: "none" }}>
             <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -342,8 +333,7 @@ export function ScreenWallet({ go }: { go: Go }) {
       <div className="scroll-bottom" />
 
       {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} /></Portal>}
-      {modal === "redeem" && <Portal><RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={realMode ? wallet.balance : undefined} /></Portal>}
-      {modal === "send" && <Portal><SendOnchainModal onClose={() => setModal(null)} onSuccess={onSuccess} /></Portal>}
+      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={realMode ? wallet.balance : undefined} /></Portal>}
     </div>
   );
 }
