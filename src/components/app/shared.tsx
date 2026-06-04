@@ -6,6 +6,10 @@ import { Icon } from "./ui";
 import { FMT, type Txn } from "./data";
 import type { Go, Screen } from "./nav";
 import { useWallet } from "@/components/wallet/WalletContext";
+import type { Conversion } from "@/hooks/useConversions";
+
+/* etiqueta de divisa para mostrar (MXN ≡ MXNB peso digital) */
+const curLabel = (code: string) => (code === "MXN" ? "MXNB" : code);
 
 /* avatar clickable → perfil (reutilizable en cualquier pantalla de tab) */
 export function AvatarButton({ go }: { go: Go }) {
@@ -117,6 +121,27 @@ export function PendingTxnRow({ p }: { p: { kind: "deposit" | "send"; amount: nu
         <div className="a" style={{ color: pos ? "var(--accent)" : "var(--txt)" }}>
           {pos ? "+" : "−"}<span className="num">${FMT(p.amount, 2)}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* fila de conversión de divisas (ejecutada en Bitso) */
+export function ConvTxnRow({ c }: { c: Conversion }) {
+  return (
+    <div className="lrow">
+      <div className="ava" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)", borderColor: "transparent" }}>
+        <Icon name="swap" size={20} />
+      </div>
+      <div className="mid">
+        <p className="ti">Conversión</p>
+        <p className="su">{curLabel(c.from)} → {curLabel(c.to)}</p>
+      </div>
+      <div className="amt">
+        <div className="a num" style={{ color: "var(--accent)" }}>
+          +{FMT(c.amountTo, 2)} <span style={{ fontSize: "0.62em", opacity: 0.6, fontWeight: 600 }}>{curLabel(c.to)}</span>
+        </div>
+        <div className="s num">−{FMT(c.amountFrom, 2)} {curLabel(c.from)}</div>
       </div>
     </div>
   );

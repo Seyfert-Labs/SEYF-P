@@ -5,7 +5,7 @@
 import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
-import { Onboarding, ScreenHome, ScreenWallet, DepositOnboarding } from "./screens/core";
+import { Onboarding, ScreenHome, ScreenWallet } from "./screens/core";
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
 import { ScreenCard, ScreenProfile, ScreenNotifs } from "./screens/account";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -43,16 +43,10 @@ function Splash() {
   );
 }
 
-const DEPOSIT_KEY = "reyf_seen_deposit";
-
 export default function ReyfApp() {
   const wallet = useWallet();
   const [enteredDemo, setEnteredDemo] = useState(false);
   const [route, setRoute] = useState<{ screen: Screen; ctx: unknown }>({ screen: "home", ctx: null });
-  const [seenDeposit, setSeenDeposit] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return window.localStorage.getItem(DEPOSIT_KEY) === "1";
-  });
 
   const go = useCallback<Go>((screen, ctx = null) => {
     setRoute({ screen, ctx });
@@ -61,11 +55,6 @@ export default function ReyfApp() {
       if (el) el.scrollTop = 0;
     });
   }, []);
-
-  const dismissDeposit = () => {
-    try { window.localStorage.setItem(DEPOSIT_KEY, "1"); } catch {}
-    setSeenDeposit(true);
-  };
 
   // Con Privy: gatear por sesión real. Sin Privy: flujo demo local.
   const showApp = wallet.enabled ? wallet.authenticated : enteredDemo;
@@ -89,16 +78,11 @@ export default function ReyfApp() {
 
   const showTabs = !["boveda", "convertir", "cambio", "txn"].includes(route.screen);
 
-  // Primera vez post-login: mostrar pantalla de depósito antes del dashboard
-  const showDepositScreen = showApp && !seenDeposit;
-
   return (
     <div className="app-shell">
-      <div className="uto-root style-expresivo" key={showApp ? (showDepositScreen ? "deposit-onb" : route.screen) : "onb"}>
+      <div className="uto-root style-expresivo" key={showApp ? route.screen : "onb"}>
         {!showApp ? (
           <Onboarding onDone={onEnter} />
-        ) : showDepositScreen ? (
-          <DepositOnboarding onDone={dismissDeposit} />
         ) : (
           <>
             {SCREENS[route.screen] || SCREENS.home}

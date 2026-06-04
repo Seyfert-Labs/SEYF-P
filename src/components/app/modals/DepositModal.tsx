@@ -8,7 +8,9 @@ import { Icon } from "../ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { junoService } from "@/services/junoService";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
+import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
 import { ClabeCard } from "../ClabeCard";
+import { FMT } from "../data";
 
 type Status = "idle" | "sending" | "done" | "error";
 
@@ -21,17 +23,27 @@ export function DepositModal({
 }) {
   const wallet = useWallet();
   const pending = usePendingTxns(wallet.address);
+  const limits = useMonthlyLimits(wallet.address);
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
+  const remainingDeposit = limits.remaining("deposit");
+
   const fund = async () => {
     const n = Number(amount);
     if (!wallet.address || n <= 0) return;
+    // Límite mensual de depósito.
+    if (!limits.canDo("deposit", n)) {
+      setError(`Límite mensual de depósito alcanzado. Disponible este mes: $${FMT(remainingDeposit, 2)} de $${FMT(limits.limit, 0)}.`);
+      setStatus("error");
+      return;
+    }
     setStatus("sending");
     setError(null);
     try {
       await junoService.fundWallet(wallet.address, n);
+      await limits.record("deposit", n);
       pending.add("deposit", n); // aparece como "pendiente" en el historial
       onSuccess?.();
       setStatus("done");
@@ -67,9 +79,12 @@ export function DepositModal({
                 <button key={q} className="chip" onClick={() => setAmount(String(q))}>${q}</button>
               ))}
             </div>
+            <p style={{ margin: "12px 2px 0", fontSize: 12, color: "var(--txt-dim)" }}>
+              Disponible este mes: <b className="num" style={{ color: "var(--txt-muted)" }}>${FMT(remainingDeposit, 2)}</b> de ${FMT(limits.limit, 0)}.
+            </p>
             <button
               className="btn btn-primary"
-              style={{ marginTop: 20 }}
+              style={{ marginTop: 16 }}
               onClick={fund}
               disabled={!amount || Number(amount) <= 0}
             >

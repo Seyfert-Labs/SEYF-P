@@ -7,7 +7,9 @@ import { Icon } from "../ui";
 import { useJunoAction, junoActions } from "@/hooks/useJuno";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useUserBanks, type UserBank } from "@/hooks/useUserBanks";
+import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
 import { JunoService } from "@/services/junoService";
+import { FMT } from "../data";
 
 export function RedeemModal({
   onClose,
@@ -20,6 +22,7 @@ export function RedeemModal({
 }) {
   const wallet = useWallet();
   const banks = useUserBanks(wallet.address);
+  const limits = useMonthlyLimits(wallet.address);
   const register = useJunoAction(junoActions.registerBank);
   const redeem = useJunoAction((amount: number, id: string) => junoActions.redeem(amount, id));
 
@@ -27,6 +30,9 @@ export function RedeemModal({
   const [amount, setAmount] = useState("");
   const [adding, setAdding] = useState(false);
   const [done, setDone] = useState(false);
+  const [limitError, setLimitError] = useState<string | null>(null);
+
+  const remainingWithdraw = limits.remaining("withdraw");
 
   // form de registro de banco
   const [tag, setTag] = useState("");
@@ -53,9 +59,17 @@ export function RedeemModal({
   };
 
   const handleRedeem = async () => {
-    if (!selected || Number(amount) < 100) return;
-    const r = await redeem.run(Number(amount), selected.id);
+    const n = Number(amount);
+    if (!selected || n < 100) return;
+    // Límite mensual de retiro.
+    if (!limits.canDo("withdraw", n)) {
+      setLimitError(`Límite mensual de retiro alcanzado. Disponible este mes: $${FMT(remainingWithdraw, 2)} de $${FMT(limits.limit, 0)}.`);
+      return;
+    }
+    setLimitError(null);
+    const r = await redeem.run(n, selected.id);
     if (r) {
+      await limits.record("withdraw", n);
       setDone(true);
       onSuccess?.();
     }
@@ -162,6 +176,10 @@ export function RedeemModal({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
+            <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--txt-dim)" }}>
+              Disponible este mes: <b className="num" style={{ color: "var(--txt-muted)" }}>${FMT(remainingWithdraw, 2)}</b> de ${FMT(limits.limit, 0)}.
+            </p>
+            {limitError && <div className="alert alert-error">{limitError}</div>}
             {redeem.error && <div className="alert alert-error">{redeem.error}</div>}
 
             <button

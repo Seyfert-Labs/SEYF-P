@@ -21,6 +21,15 @@ export interface StoreBank {
   clabe: string;
   recipient_legal_name: string;
 }
+export interface StoreConversion {
+  id: string;
+  from: string;
+  to: string;
+  amountFrom: number;
+  amountTo: number;
+  oid?: string;
+  createdAt: number;
+}
 
 const key = (ns: string, addr?: string) => `reyf_${ns}_${(addr ?? "anon").toLowerCase()}`;
 
@@ -110,6 +119,38 @@ export const store = {
     if (USE_DB) return void (await jdel(`/api/db/vaults?wallet=${wallet}&id=${id}`));
     const list = LS.get<StoreVault[]>(key("vaults", wallet), []);
     LS.set(key("vaults", wallet), list.filter((v) => v.id !== id));
+  },
+
+  // ---- Conversiones de divisas (FX vía Bitso) ----
+  async listConversions(wallet: string): Promise<StoreConversion[]> {
+    if (USE_DB) return (await jget<{ conversions: StoreConversion[] }>(`/api/db/conversions?wallet=${wallet}`)).conversions ?? [];
+    return LS.get<StoreConversion[]>(key("conversions", wallet), []);
+  },
+  async addConversion(wallet: string, conversion: StoreConversion) {
+    if (USE_DB) return void (await jpost("/api/db/conversions", { wallet, conversion }));
+    const list = LS.get<StoreConversion[]>(key("conversions", wallet), []);
+    LS.set(key("conversions", wallet), [conversion, ...list.filter((c) => c.id !== conversion.id)]);
+  },
+
+  // ---- Límites mensuales (depósito / retiro) ----
+  async getMonthlyUsage(wallet: string, period: string): Promise<{ deposit: number; withdraw: number }> {
+    if (USE_DB) {
+      return (
+        (await jget<{ usage: { deposit: number; withdraw: number } }>(`/api/db/limits?wallet=${wallet}&period=${period}`)).usage ?? {
+          deposit: 0,
+          withdraw: 0,
+        }
+      );
+    }
+    const all = LS.get<Record<string, { deposit: number; withdraw: number }>>(key("usage", wallet), {});
+    return all[period] ?? { deposit: 0, withdraw: 0 };
+  },
+  async addMonthlyUsage(wallet: string, period: string, kind: "deposit" | "withdraw", amount: number) {
+    if (USE_DB) return void (await jpost("/api/db/limits", { wallet, period, kind, amount }));
+    const all = LS.get<Record<string, { deposit: number; withdraw: number }>>(key("usage", wallet), {});
+    const cur = all[period] ?? { deposit: 0, withdraw: 0 };
+    all[period] = { ...cur, [kind]: cur[kind] + amount };
+    LS.set(key("usage", wallet), all);
   },
 
   // ---- Bono ----

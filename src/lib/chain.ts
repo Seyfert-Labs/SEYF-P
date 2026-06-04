@@ -24,6 +24,13 @@ export const MXNB_ADDRESS = (process.env.NEXT_PUBLIC_MXNB_ADDRESS ||
 
 export const MXNB_DECIMALS = 6;
 
+// Tesorería del negocio: dirección on-chain a la que el usuario transfiere su
+// MXNB al convertir a divisa. El swap se ejecuta en Bitso (pool del negocio) y
+// el saldo en divisa se atribuye por-usuario en el ledger (tabla `conversions`).
+// Sin esta env, la conversión NO mueve fondos on-chain (el saldo no baja).
+export const TREASURY_ADDRESS = (process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "") as Address | "";
+export const TREASURY_ENABLED = Boolean(TREASURY_ADDRESS);
+
 export const publicClient = createPublicClient({
   chain: activeChain,
   transport: http(process.env.NEXT_PUBLIC_ARBITRUM_RPC || undefined),

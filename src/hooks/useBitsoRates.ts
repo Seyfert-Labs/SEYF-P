@@ -41,7 +41,13 @@ export function useBitsoRates() {
       if (code === "MXN") return 1;
       const book = assetByCode(code)?.book;
       const r = book ? rates[book] : undefined;
-      return r ? r.last : null;
+      if (!r) return null;
+      // Cordura: los activos soportados son fiat/stablecoins (~1–25 MXN/unidad).
+      // En stage, books ilíquidos (p.ej. brl_mxn) devuelven un `last` viejo y
+      // absurdo (cientos de miles). Descartamos tasas fuera de rango para no
+      // mostrarlas ni ejecutar conversiones a un precio irreal.
+      if (r.last <= 0 || r.last > 10000) return null;
+      return r.last;
     },
     [rates],
   );
@@ -67,5 +73,44 @@ export async function convertOnBitso(from: string, to: string, amount: number) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ from, to, amount }),
   });
-  return (await r.json()) as { ok?: boolean; oid?: string; error?: string };
+  return (await r.json()) as {
+    ok?: boolean;
+    oid?: string;
+    error?: string;
+    filledFrom?: number;
+    filledTo?: number;
+  };
+}
+
+export type BitsoBalanceMap = Record<string, { available: number; total: number }>;
+
+/** Saldo real de la cuenta Bitso (live). Confirma el disponible en divisas. */
+export function useBitsoBalances() {
+  const [balances, setBalances] = useState<BitsoBalanceMap>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/bitso/balances");
+      const d = (await r.json()) as { ok?: boolean; balances?: BitsoBalanceMap; error?: string };
+      if (d.ok && d.balances) {
+        setBalances(d.balances);
+        setError(null);
+      } else {
+        setError(d.error || "Sin saldo disponible");
+      }
+    } catch {
+      setError("No se pudo leer el saldo de Bitso");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { balances, loading, error, refresh };
 }

@@ -173,3 +173,87 @@ export async function setBonusClaimed(wallet: string, amount: number, txId?: str
     .from("bonus_claims")
     .upsert({ wallet_address: wallet, amount, tx_id: txId ?? null }, { onConflict: "wallet_address" });
 }
+
+// ---------- Conversiones de divisas (FX vía Bitso) ----------
+export interface ConversionRow {
+  id: string;
+  from: string;
+  to: string;
+  amountFrom: number;
+  amountTo: number;
+  oid?: string;
+  createdAt: number;
+}
+
+export async function listConversions(wallet: string): Promise<ConversionRow[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("conversions")
+    .select("id, from_code, to_code, amount_from, amount_to, oid, created_at")
+    .eq("wallet_address", wallet)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    from: c.from_code,
+    to: c.to_code,
+    amountFrom: Number(c.amount_from),
+    amountTo: Number(c.amount_to),
+    oid: c.oid ?? undefined,
+    createdAt: new Date(c.created_at).getTime(),
+  }));
+}
+
+export async function addConversion(wallet: string, c: ConversionRow) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await ensureProfile(wallet);
+  await sb.from("conversions").upsert(
+    {
+      id: c.id,
+      wallet_address: wallet,
+      from_code: c.from,
+      to_code: c.to,
+      amount_from: c.amountFrom,
+      amount_to: c.amountTo,
+      oid: c.oid ?? null,
+      created_at: new Date(c.createdAt).toISOString(),
+    },
+    { onConflict: "id" },
+  );
+}
+
+// ---------- Límites mensuales (depósito / retiro) ----------
+export interface MonthlyUsage {
+  deposit: number;
+  withdraw: number;
+}
+
+export async function getMonthlyUsage(wallet: string, period: string): Promise<MonthlyUsage> {
+  const sb = getSupabase();
+  if (!sb) return { deposit: 0, withdraw: 0 };
+  const { data } = await sb
+    .from("monthly_limits")
+    .select("deposit, withdraw")
+    .eq("wallet_address", wallet)
+    .eq("period", period)
+    .maybeSingle();
+  return { deposit: Number(data?.deposit ?? 0), withdraw: Number(data?.withdraw ?? 0) };
+}
+
+export async function addMonthlyUsage(
+  wallet: string,
+  period: string,
+  kind: "deposit" | "withdraw",
+  amount: number,
+) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await ensureProfile(wallet);
+  const cur = await getMonthlyUsage(wallet, period);
+  const next = { deposit: cur.deposit, withdraw: cur.withdraw, [kind]: cur[kind] + amount };
+  await sb.from("monthly_limits").upsert(
+    { wallet_address: wallet, period, deposit: next.deposit, withdraw: next.withdraw, updated_at: new Date().toISOString() },
+    { onConflict: "wallet_address,period" },
+  );
+}

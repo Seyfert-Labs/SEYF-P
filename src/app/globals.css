@@ -41,6 +41,11 @@
 
 * { box-sizing: border-box; }
 
+/* Los <button> no heredan color/tipografía del UA stylesheet: sin esto, el
+   texto de un botón sin color explícito (p.ej. <button className="card">)
+   cae al negro del sistema y se pierde sobre las superficies oscuras. */
+button { color: inherit; font-family: inherit; }
+
 html {
   scroll-behavior: smooth;
 }
@@ -50,6 +55,10 @@ html, body {
   padding: 0;
   min-height: 100%;
   background: #000;
+  /* El color de texto vive aquí (no solo en .uto-root) para que el contenido
+     portaleado a <body> —modales del quiz, adelanto, bóvedas— herede blanco
+     en lugar del negro por defecto del navegador. */
+  color: var(--txt);
 }
 
 /* contenedor responsivo de la app (sin marco de teléfono) */

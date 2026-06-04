@@ -57,6 +57,7 @@ src/
 | `NEXT_PUBLIC_USE_SUPABASE` | cliente | `"true"` activa persistencia real |
 | `NEXT_PUBLIC_CHAIN` | cliente | `arbitrum` o `arbitrum-sepolia` |
 | `NEXT_PUBLIC_MXNB_ADDRESS` | cliente | Sobreescribe dirección por defecto |
+| `NEXT_PUBLIC_TREASURY_ADDRESS` | cliente | Tesorería: destino on-chain del MXNB al convertir a divisa (Opción A pooled+ledger). Sin valor, la conversión no mueve fondos on-chain |
 | `NEXT_PUBLIC_ARBITRUM_RPC` | cliente | RPC custom (si no, usa el público) |
 | `NEXT_PUBLIC_BACKEND_URL` | cliente | Solo si el backend está en otro origen |
 

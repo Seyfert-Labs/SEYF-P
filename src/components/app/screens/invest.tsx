@@ -11,8 +11,10 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
-import { useBitsoRates, convertOnBitso } from "@/hooks/useBitsoRates";
+import { useBitsoRates, useBitsoBalances, convertOnBitso } from "@/hooks/useBitsoRates";
+import { useConversions } from "@/hooks/useConversions";
 import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
+import { TREASURY_ADDRESS, TREASURY_ENABLED } from "@/lib/chain";
 
 /* ---------------- AHORRO (BÓVEDAS) ---------------- */
 const RISK_COLOR: Record<RiskLevel, string> = { Bajo: "var(--accent)", Medio: "#F5A623", Alto: "var(--neg)" };
@@ -326,6 +328,9 @@ function ConvSelect({ value, onChange, exclude }: { value: string; onChange: (v:
 
 export function ScreenConvert({ go }: { go: Go }) {
   const { loading, error, quote, mxnPriceOf } = useBitsoRates();
+  const wallet = useWallet();
+  const { add: addConversion, balances: localBalances } = useConversions(wallet.address);
+  const { balances: liveBalances, refresh: refreshBalances } = useBitsoBalances();
   const [fromCode, setFromCode] = useState("MXN");
   const [toCode, setToCode] = useState("USDT");
   const [amount, setAmount] = useState("1000");
@@ -341,13 +346,94 @@ export function ScreenConvert({ go }: { go: Go }) {
 
   const swap = () => { setFromCode(toCode); setToCode(fromCode); setStatus("idle"); };
 
+  // Flujo soportado on-chain: MXNB → divisa. El usuario transfiere su MXNB a la
+  // tesorería del negocio (baja su saldo on-chain), el swap se ejecuta en Bitso
+  // (pool del negocio) y el USDT se atribuye al usuario en el ledger.
+  const sellingMXNB = fromCode === "MXN";
+
   const doConvert = async () => {
-    if (!oneSideIsMXN || amt <= 0) return;
+    if (!oneSideIsMXN || amt <= 0 || result == null) return;
     setStatus("sending");
-    const r = await convertOnBitso(fromCode, toCode, amt);
-    if (r.ok) { setStatus("done"); setMsg(r.oid || ""); }
-    else { setStatus("error"); setMsg(r.error || "No se pudo ejecutar la orden."); }
+    try {
+      if (sellingMXNB) {
+        // ── MXNB → divisa ───────────────────────────────────────────────
+        // 1. Mover el MXNB del usuario a la tesorería (baja su saldo on-chain real).
+        if (TREASURY_ENABLED) {
+          if (wallet.balance < amt) {
+            setStatus("error");
+            setMsg(`Saldo MXNB insuficiente. Disponible: ${FMT(wallet.balance, 2)}.`);
+            return;
+          }
+          await wallet.sendMXNB(TREASURY_ADDRESS, String(amt));
+        }
+        // 2. Ejecutar el swap en Bitso (pool del negocio).
+        const r = await convertOnBitso(fromCode, toCode, amt);
+        if (!r.ok) {
+          setStatus("error");
+          setMsg(
+            TREASURY_ENABLED
+              ? `Tu MXNB quedó en tesorería; la conversión no se completó (${r.error || "error"}). Se reintentará.`
+              : r.error || "No se pudo ejecutar la orden.",
+          );
+          return;
+        }
+        // 3. Acreditar el ledger del usuario (atribución por-usuario del USDT del pool).
+        const amountFrom = r.filledFrom ?? amt;
+        const amountTo = r.filledTo ?? result;
+        await addConversion({ from: fromCode, to: toCode, amountFrom, amountTo, oid: r.oid });
+      } else {
+        // ── divisa → MXNB ───────────────────────────────────────────────
+        // El usuario no tiene la divisa on-chain (vive en el ledger del pool).
+        // Vendemos en Bitso y enviamos MXNB a su wallet con un WITHDRAWAL de Juno
+        // (/mint_platform/v1/withdrawals, saca MXNB del float on-chain). NO es un
+        // issuance (eso es mintear MXNB contra un depósito MXN). El MXN del sell
+        // queda como reserva del negocio.
+        const have = localBalances[fromCode] ?? 0;
+        if (have + 1e-9 < amt) {
+          setStatus("error");
+          setMsg(`Saldo insuficiente de ${fromCode}. Disponible: ${FMT(have, from.dec)}.`);
+          return;
+        }
+        // 1. Vender la divisa → MXN en Bitso.
+        const r = await convertOnBitso(fromCode, toCode, amt);
+        if (!r.ok) {
+          setStatus("error");
+          setMsg(r.error || "No se pudo ejecutar la orden.");
+          return;
+        }
+        const mxn = r.filledTo ?? result;
+        // 2. Enviar MXNB a la wallet del usuario (withdrawal Juno · sube su saldo on-chain).
+        if (wallet.address) {
+          const fr = await fetch("/api/juno/fund-wallet", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ address: wallet.address, amount: mxn }),
+          });
+          if (!fr.ok) {
+            setStatus("error");
+            setMsg("Vendido en Bitso, pero la emisión de MXNB no se completó. Se reintentará.");
+            return;
+          }
+        }
+        // 3. Debitar el ledger (from=divisa, to=MXN → resta la divisa).
+        await addConversion({ from: fromCode, to: toCode, amountFrom: r.filledFrom ?? amt, amountTo: mxn, oid: r.oid });
+      }
+
+      // Refrescar el saldo MXNB on-chain (Home) y el live de Bitso.
+      wallet.refreshBalance();
+      void refreshBalances();
+      setStatus("done");
+      setMsg("");
+    } catch (e) {
+      setStatus("error");
+      setMsg(e instanceof Error ? e.message : "No se pudo completar la conversión.");
+    }
   };
+
+  // Divisas con saldo: derivado local por-usuario, confirmado con el live de Bitso.
+  const divisaCodes = Array.from(
+    new Set([...Object.keys(localBalances), ...Object.keys(liveBalances).filter((c) => c !== "MXN")]),
+  );
 
   return (
     <div className="screen screen-enter">
@@ -402,7 +488,19 @@ export function ScreenConvert({ go }: { go: Go }) {
         {status === "done" && (
           <div className="card" style={{ marginTop: 12, background: "var(--accent-soft)", border: "none" }}>
             <p style={{ margin: 0, fontSize: 13, color: "var(--accent)", fontWeight: 800 }}>✓ Orden ejecutada en Bitso</p>
-            <p className="num" style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)", wordBreak: "break-all" }}>OID: {msg}</p>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>
+              {sellingMXNB ? (
+                <>
+                  Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(result ?? 0, to.dec)} {to.code}</b>.
+                  {TREASURY_ENABLED ? " Se descontó de tu saldo MXNB" : ""}; quedó en tus movimientos y tu saldo en divisas.
+                </>
+              ) : (
+                <>
+                  Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(result ?? 0, 2)} MXN</b> emitidos a tu wallet.
+                  Se descontó <b className="num" style={{ color: "var(--txt)" }}>{FMT(amt, from.dec)} {from.code}</b> de tu saldo en divisas.
+                </>
+              )}
+            </p>
           </div>
         )}
         {status === "error" && (
@@ -411,6 +509,32 @@ export function ScreenConvert({ go }: { go: Go }) {
               La tasa mostrada es real de Bitso. La ejecución no se completó: <b style={{ color: "var(--txt)" }}>{msg}</b>
             </p>
           </div>
+        )}
+
+        {/* Tus divisas: tarjetas horizontales (saldo por-usuario derivado de tus conversiones) */}
+        {divisaCodes.length > 0 && (
+          <>
+            <div className="sec-head"><h3>Tus divisas</h3></div>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
+              {divisaCodes.map((code) => {
+                const a = assetByCode(code);
+                const bal = localBalances[code] ?? 0;
+                const live = liveBalances[code]?.available;
+                return (
+                  <div key={code} className="card" style={{ flex: "0 0 auto", minWidth: 130, padding: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Flag code={a?.flag || "us"} cls="sm" />
+                      <span style={{ fontWeight: 800, fontSize: 14 }}>{code}</span>
+                    </div>
+                    <p className="num" style={{ margin: "10px 0 0", fontWeight: 800, fontSize: 20 }}>{FMT(bal, a?.dec ?? 2)}</p>
+                    {live != null && (
+                      <p className="num" style={{ margin: "2px 0 0", fontSize: 11, color: "var(--txt-dim)" }}>Bitso: {FMT(live, a?.dec ?? 2)}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "14px 4px 0", lineHeight: 1.5 }}>

@@ -35,7 +35,39 @@ export async function POST(request: Request) {
       body: order,
       signed: true,
     });
-    return Response.json({ ok: true, oid: payload.oid, book: asset.book, side });
+
+    // Montos EJECUTADOS reales (netos de comisión), no la cotización. Mejor
+    // esfuerzo: si Bitso aún no expone los trades o falla, el cliente usa el
+    // monto cotizado como respaldo. `major` = activo, `minor` = MXN.
+    let filledFrom: number | undefined;
+    let filledTo: number | undefined;
+    try {
+      const trades = await bitsoRequest<
+        Array<{ major: string; minor: string; fees_amount?: string; fees_currency?: string }>
+      >("GET", `/api/v3/order_trades/${payload.oid}`, { signed: true });
+      if (Array.isArray(trades) && trades.length) {
+        const major = trades.reduce((s, t) => s + Math.abs(Number(t.major) || 0), 0);
+        const minor = trades.reduce((s, t) => s + Math.abs(Number(t.minor) || 0), 0);
+        const feeIn = (cur: string) =>
+          trades.reduce(
+            (s, t) => s + (t.fees_currency?.toLowerCase() === cur.toLowerCase() ? Math.abs(Number(t.fees_amount) || 0) : 0),
+            0,
+          );
+        if (from === "MXN") {
+          // Compras el activo gastando MXN: recibes `major` (menos comisión en el activo).
+          filledFrom = minor;
+          filledTo = major - feeIn(otherCode);
+        } else {
+          // Vendes el activo por MXN: recibes `minor` (menos comisión en MXN).
+          filledFrom = major;
+          filledTo = minor - feeIn("mxn");
+        }
+      }
+    } catch {
+      /* sin trades aún → el cliente usa el monto cotizado */
+    }
+
+    return Response.json({ ok: true, oid: payload.oid, book: asset.book, side, filledFrom, filledTo });
   } catch (e) {
     // Degradación honesta: si las llaves no tienen permiso/fondos de trading,
     // la cotización (tasas) sigue siendo real; solo falla la ejecución.

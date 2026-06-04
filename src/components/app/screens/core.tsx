@@ -2,13 +2,15 @@
 
 /* UTONOMA — pantallas core: Onboarding, Home, Wallet (wired a Juno) */
 import React, { useEffect, useState } from "react";
-import { Icon, Spark } from "../ui";
-import { TopBar, SubHeader, TxnRow, PendingTxnRow } from "../shared";
+import { Icon, Spark, Flag } from "../ui";
+import { TopBar, SubHeader, TxnRow, PendingTxnRow, ConvTxnRow } from "../shared";
 import { ALLOC, TXNS, FMT, type Txn } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
+import { useConversions, type Conversion } from "@/hooks/useConversions";
+import { assetByCode } from "@/lib/bitso/assets";
 import { useVaults } from "@/hooks/useVaults";
 import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
@@ -59,6 +61,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
+  const conv = useConversions(wallet.address);
   const { vaults, totalSaved } = useVaults(wallet.address);
   const refreshBal = wallet.refreshBalance;
 
@@ -132,6 +135,23 @@ export function ScreenHome({ go }: { go: Go }) {
           </div>
         </div>
 
+        {/* ── 1b. DIVISAS (saldo en Bitso, derivado de tus conversiones) ── */}
+        {realData && Object.keys(conv.balances).length > 0 && (
+          <div className="card" style={{ marginTop: 16, padding: "4px 18px", cursor: "pointer" }} onClick={() => go("convertir")}>
+            {Object.entries(conv.balances).map(([code, bal]) => {
+              const a = assetByCode(code);
+              return (
+                <div className="lrow" key={code}>
+                  <div className="ava" style={{ overflow: "hidden", padding: 0 }}><Flag code={a?.flag || "us"} cls="sm" /></div>
+                  <div className="mid"><p className="ti">{code}</p><p className="su">{a?.name || code}</p></div>
+                  <div className="amt"><div className="a num">{FMT(bal, a?.dec ?? 2)}</div></div>
+                  <Icon name="chevR" size={16} color="var(--txt-dim)" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <WelcomeBonus />
 
         {/* ── 2. MOVIMIENTOS ── */}
@@ -141,7 +161,7 @@ export function ScreenHome({ go }: { go: Go }) {
         </div>
         <div className="card" style={{ padding: "4px 18px" }}>
           {realData ? (
-            pend.pending.length === 0 && homeTxns.txns.length === 0 ? (
+            pend.pending.length === 0 && conv.conversions.length === 0 && homeTxns.txns.length === 0 ? (
               homeTxns.loading ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}>
                   <span className="spin" style={{ color: "var(--accent)" }} />
@@ -154,7 +174,7 @@ export function ScreenHome({ go }: { go: Go }) {
             ) : (
               <div className="list">
                 {pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
-                {homeTxns.txns.slice(0, 3).map(onchainToRow).map((t) => <TxnRow key={t.id} t={t} go={go} />)}
+                {mergeRecent(conv.conversions, homeTxns.txns, go, 3)}
               </div>
             )
           ) : (
@@ -203,6 +223,22 @@ function AcctRow({ go, to, ic, nm, su, vl, series }: { go: Go; to: Parameters<Go
   );
 }
 
+/* Fusiona conversiones (Bitso) + transferencias on-chain en una lista ordenada
+   por fecha (más reciente primero). Las conversiones viven off-chain, por eso
+   se intercalan aquí en lugar de venir del feed on-chain. */
+function mergeRecent(conversions: Conversion[], onchain: OnchainTransfer[], go?: Go, limit?: number) {
+  const rows: { key: string; ts: number; node: React.ReactNode }[] = [
+    ...conversions.map((c) => ({ key: c.id, ts: c.createdAt, node: <ConvTxnRow key={c.id} c={c} /> })),
+    ...onchain.map((t, i) => ({
+      key: `oc_${i}`,
+      ts: t.timestamp || 0,
+      node: <TxnRow key={`oc_${i}`} t={onchainToRow(t, i)} go={go} />,
+    })),
+  ];
+  rows.sort((a, b) => b.ts - a.ts);
+  return (limit != null ? rows.slice(0, limit) : rows).map((r) => r.node);
+}
+
 /* ---------------- WALLET (pesos digitales · MXNB on-chain) ---------------- */
 function onchainToRow(t: OnchainTransfer, i: number): Txn {
   const pos = t.direction === "in";
@@ -222,6 +258,7 @@ export function ScreenWallet({ go }: { go: Go }) {
   const wallet = useWallet();
   const { txns: onchainTxns, loading: loadingTxns, refresh: refreshTxns } = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
+  const conv = useConversions(wallet.address);
   const [modal, setModal] = useState<null | "deposit" | "redeem" | "send">(null);
 
   useEffect(() => {
@@ -234,8 +271,6 @@ export function ScreenWallet({ go }: { go: Go }) {
   const shown = realMode ? wallet.balance : 48250.4;
   const refreshBal = wallet.refreshBalance;
   const [intPart, centsPart] = FMT(shown, 2).split(".");
-
-  const liveTxns = realMode ? onchainTxns.map(onchainToRow) : TXNS;
 
   const onSuccess = () => { void refreshBal(); void refreshTxns(); };
 
@@ -285,14 +320,16 @@ export function ScreenWallet({ go }: { go: Go }) {
 
         <div className="sec-head" style={{ marginTop: realMode ? 26 : undefined }}><h3>Movimientos</h3><span className="link" onClick={() => onSuccess()}>Actualizar</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
-          {realMode && pend.pending.length === 0 && loadingTxns && liveTxns.length === 0 ? (
+          {realMode && pend.pending.length === 0 && conv.conversions.length === 0 && loadingTxns && onchainTxns.length === 0 ? (
             <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
-          ) : realMode && pend.pending.length === 0 && liveTxns.length === 0 ? (
+          ) : realMode && pend.pending.length === 0 && conv.conversions.length === 0 && onchainTxns.length === 0 ? (
             <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>Aún no tienes movimientos.</p>
           ) : (
             <div className="list">
               {realMode && pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
-              {liveTxns.map((t) => <TxnRow key={t.id} t={t} go={go} />)}
+              {realMode
+                ? mergeRecent(conv.conversions, onchainTxns, go)
+                : TXNS.map((t) => <TxnRow key={t.id} t={t} go={go} />)}
             </div>
           )}
         </div>
