@@ -42,6 +42,7 @@ contract ReyfAdvanceTest is Test {
 
     function test_MaxAdvanceIsOneYearYield() public {
         uint256 id = _aliceVaultWith(1_000 * UNIT, 1150); // 11.5%
+        // 1000 * 1150 / 10000 = 115 UNIT
         assertEq(advance.maxAdvance(alice, id), 115 * UNIT);
     }
 
@@ -54,9 +55,9 @@ contract ReyfAdvanceTest is Test {
         assertEq(advance.debt(alice, id), 100 * UNIT);
         assertEq(vault.lockedAmount(alice, id), 100 * UNIT);
         assertEq(vault.availableToWithdraw(alice, id), 900 * UNIT);
-        assertEq(token.balanceOf(alice), 100 * UNIT); // recibió el adelanto (depositó 1000 de 1000)
+        assertEq(token.balanceOf(alice), 100 * UNIT);
         assertEq(advance.treasuryBalance(), 400 * UNIT);
-        // ya no puede pedir más allá del tope
+        // tope restante: 115 - 100 = 15
         assertEq(advance.maxAdvance(alice, id), 15 * UNIT);
     }
 
@@ -64,7 +65,7 @@ contract ReyfAdvanceTest is Test {
         uint256 id = _aliceVaultWith(1_000 * UNIT, 1150);
         vm.prank(alice);
         vm.expectRevert(bytes("exceeds max advance"));
-        advance.requestAdvance(id, 116 * UNIT);
+        advance.requestAdvance(id, 116 * UNIT); // tope es 115 (1 año de rendimiento)
     }
 
     function test_RequestExceedingTreasuryReverts() public {

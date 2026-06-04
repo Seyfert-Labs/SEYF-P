@@ -20,17 +20,23 @@ interface IReyfVaults {
 }
 
 /// @title ReyfAdvance
-/// @notice Adelanto de liquidez sobre el rendimiento futuro del ahorro.
-///         El usuario recibe MXNB hoy (de una tesorería que Reyf fondea) sin
-///         vender su principal: se bloquea un colateral 1:1 en su bóveda y el
-///         adelanto es a 0% de interés. Al repagar, se libera el colateral.
-/// @dev    Tope = saldo de la bóveda × apyBps / 10000 (≈ 1 año de rendimiento
-///         proyectado), menos lo ya adeudado. Debe registrarse como
-///         `advanceManager` en ReyfVaults para poder bloquear colateral.
+/// @notice Adelanto de liquidez a 0% de costo para el usuario.
+///         El usuario recibe MXNB hoy sin vender su principal: se bloquea
+///         un colateral 1:1 en su bóveda. El colateral sigue generando
+///         rendimiento off-chain; si el usuario no repaga manualmente, el
+///         rendimiento acumulado cubre la deuda de forma natural.
+///         Reyf obtiene el diferencial entre el APR de los instrumentos
+///         subyacentes y el 0% que adelanta al usuario.
+/// @dev    Tope = saldo de la bóveda / 2 (50% del principal).
+///         Debe registrarse como `advanceManager` en ReyfVaults.
 contract ReyfAdvance is ReentrancyGuard {
     IReyfVaults public immutable vaults;
     IERC20 public immutable token;
+
     address public owner;
+    address public pendingOwner;
+
+    bool public paused;
 
     /// @dev user => vaultId => saldo adeudado del adelanto (== colateral bloqueado).
     mapping(address => mapping(uint256 => uint256)) public debt;
@@ -39,9 +45,18 @@ contract ReyfAdvance is ReentrancyGuard {
     event Repaid(address indexed user, uint256 indexed vaultId, uint256 amount, uint256 newDebt);
     event TreasuryFunded(address indexed from, uint256 amount);
     event TreasuryWithdrawn(address indexed to, uint256 amount);
+    event Paused(address indexed by);
+    event Unpaused(address indexed by);
+    event OwnershipTransferStarted(address indexed current, address indexed pending);
+    event OwnershipTransferred(address indexed previous, address indexed newOwner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused, "paused");
         _;
     }
 
@@ -52,25 +67,48 @@ contract ReyfAdvance is ReentrancyGuard {
         owner = msg.sender;
     }
 
+    // -------- admin --------
+
+    function pause() external onlyOwner {
+        paused = true;
+        emit Paused(msg.sender);
+    }
+
+    function unpause() external onlyOwner {
+        paused = false;
+        emit Unpaused(msg.sender);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        pendingOwner = newOwner;
+        emit OwnershipTransferStarted(owner, newOwner);
+    }
+
+    function acceptOwnership() external {
+        require(msg.sender == pendingOwner, "not pending owner");
+        emit OwnershipTransferred(owner, pendingOwner);
+        owner = pendingOwner;
+        pendingOwner = address(0);
+    }
+
     // -------- usuario --------
 
-    /// @notice Adelanto máximo disponible para una bóveda (≈ 1 año de rendimiento, menos deuda).
+    /// @notice Adelanto máximo disponible: ≈ 1 año de rendimiento proyectado (balance × apyBps / 10000), menos deuda actual.
     function maxAdvance(address user, uint256 vaultId) public view returns (uint256) {
         IReyfVaults.Vault memory v = vaults.getVault(user, vaultId);
         if (!v.exists) return 0;
-        uint256 cap = (v.balance * v.apyBps) / 10000; // 1 año de rendimiento proyectado
+        uint256 cap = (v.balance * v.apyBps) / 10000;
         uint256 owed = debt[user][vaultId];
         return cap > owed ? cap - owed : 0;
     }
 
     /// @notice Toma un adelanto: bloquea colateral 1:1 en la bóveda y recibe MXNB.
     /// @dev    Effects (lock + debt) antes de la interacción (transfer). nonReentrant.
-    function requestAdvance(uint256 vaultId, uint256 amount) external nonReentrant {
+    function requestAdvance(uint256 vaultId, uint256 amount) external nonReentrant whenNotPaused {
         require(amount > 0, "amount=0");
         require(amount <= maxAdvance(msg.sender, vaultId), "exceeds max advance");
         require(token.balanceOf(address(this)) >= amount, "treasury insufficient");
 
-        // Bloquea el colateral en la bóveda del usuario (revierte si no hay saldo libre).
         vaults.lock(msg.sender, vaultId, amount);
         debt[msg.sender][vaultId] += amount;
 
@@ -79,9 +117,7 @@ contract ReyfAdvance is ReentrancyGuard {
     }
 
     /// @notice Repaga (total o parcial) el adelanto y libera el colateral. Requiere `approve`.
-    /// @dev    Checks-Effects-Interactions: reduce deuda y libera colateral antes
-    ///         del `transferFrom`; si el pull falla, todo revierte. nonReentrant.
-    function repay(uint256 vaultId, uint256 amount) external nonReentrant {
+    function repay(uint256 vaultId, uint256 amount) external nonReentrant whenNotPaused {
         uint256 owed = debt[msg.sender][vaultId];
         require(amount > 0 && amount <= owed, "bad amount");
 

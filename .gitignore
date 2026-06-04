@@ -43,3 +43,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# foundry
+cache/
+out/
+broadcast/*/dry-run/
+broadcast/*/31337/
+!broadcast/*/31337/run-latest.json
+.env
+lib/

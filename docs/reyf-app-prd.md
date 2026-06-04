@@ -226,13 +226,14 @@ Mexicanos de **25–55 años**, urbanos, con acceso a banca digital, que ya pien
 **para** no tener que interrumpir el crecimiento de mi ahorro de retiro.
 
 **Criterios de Aceptación:**
-- [ ] El usuario puede solicitar liquidez de hasta el 50% de su saldo total en bóveda.
-- [ ] La solicitud muestra claramente: monto a recibir, tasa de interés del préstamo (APR), plazo sugerido de pago, impacto en rendimiento si no paga.
+- [ ] El usuario puede solicitar un advance de hasta **≈1 año de rendimiento proyectado** de su bóveda (saldo × APY del perfil). Ej: $10,000 con perfil 11.5% → máx $1,150 de advance.
+- [ ] La solicitud muestra claramente: monto a recibir, **0% de costo para el usuario**, y la nota: "tu rendimiento futuro cubre este advance automáticamente".
+- [ ] Se muestra el impacto: "Tu rendimiento seguirá creciendo; el advance se cubre solo en aproximadamente X meses" (calculado con APY del perfil y monto del advance).
 - [ ] El desembolso se realiza vía SPEI a la CLABE del banco del usuario en < 24 horas hábiles.
 - [ ] El usuario puede registrar su CLABE bancaria personal en Configuración > Datos Bancarios (con validación de cuenta).
-- [ ] El sistema muestra una advertencia si el ratio préstamo/colateral supera el 40% (zona de riesgo de liquidación).
-- [ ] El usuario puede repagar parcial o totalmente en cualquier momento desde la app.
+- [ ] El usuario puede repagar parcial o totalmente en cualquier momento para liberar su colateral antes.
 - [ ] Si el usuario no registra CLABE bancaria, el botón de liquidez está visible pero solicita completar ese paso primero.
+- [ ] No hay liquidación forzada: el colateral permanece bloqueado hasta repago voluntario o cobertura automática vía rendimiento.
 
 ---
 
@@ -512,7 +513,7 @@ yield_snapshots (id, vault_id, apy, instruments_breakdown jsonb, recorded_at)
 |---|---|---|
 | **Management Fee** | 0.5–1% anual sobre AUM (assets under management). Cobrado mensualmente de los rendimientos. | ✅ Sí |
 | **Spread en conversión MXN↔MXNB** | Margen pequeño (0.1–0.3%) en conversión, invisible al usuario | ✅ Sí |
-| **Interés sobre liquidez** | APR del 12–18% sobre préstamos de liquidez. Diferencial entre costo de fondeo y tasa cobrada. | ✅ Sí |
+| **Diferencial de liquidez** | El usuario recibe MXNB hoy a **0% de costo**; su colateral (1:1) queda bloqueado en la bóveda y sigue generando rendimiento off-chain. Reyf obtiene el diferencial entre el APR de los instrumentos subyacentes (8–14%) y el 0% que adelanta al usuario durante el plazo del advance. Si el usuario nunca repaga manualmente, el rendimiento acumulado cubre la deuda de forma natural. | ✅ Sí |
 | **Seguros financieros** | Comisión por intermediar seguros de retiro, invalidez o vida integrados a la bóveda (fase futura) | ❌ Post-MVP |
 | **Referidos B2B** | Fee por conectar usuarios a servicios financieros complementarios (seguros, crédito) | ❌ Post-MVP |
 
