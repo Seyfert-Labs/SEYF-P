@@ -15,54 +15,61 @@ import { DepositModal } from "../modals/DepositModal";
 import { RedeemModal } from "../modals/RedeemModal";
 import { SendOnchainModal } from "../modals/SendOnchainModal";
 import { WelcomeBonus } from "../WelcomeBonus";
-import { RiskQuizBanner } from "../RiskQuiz";
+import { RiskQuizBanner, OnboardingQuiz } from "../RiskQuiz";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
+import { loadRiskProfile } from "../data";
 import { Portal } from "../Portal";
+import { ClabeCard } from "../ClabeCard";
 
 /* ---------------- ONBOARDING ---------------- */
+// Fases: 0 = Hero, 1 = Seguridad, 2 = Quiz de perfil (5 preguntas full-screen)
 export function Onboarding({ onDone }: { onDone: () => void }) {
-  const [step, setStep] = useState(0);
+  const [phase, setPhase] = useState(0);
 
-  if (step === 0)
+  if (phase === 0)
     return (
       <div className="onb screen-enter">
-        <div className="logo-mark brand">S</div>
+        <div className="logo-mark brand">R</div>
         <div className="onb-hero">
-          <h1>Tu dinero, <em>protegido</em> y creciendo en automático.</h1>
-          <p className="sub">Pesos digitales, bonos de gobierno y bóvedas de ahorro en una sola app. Rendimientos premium, tipo de cambio justo.</p>
+          <h1>Tu retiro, con el <em>doble de rendimiento</em> que tu Afore.</h1>
+          <p className="sub">Instrumentos soberanos diversificados, liquidez sin penalización y cero comisiones sobre tu saldo.</p>
           <div style={{ marginTop: 30 }}>
-            <div className="feat"><span className="tk"><Icon name="leaf" size={15} /></span><span className="tx">Rendimiento diario sobre tu saldo</span></div>
-            <div className="feat"><span className="tk"><Icon name="globe" size={15} /></span><span className="tx">Bonos de México, USA, Brasil y Corea</span></div>
-            <div className="feat"><span className="tk"><Icon name="shield" size={15} /></span><span className="tx">Saldo asegurado y cifrado de grado bancario</span></div>
+            <div className="feat"><span className="tk"><Icon name="leaf" size={15} /></span><span className="tx">8–14% anual según tu perfil de riesgo</span></div>
+            <div className="feat"><span className="tk"><Icon name="globe" size={15} /></span><span className="tx">CETES, Treasuries, Tesouro, KTB coreanos</span></div>
+            <div className="feat"><span className="tk"><Icon name="shield" size={15} /></span><span className="tx">0% de comisión sobre tu saldo</span></div>
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <button className="btn btn-primary" onClick={() => setStep(1)}>Crear mi cuenta</button>
+          <button className="btn btn-primary" onClick={() => setPhase(1)}>Comenzar gratis</button>
           <button className="btn btn-ghost" onClick={onDone}>Ya tengo cuenta</button>
         </div>
       </div>
     );
 
-  return (
-    <div className="onb screen-enter">
-      <div className="logo-mark" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>
-        <Icon name="shield" size={28} />
+  if (phase === 1)
+    return (
+      <div className="onb screen-enter">
+        <div className="logo-mark" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>
+          <Icon name="shield" size={28} />
+        </div>
+        <h1 style={{ fontSize: 30, marginTop: 22 }}>Activa tu seguridad</h1>
+        <p className="sub" style={{ marginBottom: 28 }}>Protegemos cada movimiento con varias capas. Actívalas en segundos.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+          <SecSetupRow icon="finger" t="Acceso con Face ID" s="Entra sin contraseña" on />
+          <SecSetupRow icon="lock" t="PIN de 6 dígitos" s="Respaldo de tu cuenta" on />
+          <SecSetupRow icon="bell" t="Alertas en tiempo real" s="Notificación de cada cargo" on />
+          <SecSetupRow icon="shield" t="Saldo asegurado" s="Protección hasta $3,000,000 MXN" on lock />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 0", color: "var(--txt-muted)", fontSize: 13 }}>
+          <Icon name="lock" size={15} color="var(--accent)" />
+          <span>Cifrado AES-256 · Regulado y supervisado</span>
+        </div>
+        <button className="btn btn-primary" onClick={() => setPhase(2)}>Continuar</button>
       </div>
-      <h1 style={{ fontSize: 30, marginTop: 22 }}>Activa tu seguridad</h1>
-      <p className="sub" style={{ marginBottom: 28 }}>Protegemos cada movimiento con varias capas. Actívalas en segundos.</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-        <SecSetupRow icon="finger" t="Acceso con Face ID" s="Entra sin contraseña" on />
-        <SecSetupRow icon="lock" t="PIN de 6 dígitos" s="Respaldo de tu cuenta" on />
-        <SecSetupRow icon="bell" t="Alertas en tiempo real" s="Notificación de cada cargo" on />
-        <SecSetupRow icon="shield" t="Saldo asegurado" s="Protección hasta $3,000,000 MXN" on lock />
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 0", color: "var(--txt-muted)", fontSize: 13 }}>
-        <Icon name="lock" size={15} color="var(--accent)" />
-        <span>Cifrado AES-256 · Regulado y supervisado</span>
-      </div>
-      <button className="btn btn-primary" onClick={onDone}>Entrar a Reyf</button>
-    </div>
-  );
+    );
+
+  // Fase 2: quiz full-screen — al terminar llama a onDone (trigger login)
+  return <OnboardingQuiz onDone={onDone} />;
 }
 
 function SecSetupRow({ icon, t, s, on, lock }: { icon: string; t: string; s: string; on?: boolean; lock?: boolean }) {
@@ -184,8 +191,8 @@ export function ScreenHome({ go }: { go: Go }) {
           </div>
         </div>
 
-        {/* Cuestionario de perfil de riesgo — debajo de Mis cuentas */}
-        <RiskQuizBanner go={go} />
+        {/* Cuestionario solo si el usuario no hizo el quiz en onboarding */}
+        {!loadRiskProfile() && <RiskQuizBanner go={go} />}
 
         <div className="sec-head"><h3>Movimientos recientes</h3><span className="link" onClick={() => go("wallet")}>Ver todo</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
@@ -330,6 +337,151 @@ export function ScreenWallet({ go }: { go: Go }) {
       {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={onSuccess} /></Portal>}
       {modal === "redeem" && <Portal><RedeemModal onClose={() => setModal(null)} onSuccess={onSuccess} maxAmount={realMode ? wallet.balance : undefined} /></Portal>}
       {modal === "send" && <Portal><SendOnchainModal onClose={() => setModal(null)} onSuccess={onSuccess} /></Portal>}
+    </div>
+  );
+}
+
+/* ---------------- PRIMER DEPÓSITO (post-onboarding) ---------------- */
+
+const BANK_STEPS: { bank: string; logo: string; steps: string[] }[] = [
+  {
+    bank: "BBVA",
+    logo: "🔵",
+    steps: [
+      "Abre la app de BBVA México.",
+      "Ve a Transferir → A cuenta CLABE.",
+      "Pega tu CLABE de 18 dígitos.",
+      "Ingresa el monto y confirma con tu huella o NIP.",
+    ],
+  },
+  {
+    bank: "Nu",
+    logo: "🟣",
+    steps: [
+      "Abre la app de Nu.",
+      "Toca Transferir → Ingresar CLABE.",
+      "Pega tu CLABE y escribe el monto.",
+      "Confirma la transferencia.",
+    ],
+  },
+  {
+    bank: "Santander",
+    logo: "🔴",
+    steps: [
+      "Abre SuperMóvil de Santander.",
+      "Ve a Pagos y Transferencias → SPEI.",
+      "Selecciona Nueva cuenta y pega tu CLABE.",
+      "Indica el monto y autoriza con Token.",
+    ],
+  },
+  {
+    bank: "Banamex",
+    logo: "🟠",
+    steps: [
+      "Abre Citibanamex Móvil.",
+      "Ve a Transferencias → A otros bancos (SPEI).",
+      "Ingresa la CLABE y el monto.",
+      "Confirma con tu contraseña de operaciones.",
+    ],
+  },
+  {
+    bank: "HSBC",
+    logo: "⬛",
+    steps: [
+      "Abre la app de HSBC México.",
+      "Ve a Pagar y Transferir → Transferencia SPEI.",
+      "Pega tu CLABE de 18 dígitos.",
+      "Escribe el monto y confirma con tu NIP.",
+    ],
+  },
+];
+
+function BankAccordion() {
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {BANK_STEPS.map((b) => {
+        const isOpen = open === b.bank;
+        return (
+          <div key={b.bank} className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <button
+              onClick={() => setOpen(isOpen ? null : b.bank)}
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "14px 16px", width: "100%", textAlign: "left",
+                background: "none", border: "none", cursor: "pointer",
+              }}
+            >
+              <span style={{ fontSize: 22, flexShrink: 0 }}>{b.logo}</span>
+              <span style={{ flex: 1, fontWeight: 800, fontSize: 15 }}>{b.bank}</span>
+              <Icon name={isOpen ? "chevD" : "chevR"} size={16} color="var(--txt-dim)" />
+            </button>
+            {isOpen && (
+              <div style={{ padding: "0 16px 16px" }}>
+                <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {b.steps.map((s, i) => (
+                    <li key={i} style={{ fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>{s}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function DepositOnboarding({ onDone }: { onDone: () => void }) {
+  return (
+    <div className="screen screen-enter">
+      <div className="safe-top" />
+      <div className="app-head" style={{ paddingTop: 4 }}>
+        <p className="name">Haz tu primer depósito</p>
+      </div>
+      <div className="screen-pad">
+        {/* Hero copy */}
+        <div className="card glow" style={{ padding: 20, marginBottom: 18 }}>
+          <p className="eyebrow">Tu cuenta está lista</p>
+          <p style={{ margin: "10px 0 0", fontSize: 14, color: "var(--txt-muted)", lineHeight: 1.55 }}>
+            Transfiere desde cualquier banco mexicano a tu CLABE dedicada.
+            Tu dinero se acredita <b style={{ color: "var(--txt)" }}>en minutos</b> y empieza a crecer de inmediato.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 13, color: "var(--txt-muted)" }}>
+            <Icon name="clock" size={15} color="var(--accent)" />
+            <span>El primer depósito puede tardar hasta <b style={{ color: "var(--txt)" }}>15 minutos</b> en reflejarse.</span>
+          </div>
+        </div>
+
+        {/* CLABE grande */}
+        <p className="eyebrow" style={{ marginBottom: 12 }}>Tu CLABE de depósito (SPEI)</p>
+        <ClabeCard />
+
+        {/* Monto mínimo */}
+        <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--accent-2-soft)", border: "none" }}>
+          <Icon name="info" size={18} color="var(--accent-2)" />
+          <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+            Depósito mínimo: <b style={{ color: "var(--txt)" }}>$500 MXN</b>. Sin comisión por conversión a MXNB.
+          </p>
+        </div>
+
+        {/* Acordeón por banco */}
+        <div className="sec-head" style={{ marginTop: 24 }}>
+          <h3>Cómo transferir desde tu banco</h3>
+        </div>
+        <BankAccordion />
+
+        {/* CTAs */}
+        <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
+          <button className="btn btn-primary" onClick={onDone}>
+            Ya deposité — ir a mi dashboard
+          </button>
+          <button className="btn btn-ghost" onClick={onDone}>
+            Lo haré después
+          </button>
+        </div>
+      </div>
+      <div className="scroll-bottom" />
     </div>
   );
 }

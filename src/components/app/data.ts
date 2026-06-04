@@ -198,17 +198,28 @@ export function liquidityAdvance(saved: number, apy: number): number {
 export interface QuizOption { label: string; sub?: string; score: number }
 export interface QuizQuestion { id: string; q: string; emoji: string; options: QuizOption[] }
 
-/** 3 preguntas → puntaje 3–12 que mapea a uno de los 4 perfiles de riesgo. */
+/** 5 preguntas → puntaje 5–20 que mapea a uno de los 4 perfiles de riesgo. */
 export const RISK_QUESTIONS: QuizQuestion[] = [
   {
-    id: "horizon",
-    q: "¿Cuándo crees que usarás este dinero?",
-    emoji: "⏳",
+    id: "age",
+    q: "¿Cuántos años tienes?",
+    emoji: "🧑",
     options: [
-      { label: "En menos de 3 años", sub: "Una meta cercana", score: 1 },
-      { label: "Entre 3 y 7 años", sub: "Mediano plazo", score: 2 },
-      { label: "Entre 7 y 15 años", sub: "Largo plazo", score: 3 },
-      { label: "En más de 15 años", sub: "Para mi retiro", score: 4 },
+      { label: "18 – 29 años", sub: "Máximo horizonte de crecimiento", score: 4 },
+      { label: "30 – 40 años", sub: "Todavía tienes mucho tiempo", score: 3 },
+      { label: "41 – 50 años", sub: "Horizonte balanceado", score: 2 },
+      { label: "51 años o más", sub: "Priorizo preservar lo acumulado", score: 1 },
+    ],
+  },
+  {
+    id: "retirement",
+    q: "¿A qué edad te quieres retirar?",
+    emoji: "🏖️",
+    options: [
+      { label: "A los 70 años o después", sub: "Tiempo extra para crecer", score: 4 },
+      { label: "A los 65 años", sub: "La edad tradicional", score: 3 },
+      { label: "A los 60 años", sub: "Un poco antes", score: 2 },
+      { label: "Antes de los 55 años", sub: "Retiro anticipado", score: 1 },
     ],
   },
   {
@@ -216,30 +227,41 @@ export const RISK_QUESTIONS: QuizQuestion[] = [
     q: "Si tu ahorro bajara 10% en un mes, ¿qué harías?",
     emoji: "🎢",
     options: [
-      { label: "Retiraría todo", sub: "No tolero pérdidas", score: 1 },
-      { label: "Me preocuparía, pero esperaría", score: 2 },
-      { label: "Lo dejaría tranquilo", sub: "Sé que se recupera", score: 3 },
-      { label: "Aprovecharía para aportar más", score: 4 },
+      { label: "Retiraría todo de inmediato", sub: "No tolero ver pérdidas", score: 1 },
+      { label: "Me preocuparía, pero esperaría", sub: "Esperaría a que se recupere", score: 2 },
+      { label: "Lo dejaría sin tocarlo", sub: "Sé que el mercado se recupera", score: 3 },
+      { label: "Aportaría más para aprovechar", sub: "Las caídas son oportunidades", score: 4 },
     ],
   },
   {
     id: "goal",
-    q: "¿Qué buscas sobre todo?",
+    q: "¿Qué buscas principalmente?",
     emoji: "🎯",
     options: [
-      { label: "Proteger mi capital", score: 1 },
-      { label: "Crecer de forma estable", score: 2 },
-      { label: "Equilibrio entre ambos", score: 3 },
-      { label: "El mayor crecimiento posible", score: 4 },
+      { label: "Proteger lo que tengo", sub: "Que no pierda valor", score: 1 },
+      { label: "Crecer de forma estable", sub: "Sin grandes sobresaltos", score: 2 },
+      { label: "Equilibrio riesgo–rendimiento", sub: "Un poco de ambos", score: 3 },
+      { label: "El mayor crecimiento posible", sub: "Acepto la volatilidad", score: 4 },
+    ],
+  },
+  {
+    id: "emergency",
+    q: "¿Tienes un fondo de emergencia?",
+    emoji: "🛟",
+    options: [
+      { label: "Sí, cubro más de 6 meses", sub: "Estoy bien protegido", score: 4 },
+      { label: "Sí, cubro 3 a 6 meses", sub: "Tengo un colchón razonable", score: 3 },
+      { label: "Algo tengo, menos de 3 meses", sub: "Lo estoy construyendo", score: 2 },
+      { label: "No tengo fondo de emergencia", sub: "Prefiero ser conservador", score: 1 },
     ],
   },
 ];
 
-/** Mapea el puntaje total del cuestionario (3–12) a un perfil de riesgo. */
+/** Mapea el puntaje total del cuestionario (5–20) a un perfil de riesgo. */
 export function recommendPlan(totalScore: number): VaultPlan {
-  if (totalScore <= 4) return planById("conservador");
-  if (totalScore <= 7) return planById("moderado");
-  if (totalScore <= 10) return planById("balanceado");
+  if (totalScore <= 8)  return planById("conservador");
+  if (totalScore <= 12) return planById("moderado");
+  if (totalScore <= 16) return planById("balanceado");
   return planById("crecimiento");
 }
 
