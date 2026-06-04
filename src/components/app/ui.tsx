@@ -7,7 +7,7 @@ type IconName =
   | "bag" | "music" | "car" | "cup" | "bed" | "home" | "invest" | "vault" | "user"
   | "search" | "freeze" | "qr" | "arrowR" | "bolt" | "globe" | "info" | "clock"
   | "star" | "doc" | "headset" | "logout" | "copy" | "in"
-  | "store" | "tag" | "gift" | "trend";
+  | "store" | "tag" | "gift" | "trend" | "bank" | "trash";
 
 export function Icon({
   name,
@@ -74,6 +74,8 @@ export function Icon({
     tag: <><path d="M4 4h7l9 9-7 7-9-9V4z" {...p} /><circle cx="8" cy="8" r="1.4" {...p} /></>,
     gift: <><rect x="3.5" y="9" width="17" height="11" rx="1.5" {...p} /><path d="M3.5 13h17M12 9v11" {...p} /><path d="M12 9S10.5 4.5 8 5.5 9.5 9 12 9zM12 9s1.5-4.5 4-3.5S14.5 9 12 9z" {...p} /></>,
     trend: <><path d="M4 16l5-5 3 3 7-8" {...p} /><path d="M16 6h4v4" {...p} /></>,
+    bank: <><path d="M3 21h18M3 10h18M12 3L3 10h18L12 3z" {...p} /><path d="M6 10v8M10 10v8M14 10v8M18 10v8" {...p} /></>,
+    trash: <><path d="M4 6h16M9 6V4h6v2M10 11v6M14 11v6" {...p} /><path d="M5 6l1 14h12l1-14" {...p} /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} style={{ display: "block" }}>

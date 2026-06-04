@@ -104,6 +104,11 @@ export const store = {
     const list = LS.get<StoreBank[]>(key("banks", wallet), []);
     LS.set(key("banks", wallet), [...list.filter((b) => b.id !== bank.id), bank]);
   },
+  async removeBank(wallet: string, id: string) {
+    if (USE_DB) return void (await jdel(`/api/db/banks?wallet=${wallet}&id=${encodeURIComponent(id)}`));
+    const list = LS.get<StoreBank[]>(key("banks", wallet), []);
+    LS.set(key("banks", wallet), list.filter((b) => b.id !== id));
+  },
 
   // ---- Bóvedas ----
   async listVaults(wallet: string): Promise<StoreVault[]> {

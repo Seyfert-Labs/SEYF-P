@@ -32,5 +32,14 @@ export function useUserBanks(address?: string) {
     [address],
   );
 
-  return { list, add, reload };
+  const remove = useCallback(
+    (id: string) => {
+      if (!address) return;
+      setList((prev) => prev.filter((x) => x.id !== id));
+      void store.removeBank(address, id);
+    },
+    [address],
+  );
+
+  return { list, add, remove, reload };
 }

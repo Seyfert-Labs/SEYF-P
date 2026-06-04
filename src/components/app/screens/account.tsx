@@ -9,6 +9,9 @@ import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { explorerBase } from "@/lib/chain";
 import { ClabeCard } from "../ClabeCard";
+import { useUserBanks } from "@/hooks/useUserBanks";
+import { AddBankModal } from "../modals/AddBankModal";
+import { Portal } from "../Portal";
 
 function shortAddr(a?: string) {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
@@ -150,9 +153,16 @@ export function ScreenCard({ go }: { go: Go }) {
 }
 
 /* ---------------- PERFIL / SEGURIDAD ---------------- */
+function maskClabe(clabe: string) {
+  return `${clabe.slice(0, 6)} •••• •••• ${clabe.slice(-4)}`;
+}
+
 export function ScreenProfile({ go }: { go: Go }) {
   const wallet = useWallet();
   const email = wallet.email || "diego@correo.com";
+  const { list: banks, remove: removeBank, reload: reloadBanks } = useUserBanks(wallet.address);
+  const [showAddBank, setShowAddBank] = useState(false);
+
   const copyAddr = () => {
     if (wallet.address) navigator.clipboard?.writeText(wallet.address).catch(() => {});
   };
@@ -196,7 +206,68 @@ export function ScreenProfile({ go }: { go: Go }) {
           </>
         )}
 
-        <div className="card glow" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 16 }}>
+        {/* ── Cuentas bancarias (CLABE de retiro/liquidez) ── */}
+        <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Cuentas bancarias</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {banks.length === 0 ? (
+            <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{
+                width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+                background: "var(--surface-2)", border: "1px solid var(--line)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <Icon name="bank" size={22} color="var(--txt-muted)" />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Sin cuentas registradas</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                  Agrega tu CLABE para recibir adelantos de liquidez vía SPEI.
+                </p>
+              </div>
+            </div>
+          ) : (
+            banks.map((b) => (
+              <div key={b.id} className="card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{
+                  width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+                  background: "var(--accent-soft)", color: "var(--accent)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Icon name="bank" size={22} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>{b.tag}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>
+                    {b.recipient_legal_name}
+                  </p>
+                  <p className="num" style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-dim)" }}>
+                    {maskClabe(b.clabe)}
+                  </p>
+                </div>
+                <button
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: 8, color: "var(--txt-dim)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                  onClick={() => removeBank(b.id)}
+                  aria-label="Eliminar cuenta"
+                >
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
+            ))
+          )}
+          <button
+            className="btn btn-ghost"
+            style={{ marginTop: 2 }}
+            onClick={() => setShowAddBank(true)}
+          >
+            <Icon name="plus" size={18} /> Agregar cuenta bancaria
+          </button>
+        </div>
+
+        <div className="card glow" style={{ marginTop: 22, display: "flex", alignItems: "center", gap: 16 }}>
           <Ring pct={92} size={66} color="var(--accent)" />
           <div style={{ flex: 1 }}>
             <p className="eyebrow" style={{ color: "var(--accent)" }}>Nivel de seguridad</p>
@@ -232,6 +303,14 @@ export function ScreenProfile({ go }: { go: Go }) {
         </div>
       </div>
       <div className="scroll-bottom" />
+      {showAddBank && (
+        <Portal>
+          <AddBankModal
+            onClose={() => setShowAddBank(false)}
+            onAdded={() => { void reloadBanks(); setShowAddBank(false); }}
+          />
+        </Portal>
+      )}
     </div>
   );
 }
