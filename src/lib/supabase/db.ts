@@ -250,6 +250,102 @@ export async function addConversion(wallet: string, c: ConversionRow) {
   );
 }
 
+// ---------- Conversión orquestada: idempotencia + reconciliación ----------
+
+export interface ConversionRecord extends ConversionRow {
+  status: "pending" | "completed";
+  kind?: "forward" | "inverse";
+}
+
+export async function getConversion(id: string): Promise<ConversionRecord | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("conversions")
+    .select("id, from_code, to_code, amount_from, amount_to, oid, status, kind, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    id: data.id,
+    from: data.from_code,
+    to: data.to_code,
+    amountFrom: Number(data.amount_from),
+    amountTo: Number(data.amount_to),
+    oid: data.oid ?? undefined,
+    status: data.status,
+    kind: data.kind ?? undefined,
+    createdAt: new Date(data.created_at).getTime(),
+  };
+}
+
+// Reserva la fila idempotente. Devuelve la existente si la `id` ya se usó (un
+// reintento NO coloca otra orden); si no, inserta una fila 'pending'.
+export async function beginConversion(
+  wallet: string,
+  c: { id: string; from: string; to: string; kind: "forward" | "inverse" },
+): Promise<{ created: boolean; existing?: ConversionRecord }> {
+  const sb = getSupabase();
+  if (!sb) return { created: true }; // sin DB: el cliente lleva el ledger local
+  await ensureProfile(wallet);
+  const existing = await getConversion(c.id);
+  if (existing) return { created: false, existing };
+  const { error } = await sb.from("conversions").insert({
+    id: c.id,
+    wallet_address: wallet,
+    from_code: c.from,
+    to_code: c.to,
+    amount_from: 0,
+    amount_to: 0,
+    status: "pending",
+    kind: c.kind,
+  });
+  // Carrera: otro request insertó la misma `id` entre el select y el insert.
+  if (error) {
+    const again = await getConversion(c.id);
+    if (again) return { created: false, existing: again };
+    throw error;
+  }
+  return { created: true };
+}
+
+export async function completeConversion(
+  id: string,
+  d: { amountFrom: number; amountTo: number; oid?: string },
+) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb
+    .from("conversions")
+    .update({ amount_from: d.amountFrom, amount_to: d.amountTo, oid: d.oid ?? null, status: "completed" })
+    .eq("id", id);
+}
+
+// Libera la reserva si la orden falló (para no dejar filas pending colgadas).
+export async function abortConversion(id: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("conversions").delete().eq("id", id).eq("status", "pending");
+}
+
+// Agregado del ledger por activo (todos los usuarios, solo filas liquidadas):
+// suma el destino y resta el origen de cada conversión no-MXN. Es el lado
+// "ledger" del invariante de reconciliación vs el pool real de Bitso.
+export async function sumLedgerByAsset(): Promise<Record<string, number>> {
+  const sb = getSupabase();
+  if (!sb) return {};
+  const acc: Record<string, number> = {};
+  const { data } = await sb
+    .from("conversions")
+    .select("from_code, to_code, amount_from, amount_to")
+    .eq("status", "completed");
+  for (const c of data ?? []) {
+    if (c.to_code !== "MXN") acc[c.to_code] = (acc[c.to_code] || 0) + Number(c.amount_to);
+    if (c.from_code !== "MXN") acc[c.from_code] = (acc[c.from_code] || 0) - Number(c.amount_from);
+  }
+  return acc;
+}
+
 // ---------- Límites mensuales (depósito / retiro) ----------
 export interface MonthlyUsage {
   deposit: number;

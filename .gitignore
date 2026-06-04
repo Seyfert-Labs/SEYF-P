@@ -31,8 +31,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
+.env
 .env.local
 .env.*.local
+!.env.example
 
 # vercel
 .vercel
@@ -44,11 +46,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# foundry
-cache/
-out/
-broadcast/*/dry-run/
-broadcast/*/31337/
-!broadcast/*/31337/run-latest.json
-.env
-lib/
+# foundry (anclado a contracts/ para no ignorar src/lib, src/cache, etc.)
+/contracts/cache/
+/contracts/out/
+/contracts/broadcast/*/dry-run/
+/contracts/broadcast/*/31337/
+!/contracts/broadcast/*/31337/run-latest.json
+/contracts/lib/

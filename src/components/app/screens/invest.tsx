@@ -11,10 +11,14 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
-import { useBitsoRates, useBitsoBalances, convertOnBitso } from "@/hooks/useBitsoRates";
+import { useBitsoRates, useBitsoBalances } from "@/hooks/useBitsoRates";
 import { useConversions } from "@/hooks/useConversions";
 import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
 import { TREASURY_ADDRESS, TREASURY_ENABLED } from "@/lib/chain";
+
+// Con Supabase, el ledger de conversiones lo escribe /api/convert (servidor);
+// sin él, el cliente lo persiste localmente con la capa `store`.
+const USE_SUPABASE = process.env.NEXT_PUBLIC_USE_SUPABASE === "true";
 
 /* ---------------- AHORRO (BÓVEDAS) ---------------- */
 const RISK_COLOR: Record<RiskLevel, string> = { Bajo: "var(--accent)", Medio: "#F5A623", Alto: "var(--neg)" };
@@ -329,7 +333,7 @@ function ConvSelect({ value, onChange, exclude }: { value: string; onChange: (v:
 export function ScreenConvert({ go }: { go: Go }) {
   const { loading, error, quote, mxnPriceOf } = useBitsoRates();
   const wallet = useWallet();
-  const { add: addConversion, balances: localBalances } = useConversions(wallet.address);
+  const { add: addConversion, balances: localBalances, reload: reloadConversions } = useConversions(wallet.address);
   const { balances: liveBalances, refresh: refreshBalances } = useBitsoBalances();
   const [fromCode, setFromCode] = useState("MXN");
   const [toCode, setToCode] = useState("USDT");
@@ -353,11 +357,17 @@ export function ScreenConvert({ go }: { go: Go }) {
 
   const doConvert = async () => {
     if (!oneSideIsMXN || amt <= 0 || result == null) return;
+    if (!wallet.address) {
+      setStatus("error");
+      setMsg("Conecta tu wallet para convertir.");
+      return;
+    }
     setStatus("sending");
     try {
+      // Validación previa según el sentido.
       if (sellingMXNB) {
-        // ── MXNB → divisa ───────────────────────────────────────────────
-        // 1. Mover el MXNB del usuario a la tesorería (baja su saldo on-chain real).
+        // FORWARD MXN→divisa: mueve el MXNB del usuario a la tesorería on-chain
+        // (baja su saldo real). Lo firma su smart wallet, no puede ir al servidor.
         if (TREASURY_ENABLED) {
           if (wallet.balance < amt) {
             setStatus("error");
@@ -366,57 +376,62 @@ export function ScreenConvert({ go }: { go: Go }) {
           }
           await wallet.sendMXNB(TREASURY_ADDRESS, String(amt));
         }
-        // 2. Ejecutar el swap en Bitso (pool del negocio).
-        const r = await convertOnBitso(fromCode, toCode, amt);
-        if (!r.ok) {
-          setStatus("error");
-          setMsg(
-            TREASURY_ENABLED
-              ? `Tu MXNB quedó en tesorería; la conversión no se completó (${r.error || "error"}). Se reintentará.`
-              : r.error || "No se pudo ejecutar la orden.",
-          );
-          return;
-        }
-        // 3. Acreditar el ledger del usuario (atribución por-usuario del USDT del pool).
-        const amountFrom = r.filledFrom ?? amt;
-        const amountTo = r.filledTo ?? result;
-        await addConversion({ from: fromCode, to: toCode, amountFrom, amountTo, oid: r.oid });
       } else {
-        // ── divisa → MXNB ───────────────────────────────────────────────
-        // El usuario no tiene la divisa on-chain (vive en el ledger del pool).
-        // Vendemos en Bitso y enviamos MXNB a su wallet con un WITHDRAWAL de Juno
-        // (/mint_platform/v1/withdrawals, saca MXNB del float on-chain). NO es un
-        // issuance (eso es mintear MXNB contra un depósito MXN). El MXN del sell
-        // queda como reserva del negocio.
+        // INVERSE divisa→MXN: valida el saldo del usuario en el ledger.
         const have = localBalances[fromCode] ?? 0;
         if (have + 1e-9 < amt) {
           setStatus("error");
           setMsg(`Saldo insuficiente de ${fromCode}. Disponible: ${FMT(have, from.dec)}.`);
           return;
         }
-        // 1. Vender la divisa → MXN en Bitso.
-        const r = await convertOnBitso(fromCode, toCode, amt);
-        if (!r.ok) {
-          setStatus("error");
-          setMsg(r.error || "No se pudo ejecutar la orden.");
-          return;
-        }
-        const mxn = r.filledTo ?? result;
-        // 2. Enviar MXNB a la wallet del usuario (withdrawal Juno · sube su saldo on-chain).
-        if (wallet.address) {
-          const fr = await fetch("/api/juno/fund-wallet", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ address: wallet.address, amount: mxn }),
-          });
-          if (!fr.ok) {
-            setStatus("error");
-            setMsg("Vendido en Bitso, pero la emisión de MXNB no se completó. Se reintentará.");
-            return;
-          }
-        }
-        // 3. Debitar el ledger (from=divisa, to=MXN → resta la divisa).
-        await addConversion({ from: fromCode, to: toCode, amountFrom: r.filledFrom ?? amt, amountTo: mxn, oid: r.oid });
+      }
+
+      // Orquestación server-side, atómica e idempotente por `key`:
+      // orden Bitso + (inverso) emisión MXNB a la wallet + liquidación del ledger.
+      const key = crypto.randomUUID();
+      const res = await fetch("/api/convert", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          wallet: wallet.address,
+          address: wallet.address,
+          from: fromCode,
+          to: toCode,
+          amount: amt,
+          key,
+          quotedFrom: amt,
+          quotedTo: result,
+        }),
+      });
+      const d = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        oid?: string;
+        filledFrom?: number;
+        filledTo?: number;
+      };
+      if (!d.ok) {
+        setStatus("error");
+        setMsg(
+          sellingMXNB && TREASURY_ENABLED
+            ? `Tu MXNB quedó en tesorería; la conversión no se completó (${d.error || "error"}).`
+            : d.error || "No se pudo ejecutar la conversión.",
+        );
+        return;
+      }
+
+      // Refleja el ledger: con Supabase el servidor ya escribió la fila → recargar;
+      // sin Supabase (modo local) la persistimos en el store con los montos reales.
+      if (USE_SUPABASE) {
+        await reloadConversions();
+      } else {
+        await addConversion({
+          from: fromCode,
+          to: toCode,
+          amountFrom: d.filledFrom ?? amt,
+          amountTo: d.filledTo ?? result,
+          oid: d.oid,
+        });
       }
 
       // Refrescar el saldo MXNB on-chain (Home) y el live de Bitso.

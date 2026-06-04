@@ -41,6 +41,9 @@ export interface JunoRequestOptions {
   body?: unknown;
   /** Si true, añade un header X-Idempotency-Key (UUID) — requerido por redeem/withdrawal. */
   idempotency?: boolean;
+  /** Key de idempotencia explícito (estable entre reintentos). Si se omite y
+   *  `idempotency` es true, se genera un UUID aleatorio. */
+  idempotencyKey?: string;
   /** Timeout en ms (default 30s). */
   timeoutMs?: number;
 }
@@ -63,7 +66,7 @@ export class JunoApiError extends Error {
 export async function junoRequest<T = unknown>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
-  { body, idempotency, timeoutMs = 45000 }: JunoRequestOptions = {},
+  { body, idempotency, idempotencyKey: providedKey, timeoutMs = 45000 }: JunoRequestOptions = {},
 ): Promise<{ payload: T; raw: Record<string, unknown>; idempotencyKey?: string }> {
   const bodyStr = body !== undefined ? JSON.stringify(body) : '';
   const authHeader = buildJunoAuthHeader(method, path, bodyStr);
@@ -75,7 +78,7 @@ export async function junoRequest<T = unknown>(
 
   let idempotencyKey: string | undefined;
   if (idempotency) {
-    idempotencyKey = crypto.randomUUID();
+    idempotencyKey = providedKey || crypto.randomUUID();
     headers['X-Idempotency-Key'] = idempotencyKey;
   }
 
