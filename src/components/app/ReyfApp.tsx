@@ -6,23 +6,15 @@ import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet } from "./screens/core";
-import {
-  ScreenBonos,
-  ScreenBondDetail,
-  ScreenVaults,
-  ScreenVaultDetail,
-  ScreenConvert,
-} from "./screens/invest";
-import { ScreenMercado, ScreenProductDetail, ScreenComprar, ScreenVender, ScreenCompras, ScreenVentas } from "./screens/market";
+import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
 import { ScreenCard, ScreenProfile } from "./screens/account";
 import { useWallet } from "@/components/wallet/WalletContext";
 
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
-  { id: "inicio", ic: "home", lb: "Inicio", screen: "home", match: ["home", "wallet", "convertir", "cambio", "notifs", "txn", "bonos", "bono", "compras", "ventas"] },
+  { id: "inicio", ic: "home", lb: "Inicio", screen: "home", match: ["home", "wallet", "notifs", "txn"] },
   { id: "ahorro", ic: "vault", lb: "Ahorro", screen: "bovedas", match: ["bovedas", "boveda"] },
   { id: "tarjeta", ic: "card", lb: "Tarjeta", screen: "card", match: ["card"] },
   { id: "perfil", ic: "user", lb: "Perfil", screen: "perfil", match: ["perfil", "recompensas"] },
-  // Mercado (Central de Abastos) oculto del menú por ahora — rutas activas, accesible por código.
 ];
 
 function TabBar({ screen, go }: { screen: Screen; go: Go }) {
@@ -74,28 +66,18 @@ export default function ReyfApp() {
   const SCREENS: Record<Screen, React.ReactNode> = {
     home: <ScreenHome go={go} />,
     wallet: <ScreenWallet go={go} />,
-    bonos: <ScreenBonos go={go} />,
-    bono: <ScreenBondDetail go={go} ctx={route.ctx} />,
     bovedas: <ScreenVaults go={go} />,
     boveda: <ScreenVaultDetail go={go} ctx={route.ctx} />,
-    mercado: <ScreenMercado go={go} />,
-    producto: <ScreenProductDetail go={go} ctx={route.ctx} />,
-    comprar: <ScreenComprar go={go} ctx={route.ctx} />,
-    vender: <ScreenVender go={go} />,
-    altaNegocio: <ScreenVender go={go} />,
     card: <ScreenCard go={go} />,
-    perfil: <ScreenProfile go={go} />,
-    compras: <ScreenCompras go={go} />,
-    ventas: <ScreenVentas go={go} />,
-    negocios: <ScreenVender go={go} />,
-    recompensas: <ScreenProfile go={go} />,
     convertir: <ScreenConvert go={go} />,
     cambio: <ScreenConvert go={go} />,
+    perfil: <ScreenProfile go={go} />,
+    recompensas: <ScreenProfile go={go} />,
     notifs: <ScreenProfile go={go} />,
     txn: <ScreenWallet go={go} />,
   };
 
-  const showTabs = !["bono", "boveda", "producto", "comprar", "vender", "convertir", "cambio", "txn"].includes(route.screen);
+  const showTabs = !["boveda", "convertir", "cambio", "txn"].includes(route.screen);
 
   return (
     <div className="app-shell">

@@ -1,10 +1,10 @@
 "use client";
 
-/* UTONOMA — pantallas de inversión: Bonos, Detalle, Bóvedas, Convertir */
+/* Pantallas de ahorro: Bóvedas, detalle de bóveda y conversión FX */
 import React, { useState } from "react";
-import { Icon, Flag, Spark, Ring } from "../ui";
+import { Icon, Flag, Ring } from "../ui";
 import { SubHeader } from "../shared";
-import { BONDS, FMT, VAULT_PLANS, RISK_PROFILES, planByApy, planById, projectSavings, aforeVsReyf, AFORE_COMMISSION, loadRiskProfile, type Bond, type VaultPlan, type RiskLevel } from "../data";
+import { FMT, VAULT_PLANS, RISK_PROFILES, planByApy, planById, projectSavings, aforeVsReyf, AFORE_COMMISSION, loadRiskProfile, type VaultPlan, type RiskLevel } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
@@ -12,138 +12,6 @@ import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
 import { useBitsoRates, convertOnBitso } from "@/hooks/useBitsoRates";
 import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
-
-/* ---------------- BONOS LIST ---------------- */
-export function ScreenBonos({ go }: { go: Go }) {
-  const [tab, setTab] = useState<"gobierno" | "acciones">("gobierno");
-  return (
-    <div className="screen screen-enter">
-      <div className="safe-top" />
-      <div className="app-head" style={{ paddingTop: 4 }}>
-        <p className="name">Invertir</p>
-        <button className="icon-btn"><Icon name="search" size={20} /></button>
-      </div>
-      <div className="screen-pad">
-        <div className="seg" style={{ marginBottom: 18 }}>
-          <button className={tab === "gobierno" ? "on" : ""} onClick={() => setTab("gobierno")}>Bonos de gobierno</button>
-          <button className={tab === "acciones" ? "on" : ""} onClick={() => setTab("acciones")}>Acciones premium</button>
-        </div>
-
-        {tab === "gobierno" ? (
-          <>
-            <div className="card" style={{ display: "flex", gap: 14, alignItems: "center", background: "var(--accent-2-soft)", border: "none", marginBottom: 16 }}>
-              <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--accent-2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Icon name="shield" size={22} />
-              </span>
-              <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.45 }}>
-                Deuda soberana respaldada por gobiernos. <b style={{ color: "var(--txt)" }}>El instrumento más seguro</b> para hacer crecer tu dinero.
-              </p>
-            </div>
-            <p className="eyebrow" style={{ marginBottom: 12 }}>4 países disponibles</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {BONDS.map((b) => (
-                <div key={b.id} className="card bond-card" onClick={() => go("bono", b)}>
-                  <Flag code={b.flag} cls="lg" />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{b.country}</p>
-                    <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>{b.code} · {b.cur}</p>
-                  </div>
-                  <Spark data={b.series} w={52} h={30} fillArea />
-                  <div className="yield">
-                    <div className="pc num">{FMT(b.yield, 2)}%</div>
-                    <div className="lb">anual</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="eyebrow" style={{ marginBottom: 12 }}>Cartera curada</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[
-                { t: "NVIDIA", s: "NVDA · Tecnología", pc: "+1.84%", v: "$2,310.50" },
-                { t: "Apple", s: "AAPL · Tecnología", pc: "+0.42%", v: "$3,902.10" },
-                { t: "S&P 500 ETF", s: "VOO · Índice", pc: "+0.61%", v: "$5,140.00" },
-                { t: "Berkshire", s: "BRK.B · Holding", pc: "−0.18%", v: "$1,980.20", neg: true },
-              ].map((s, i) => (
-                <div key={i} className="card bond-card">
-                  <span style={{ width: 48, height: 48, borderRadius: 14, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 800 }} className="brand">{s.t[0]}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{s.t}</p>
-                    <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>{s.s}</p>
-                  </div>
-                  <div className="yield">
-                    <div className="num" style={{ fontWeight: 800, fontSize: 16 }}>{s.v}</div>
-                    <div className="num" style={{ fontSize: 12, fontWeight: 700, color: s.neg ? "var(--neg)" : "var(--accent)" }}>{s.pc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      <div className="scroll-bottom" />
-    </div>
-  );
-}
-
-/* ---------------- BOND DETAIL ---------------- */
-export function ScreenBondDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
-  const b = (ctx as Bond) || BONDS[0];
-  const [range, setRange] = useState("1A");
-  const proj = (10000 * (b.yield / 100)).toFixed(0);
-  return (
-    <div className="screen screen-enter">
-      <div className="safe-top" />
-      <SubHeader title={b.country} go={go} back="bonos" action={<button className="icon-btn"><Icon name="star" size={20} /></button>} />
-      <div className="screen-pad">
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Flag code={b.flag} cls="lg" />
-          <div>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 18 }}>{b.code}</p>
-            <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>Bono soberano · {b.cur}</p>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 22 }}>
-          <span className="det-amount num" style={{ color: "var(--accent)" }}>{FMT(b.yield, 2)}%</span>
-          <span style={{ fontSize: 15, color: "var(--txt-muted)" }}>rendimiento anual</span>
-        </div>
-        <div className="card" style={{ marginTop: 18, padding: "22px 20px 16px" }}>
-          <Spark data={b.series} w={320} h={120} color="var(--accent)" fillArea />
-          <div className="seg" style={{ marginTop: 16 }}>
-            {["1M", "3M", "6M", "1A", "5A"].map((r) => (
-              <button key={r} className={range === r ? "on" : ""} onClick={() => setRange(r)}>{r}</button>
-            ))}
-          </div>
-        </div>
-        <div className="stat-grid" style={{ marginTop: 16 }}>
-          <div className="tile"><div className="k">Riesgo</div><div className="v" style={{ fontSize: 18 }}>{b.risk}</div></div>
-          <div className="tile"><div className="k">Calificación</div><div className="v num" style={{ fontSize: 18 }}>{b.rating}</div></div>
-          <div className="tile"><div className="k">Plazo</div><div className="v" style={{ fontSize: 16 }}>{b.term}</div></div>
-          <div className="tile"><div className="k">Mínimo</div><div className="v num" style={{ fontSize: 18 }}>${b.min} {b.cur}</div></div>
-        </div>
-        <div className="card" style={{ marginTop: 16, background: "var(--accent-soft)", border: "none" }}>
-          <p className="eyebrow" style={{ color: "var(--accent)" }}>Proyección de rendimientos</p>
-          <p style={{ margin: "12px 0 0", fontSize: 14, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-            Si inviertes <b className="num" style={{ color: "var(--txt)" }}>$10,000</b>, en un año podrías ganar
-          </p>
-          <p className="num" style={{ fontSize: 34, fontWeight: 700, color: "var(--accent)", margin: "8px 0 0" }}>+${FMT(+proj, 0)}</p>
-        </div>
-        <div className="card" style={{ marginTop: 16 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "var(--txt-muted)", lineHeight: 1.55 }}>{b.desc}</p>
-          <div className="divider" />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--txt-muted)", fontSize: 13 }}>
-            <Icon name="shield" size={16} color="var(--accent)" /> Custodia regulada · liquidación T+1
-          </div>
-        </div>
-      </div>
-      <div style={{ position: "sticky", bottom: 0, padding: "14px 22px 24px", background: "linear-gradient(to top, var(--bg) 70%, transparent)" }}>
-        <button className="btn btn-primary">Invertir en {b.country}</button>
-      </div>
-    </div>
-  );
-}
 
 /* ---------------- AHORRO (BÓVEDAS) ---------------- */
 const RISK_COLOR: Record<RiskLevel, string> = { Bajo: "var(--accent)", Medio: "#F5A623", Alto: "var(--neg)" };
@@ -539,7 +407,7 @@ export function ScreenConvert({ go }: { go: Go }) {
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
-      <SubHeader title="Convertir" go={go} back="home" />
+      <SubHeader title="Convertir" go={go} back="card" />
       <div className="screen-pad">
         <div style={{ position: "relative" }}>
           <div className="conv-field">
@@ -574,7 +442,6 @@ export function ScreenConvert({ go }: { go: Go }) {
           <span className="pos-pill">{loading ? "Bitso…" : "Tipo Bitso"}</span>
         </div>
 
-        {/* Acción real: ejecuta la conversión como orden de mercado en Bitso */}
         <button
           className="btn btn-primary"
           style={{ marginTop: 14 }}

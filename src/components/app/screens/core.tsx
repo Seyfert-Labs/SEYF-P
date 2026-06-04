@@ -174,16 +174,13 @@ export function ScreenHome({ go }: { go: Go }) {
           <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
           <button className="quick" onClick={() => setModal("redeem")}><span className="ic"><Icon name="recv" /></span><span className="tx">Retirar</span></button>
           <button className="quick" onClick={() => setModal("advance")}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
-          <button className="quick" onClick={() => go("convertir")}><span className="ic"><Icon name="swap" /></span><span className="tx">Convertir</span></button>
         </div>
 
         <div className="sec-head"><h3>Mis cuentas</h3></div>
         <div className="card" style={{ padding: "6px 18px" }}>
           <div className="list">
             <AcctRow go={go} to="wallet" ic="leaf" nm="Mi dinero" su="Disponible al instante" vl={pesos} series={[28, 30, 29, 32, 31, 33, 34, 36]} />
-            <AcctRow go={go} to="bonos" ic="chart" nm="Inversiones" su="Bonos y acciones" vl={0} series={[20, 22, 24, 26, 29, 32, 35, 39]} />
-            <AcctRow go={go} to="bovedas" ic="vault" nm="Ahorro" su="Tus metas" vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
-            <AcctRow go={go} to="card" ic="card" nm="Tarjeta" su="Gasta en divisas" vl={0} series={[24, 23, 25, 24, 26, 25, 27, 26]} />
+            <AcctRow go={go} to="bovedas" ic="vault" nm="Ahorro" su="Bóveda de retiro" vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
           </div>
         </div>
 
@@ -273,8 +270,7 @@ export function ScreenWallet({ go }: { go: Go }) {
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
-      <SubHeader title="Pesos digitales" go={go} back="home"
-        action={<button className="icon-btn" onClick={() => go("convertir")}><Icon name="swap" size={20} /></button>} />
+      <SubHeader title="Pesos digitales" go={go} back="home" />
 
       <div className="screen-pad">
         <div className="card glow" style={{ padding: 24, textAlign: "center" }}>
