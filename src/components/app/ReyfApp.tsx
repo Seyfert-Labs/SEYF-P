@@ -14,7 +14,6 @@ const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[
   { id: "inicio", ic: "home", lb: "Inicio", screen: "home", match: ["home", "wallet", "notifs", "txn"] },
   { id: "ahorro", ic: "vault", lb: "Ahorro", screen: "bovedas", match: ["bovedas", "boveda"] },
   { id: "tarjeta", ic: "card", lb: "Tarjeta", screen: "card", match: ["card"] },
-  { id: "perfil", ic: "user", lb: "Perfil", screen: "perfil", match: ["perfil", "recompensas"] },
 ];
 
 function TabBar({ screen, go }: { screen: Screen; go: Go }) {

@@ -3,7 +3,7 @@
 /* UTONOMA — Tarjeta + Perfil/Seguridad */
 import React, { useState } from "react";
 import { Icon, Flag, Ring } from "../ui";
-import { SubHeader, TxnRow } from "../shared";
+import { SubHeader, TxnRow, AvatarButton } from "../shared";
 import { CARD_TXNS, FMT } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -57,6 +57,7 @@ export function ScreenCard({ go }: { go: Go }) {
       <div className="safe-top" />
       <div className="app-head" style={{ paddingTop: 4 }}>
         <p className="name">Tarjeta</p>
+        <AvatarButton go={go} />
       </div>
       <div className="screen-pad">
         <div className="card-flip" onClick={() => setFlip((f) => !f)}>

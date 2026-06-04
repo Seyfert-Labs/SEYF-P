@@ -7,14 +7,25 @@ import { FMT, type Txn } from "./data";
 import type { Go, Screen } from "./nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 
+/* avatar clickable → perfil (reutilizable en cualquier pantalla de tab) */
+export function AvatarButton({ go }: { go: Go }) {
+  const wallet = useWallet();
+  const authed = wallet.enabled && wallet.authenticated;
+  const initials = authed
+    ? (wallet.email ? wallet.email.slice(0, 2).toUpperCase() : "MX")
+    : "DR";
+  return (
+    <button className="avatar" onClick={() => go("perfil")} aria-label="Mi perfil">
+      {initials}
+    </button>
+  );
+}
+
 /* barra superior con saludo + acciones (estilo home) */
 export function TopBar({ go }: { go: Go }) {
   const wallet = useWallet();
   const authed = wallet.enabled && wallet.authenticated;
   const display = authed ? wallet.email ?? "Mi cuenta" : "Diego Robles";
-  const initials = authed
-    ? (wallet.email ? wallet.email.slice(0, 2).toUpperCase() : "MX")
-    : "DR";
   return (
     <div className="app-head">
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -30,7 +41,7 @@ export function TopBar({ go }: { go: Go }) {
         <button className="icon-btn" onClick={() => go("bovedas")} aria-label="Bóvedas de ahorro">
           <Icon name="vault" size={20} />
         </button>
-        <button className="avatar" onClick={() => go("perfil")}>{initials}</button>
+        <AvatarButton go={go} />
       </div>
     </div>
   );

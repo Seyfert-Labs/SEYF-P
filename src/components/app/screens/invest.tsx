@@ -3,8 +3,9 @@
 /* Pantallas de ahorro: Bóvedas, detalle de bóveda y conversión FX */
 import React, { useState } from "react";
 import { Icon, Flag, Ring } from "../ui";
-import { SubHeader } from "../shared";
-import { FMT, VAULT_PLANS, RISK_PROFILES, planByApy, planById, projectSavings, aforeVsReyf, AFORE_COMMISSION, loadRiskProfile, type VaultPlan, type RiskLevel } from "../data";
+import { SubHeader, AvatarButton } from "../shared";
+import { FMT, VAULT_PLANS, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel } from "../data";
+import { ProjectionCard } from "../ProjectionCard";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
@@ -44,66 +45,6 @@ function PlanCard({ plan, onPick, recommended }: { plan: VaultPlan; onPick: () =
   );
 }
 
-/* ---------------- DASHBOARD: TÚ vs AFORE (costo de la comisión) ---------------- */
-function VsAforeCard({ current, apy }: { current: number; apy: number }) {
-  // Sin ahorro aún → ejemplo ilustrativo de $2,000/mes. Con ahorro → tu saldo actual.
-  const usingExample = current <= 0;
-  const baseCurrent = usingExample ? 0 : current;
-  const baseMonthly = usingExample ? 2000 : 0;
-  const rows = aforeVsReyf(baseCurrent, baseMonthly, apy, [10, 20, 30]);
-  const max = rows[rows.length - 1].reyf || 1;
-  const cost30 = rows[rows.length - 1].feesCost; // lo que cuesta la comisión a 30 años
-
-  return (
-    <>
-      <div className="sec-head"><h3>Tú vs una Afore tradicional</h3></div>
-      <div className="card" style={{ padding: 20 }}>
-        {/* Golpe: costo compuesto de la comisión */}
-        <div className="card" style={{ background: "var(--accent-soft)", border: "none", textAlign: "center", padding: 18 }}>
-          <p className="eyebrow" style={{ color: "var(--accent)" }}>Comisión que te cobra la Afore en 30 años</p>
-          <p className="num" style={{ fontSize: 32, fontWeight: 700, color: "var(--neg)", margin: "8px 0 0" }}>−${FMT(cost30, 0)}</p>
-          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
-            Por su <b style={{ color: "var(--txt)" }}>{FMT(AFORE_COMMISSION, 2)}%</b> anual sobre saldo. En Reyf: <b style={{ color: "var(--accent)" }}>$0 de comisión sobre tu saldo</b>.
-          </p>
-        </div>
-
-        <p style={{ fontSize: 12, color: "var(--txt-muted)", margin: "16px 2px 4px", lineHeight: 1.4 }}>
-          {usingExample
-            ? <>Mismo rendimiento (ej. <b className="num" style={{ color: "var(--txt)" }}>$2,000</b>/mes a {FMT(apy, 1)}%), saldo final:</>
-            : <>Mismo rendimiento ({FMT(apy, 1)}% sobre tu saldo), saldo final:</>}
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 8 }}>
-          {rows.map((r) => (
-            <div key={r.years}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{r.years} años</span>
-                <span className="num" style={{ fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>+${FMT(r.feesCost, 0)} a tu favor</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <span style={{ width: 38, fontSize: 10, color: "var(--txt-dim)", flexShrink: 0 }}>Afore</span>
-                <div style={{ flex: 1, height: 10, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${(r.afore / max) * 100}%`, background: "var(--txt-dim)", borderRadius: 999 }} />
-                </div>
-                <span className="num" style={{ width: 64, textAlign: "right", fontSize: 11, color: "var(--txt-muted)", flexShrink: 0 }}>${FMT(r.afore, 0)}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 38, fontSize: 10, color: "var(--accent)", fontWeight: 800, flexShrink: 0 }}>Reyf</span>
-                <div style={{ flex: 1, height: 10, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${(r.reyf / max) * 100}%`, background: "var(--accent)", borderRadius: 999 }} />
-                </div>
-                <span className="num" style={{ width: 64, textAlign: "right", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>${FMT(r.reyf, 0)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p style={{ fontSize: 11, color: "var(--txt-dim)", margin: "16px 2px 0", lineHeight: 1.5 }}>
-          Misma inversión y mismo rendimiento; la única diferencia es la comisión de {FMT(AFORE_COMMISSION, 2)}% anual sobre saldo. Rendimiento objetivo, no garantizado.
-        </p>
-      </div>
-    </>
-  );
-}
 
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
@@ -114,7 +55,6 @@ export function ScreenVaults({ go }: { go: Go }) {
   const recPlan = recId ? planById(recId) : null;
 
   const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : 0;
-  const projection = projectSavings(totalSaved, 0, weightedApy || 10.5, 10);
   const compareApy = totalSaved > 0 ? (weightedApy || 11.5) : (recPlan?.apy ?? 11.5);
   const afore = VAULT_PLANS.find((p) => p.id === "afore")!;
 
@@ -123,7 +63,10 @@ export function ScreenVaults({ go }: { go: Go }) {
       <div className="safe-top" />
       <div className="app-head" style={{ paddingTop: 4 }}>
         <p className="name">Ahorro</p>
-        {onchain && <span className="pos-pill"><Icon name="shield" size={12} /> On-chain</span>}
+        <div className="head-actions">
+          {onchain && <span className="pos-pill"><Icon name="shield" size={12} /> On-chain</span>}
+          <AvatarButton go={go} />
+        </div>
       </div>
       <div className="screen-pad">
         {busy && (
@@ -144,7 +87,7 @@ export function ScreenVaults({ go }: { go: Go }) {
             <div className="card" style={{ marginTop: 16, background: "var(--accent-soft)", border: "none", display: "flex", alignItems: "center", gap: 12 }}>
               <Icon name="trend" size={20} color="var(--accent)" />
               <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-                A este ritmo, en <b style={{ color: "var(--txt)" }}>10 años</b> tendrías <b className="num" style={{ color: "var(--accent)" }}>${FMT(projection, 0)}</b>.
+                A este ritmo, en <b style={{ color: "var(--txt)" }}>10 años</b> tendrías <b className="num" style={{ color: "var(--accent)" }}>${FMT(projectSavings(totalSaved, 0, weightedApy || 10.5, 10), 0)}</b>.
               </p>
             </div>
           )}
@@ -175,8 +118,10 @@ export function ScreenVaults({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* Dashboard: proyección Reyf vs Afore tradicional */}
-        <VsAforeCard current={totalSaved} apy={compareApy} />
+        {/* Proyección interactiva Reyf vs Afore */}
+        <div style={{ marginTop: 18 }}>
+          <ProjectionCard current={totalSaved} apy={compareApy} />
+        </div>
 
         {/* Tus bóvedas */}
         {vaults.length > 0 && (
