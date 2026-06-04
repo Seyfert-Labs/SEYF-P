@@ -15,6 +15,7 @@ import { useVaults } from "@/hooks/useVaults";
 import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
 import { SendModal } from "../modals/SendModal";
+import { MoreSheet } from "../modals/MoreSheet";
 import { WelcomeBonus } from "../WelcomeBonus";
 import { RiskQuizBanner, OnboardingQuiz } from "../RiskQuiz";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
@@ -57,7 +58,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
-  const [modal, setModal] = useState<null | "deposit" | "send" | "advance">(null);
+  const [modal, setModal] = useState<null | "deposit" | "send" | "advance" | "more">(null);
   const wallet = useWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
@@ -131,6 +132,7 @@ export function ScreenHome({ go }: { go: Go }) {
             <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
             <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
             <button className="quick" onClick={() => setModal("advance")}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
+            <button className="quick" onClick={() => setModal("more")}><span className="ic" style={{ fontSize: 20, letterSpacing: 2, fontWeight: 800, lineHeight: 1 }}>···</span><span className="tx">Más</span></button>
           </div>
         </div>
 
@@ -205,6 +207,7 @@ export function ScreenHome({ go }: { go: Go }) {
       {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
       {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
       {modal === "advance" && <Portal><LiquidityAdvanceModal saved={totalSaved} apy={weightedApy} onClose={() => setModal(null)} /></Portal>}
+      {modal === "more" && <Portal><MoreSheet onClose={() => setModal(null)} /></Portal>}
     </div>
   );
 }
