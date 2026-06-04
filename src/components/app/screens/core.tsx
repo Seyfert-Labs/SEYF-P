@@ -23,6 +23,7 @@ import { loadRiskProfile, planById } from "../data";
 import { Portal } from "../Portal";
 import { ClabeCard } from "../ClabeCard";
 import { ProjectionCard } from "../ProjectionCard";
+import { explorerBase } from "@/lib/chain";
 
 /* ---------------- ONBOARDING ---------------- */
 // Fases: 0 = Hero, 1 = Quiz de perfil (5 preguntas full-screen)
@@ -251,6 +252,10 @@ function onchainToRow(t: OnchainTransfer, i: number): Txn {
     amt: pos ? t.value : -t.value,
     ic: pos ? "in" : "send",
     pos,
+    hash: t.hash,
+    fromAddr: t.from,
+    toAddr: t.to,
+    blockNumber: t.blockNumber.toString(),
   };
 }
 
@@ -486,4 +491,146 @@ export function DepositOnboarding({ onDone }: { onDone: () => void }) {
       <div className="scroll-bottom" />
     </div>
   );
+}
+
+/* ---------------- DETALLE DE MOVIMIENTO ---------------- */
+export function ScreenTxnDetail({ go, ctx }: { go: Go; ctx: unknown }) {
+  const t = ctx as (import("../data").Txn | null);
+  const [copied, setCopied] = useState(false);
+
+  if (!t) {
+    // fallback: sin contexto, volver al inicio
+    return (
+      <div className="screen screen-enter">
+        <div className="safe-top" />
+        <SubHeader title="Movimiento" go={go} back="home" />
+        <div className="screen-pad" style={{ display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 64 }}>
+          <p style={{ color: "var(--txt-muted)", fontSize: 14 }}>No hay información disponible.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const pos = t.amt > 0;
+  const absAmt = Math.abs(t.amt);
+  const cur = t.cur || "MXN";
+  const copyHash = () => {
+    if (t.hash) {
+      navigator.clipboard?.writeText(t.hash).catch(() => {});
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="screen screen-enter">
+      <div className="safe-top" />
+      <SubHeader title="Detalle del movimiento" go={go} back="home" />
+
+      <div className="screen-pad">
+        {/* ── Hero: ícono + monto ── */}
+        <div className="card glow" style={{ padding: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
+          <div style={{
+            width: 68, height: 68, borderRadius: 22,
+            background: pos ? "var(--accent-soft)" : "var(--surface-2)",
+            color: pos ? "var(--accent)" : "var(--txt-muted)",
+            border: `1.5px solid ${pos ? "var(--accent)" : "var(--line)"}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <Icon name={t.ic} size={30} />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 18, color: "var(--txt)" }}>{t.nm}</p>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>{t.su}</p>
+          </div>
+          <div style={{ lineHeight: 1 }}>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+              <span style={{ fontSize: 22, color: pos ? "var(--accent)" : "var(--neg)", verticalAlign: "top", marginTop: 8, display: "inline-block" }}>
+                {pos ? "+" : "−"}$
+              </span>
+              <span style={{ fontSize: 52, color: pos ? "var(--accent)" : "var(--txt)" }}>
+                {FMT(absAmt, 2).split(".")[0]}
+              </span>
+              <span style={{ fontSize: 28, color: "var(--txt-muted)", fontWeight: 700 }}>
+                .{FMT(absAmt, 2).split(".")[1]}
+              </span>
+              <span style={{ fontSize: 14, color: "var(--txt-muted)", fontWeight: 600, marginLeft: 6, letterSpacing: 0 }}>{cur}</span>
+            </span>
+          </div>
+          {t.sub && (
+            <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)" }}>{t.sub}</p>
+          )}
+          <span className={pos ? "pos-pill" : "neg-pill"} style={!pos ? { background: "rgba(255,122,122,.13)", color: "var(--neg)" } : {}}>
+            <Icon name="check" size={12} /> Completado
+          </span>
+        </div>
+
+        {/* ── Información del movimiento ── */}
+        {(() => {
+          const rows: { label: string; value: string; mono?: boolean }[] = [
+            { label: "Tipo", value: pos ? "Entrada" : "Salida" },
+            { label: "Divisa", value: cur },
+            ...(t.fromAddr ? [{ label: "De", value: shortHex(t.fromAddr), mono: true }] : []),
+            ...(t.toAddr ? [{ label: "Para", value: shortHex(t.toAddr), mono: true }] : []),
+            ...(t.blockNumber ? [{ label: "Bloque", value: `#${t.blockNumber}`, mono: true }] : []),
+          ];
+          return (
+            <div className="card" style={{ marginTop: 16, padding: "4px 0" }}>
+              {rows.map((r, i) => (
+                <DetailRow key={r.label} label={r.label} value={r.value} mono={r.mono} last={i === rows.length - 1} />
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* ── Hash on-chain ── */}
+        {t.hash && (
+          <>
+            <p className="eyebrow" style={{ margin: "22px 0 10px" }}>Transacción on-chain</p>
+            <div className="card" style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <p className="num" style={{ flex: 1, fontSize: 12, color: "var(--txt-muted)", wordBreak: "break-all", margin: 0, lineHeight: 1.5 }}>
+                  {t.hash}
+                </p>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button className="icon-btn" onClick={copyHash} aria-label="Copiar hash">
+                    <Icon name={copied ? "check" : "copy"} size={18} color={copied ? "var(--accent)" : "currentColor"} />
+                  </button>
+                  <a
+                    className="icon-btn"
+                    href={`${explorerBase}/tx/${t.hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Ver en explorador"
+                  >
+                    <Icon name="arrowR" size={18} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="scroll-bottom" />
+    </div>
+  );
+}
+
+function DetailRow({ label, value, mono, last }: { label: string; value: string; mono?: boolean; last?: boolean }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "13px 18px", borderBottom: last ? "none" : "1px solid var(--line)",
+    }}>
+      <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--txt)", fontFamily: mono ? "var(--font-mono, monospace)" : undefined }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function shortHex(addr: string) {
+  return addr.length > 12 ? `${addr.slice(0, 8)}…${addr.slice(-6)}` : addr;
 }

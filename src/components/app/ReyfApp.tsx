@@ -5,7 +5,7 @@
 import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
-import { Onboarding, ScreenHome, ScreenWallet } from "./screens/core";
+import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens/core";
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
 import { ScreenCard, ScreenProfile, ScreenNotifs } from "./screens/account";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -73,7 +73,7 @@ export default function ReyfApp() {
     perfil: <ScreenProfile go={go} />,
     recompensas: <ScreenProfile go={go} />,
     notifs: <ScreenNotifs go={go} />,
-    txn: <ScreenWallet go={go} />,
+    txn: <ScreenTxnDetail go={go} ctx={route.ctx} />,
   };
 
   const showTabs = !["boveda", "convertir", "cambio", "txn"].includes(route.screen);

@@ -11,6 +11,8 @@ export interface Vault {
 export interface Txn {
   id: number; nm: string; su: string; amt: number; ic: string; pos?: boolean;
   cur?: string; sub?: string | null;
+  /** Campos extra para movimientos on-chain */
+  hash?: string; fromAddr?: string; toAddr?: string; blockNumber?: string;
 }
 
 export const ALLOC: Alloc[] = [

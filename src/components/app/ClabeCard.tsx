@@ -1,6 +1,7 @@
 "use client";
 
-/* SEYF — Tarjeta de depósito (CLABE única del usuario para SPEI → MXNB). */
+/* SEYF — Tarjeta de depósito (CLABE única del usuario para SPEI → MXNB).
+   La CLABE se genera automáticamente al primer acceso — el usuario solo la ve y copia. */
 import React, { useState } from "react";
 import { Icon } from "./ui";
 import { JunoService } from "@/services/junoService";
@@ -9,7 +10,7 @@ import { useUserClabe } from "@/hooks/useUserClabe";
 
 export function ClabeCard() {
   const wallet = useWallet();
-  const { clabe, loading, error, create } = useUserClabe(wallet.address);
+  const { clabe, loading, error } = useUserClabe(wallet.address);
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
@@ -23,20 +24,22 @@ export function ClabeCard() {
       .catch(() => {});
   };
 
-  if (!clabe) {
+  if (loading || (!clabe && !error)) {
+    return (
+      <div className="deposit-card" style={{ minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+        <span className="spin" style={{ color: "var(--accent)" }} />
+        <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Preparando tu CLABE…</span>
+      </div>
+    );
+  }
+
+  if (error) {
     return (
       <div className="card" style={{ textAlign: "center", padding: 22 }}>
-        <span style={{ width: 50, height: 50, borderRadius: 15, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-          <Icon name="card" size={24} />
-        </span>
-        <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Tu CLABE de depósito</p>
-        <p style={{ margin: "6px 0 14px", fontSize: 13, color: "var(--txt-muted)" }}>
-          Crea una CLABE única para recibir depósitos por SPEI. Se acreditan a tu cuenta automáticamente.
+        <p style={{ margin: 0, fontSize: 13, color: "var(--neg)" }}>{error}</p>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>
+          Verifica tu conexión e intenta recargar la página.
         </p>
-        <button className="btn btn-primary" onClick={create} disabled={loading}>
-          {loading ? <span className="spin" /> : <Icon name="plus" size={18} />} Crear mi CLABE
-        </button>
-        {error && <div className="alert alert-error">{error}</div>}
       </div>
     );
   }
@@ -54,7 +57,9 @@ export function ClabeCard() {
         </span>
       </div>
 
-      <p className="dc-clabe num" style={{ margin: "22px 0 0", position: "relative" }}>{JunoService.formatCLABE(clabe)}</p>
+      <p className="dc-clabe num" style={{ margin: "22px 0 0", position: "relative" }}>
+        {JunoService.formatCLABE(clabe!)}
+      </p>
 
       <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 16 }}>
         <div style={{ minWidth: 0 }}>
