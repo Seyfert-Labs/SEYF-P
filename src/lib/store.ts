@@ -76,12 +76,39 @@ async function jdel(url: string) {
   await fetch(url, { method: "DELETE" });
 }
 
+export interface StoreProfile {
+  riskProfile: string | null;
+  fullName: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
 export const store = {
   enabled: USE_DB,
 
-  async upsertProfile(p: { wallet: string; embedded?: string; email?: string; did?: string }) {
+  async upsertProfile(p: { wallet: string; embedded?: string; email?: string; did?: string; riskProfile?: string; fullName?: string; phone?: string }) {
     if (!USE_DB) return;
     await jpost("/api/db/profile", p);
+  },
+
+  async getProfile(wallet: string): Promise<StoreProfile | null> {
+    if (!USE_DB) return null;
+    const { profile } = await jget<{ profile: { risk_profile: string | null; full_name: string | null; phone: string | null; email: string | null } | null }>(`/api/db/profile?wallet=${wallet}`);
+    if (!profile) return null;
+    return { riskProfile: profile.risk_profile, fullName: profile.full_name, phone: profile.phone, email: profile.email };
+  },
+
+  async setRiskProfile(wallet: string, planId: string) {
+    if (USE_DB) return void (await jpost("/api/db/profile", { wallet, riskProfile: planId }));
+    LS.setStr(key("risk", wallet), planId);
+  },
+
+  async getRiskProfile(wallet: string): Promise<string | null> {
+    if (USE_DB) {
+      const p = await this.getProfile(wallet);
+      return p?.riskProfile ?? null;
+    }
+    return LS.getStr(key("risk", wallet));
   },
 
   // ---- CLABE ----

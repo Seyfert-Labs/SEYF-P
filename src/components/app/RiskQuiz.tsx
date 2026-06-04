@@ -14,6 +14,7 @@ import {
   FMT,
   type VaultPlan,
 } from "./data";
+import { useWallet } from "@/components/wallet/WalletContext";
 import type { Go } from "./nav";
 import { Portal } from "./Portal";
 
@@ -27,6 +28,7 @@ interface OnboardingQuizProps {
 }
 
 export function OnboardingQuiz({ onDone }: OnboardingQuizProps) {
+  const { address } = useWallet();
   const total = RISK_QUESTIONS.length;
   const [step, setStep] = useState(0);
   const [scores, setScores] = useState<number[]>([]);
@@ -36,8 +38,8 @@ export function OnboardingQuiz({ onDone }: OnboardingQuizProps) {
   const plan = done ? recommendPlan(sum) : null;
 
   React.useEffect(() => {
-    if (plan) saveRiskProfile(plan.id);
-  }, [plan]);
+    if (plan) saveRiskProfile(plan.id, address);
+  }, [plan, address]);
 
   const pick = (score: number) => {
     setScores((prev) => [...prev.slice(0, step), score]);
@@ -198,6 +200,7 @@ export function RiskQuizBanner({ go }: { go: Go }) {
 }
 
 function RiskQuizModal({ go, onClose }: { go: Go; onClose: () => void }) {
+  const { address } = useWallet();
   const total = RISK_QUESTIONS.length;
   const [step, setStep] = useState(0);
   const [scores, setScores] = useState<number[]>([]);
@@ -207,8 +210,8 @@ function RiskQuizModal({ go, onClose }: { go: Go; onClose: () => void }) {
   const plan = done ? recommendPlan(sum) : null;
 
   React.useEffect(() => {
-    if (plan) saveRiskProfile(plan.id);
-  }, [plan]);
+    if (plan) saveRiskProfile(plan.id, address);
+  }, [plan, address]);
 
   const pick = (score: number) => {
     setScores((prev) => [...prev.slice(0, step), score]);

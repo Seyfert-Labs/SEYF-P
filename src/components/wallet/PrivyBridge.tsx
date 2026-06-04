@@ -9,6 +9,7 @@ import { useSmartWallets } from "@privy-io/react-auth/smart-wallets";
 import { encodeFunctionData, parseUnits, type Address } from "viem";
 import { WalletCtx, type WalletState } from "./WalletContext";
 import { store } from "@/lib/store";
+import { syncRiskProfile } from "@/components/app/data";
 import {
   readMXNBBalance,
   erc20Abi,
@@ -35,9 +36,11 @@ export default function PrivyBridge({ children }: { children: React.ReactNode })
   const name = (user?.google?.name as string | undefined) || undefined;
 
   // Guarda/actualiza el perfil del usuario (smart wallet + wallet embebida + correo).
+  // Además sincroniza el risk_profile desde Supabase a localStorage (multi-dispositivo).
   useEffect(() => {
     if (!authenticated || !address) return;
     void store.upsertProfile({ wallet: address, embedded: embeddedAddress, email, did: user?.id });
+    void syncRiskProfile(address);
   }, [authenticated, address, embeddedAddress, email, user?.id]);
 
   const [balance, setBalance] = useState(0);

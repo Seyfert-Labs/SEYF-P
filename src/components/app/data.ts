@@ -267,17 +267,33 @@ export function recommendPlan(totalScore: number): VaultPlan {
   return planById("crecimiento");
 }
 
-/* Persistencia ligera del perfil recomendado (cliente). */
+/* Persistencia del perfil de riesgo.
+   - localStorage: lectura síncrona rápida (UI).
+   - Supabase (via store): persiste entre dispositivos cuando el usuario está autenticado. */
 const RISK_KEY = "reyf_risk_profile";
 
-export function saveRiskProfile(planId: string) {
+export function saveRiskProfile(planId: string, address?: string) {
   if (typeof window !== "undefined") {
     try { window.localStorage.setItem(RISK_KEY, planId); } catch {}
+  }
+  if (address) {
+    // Fire-and-forget: no bloquea la UI.
+    import("@/lib/store").then(({ store }) => void store.setRiskProfile(address, planId));
   }
 }
 
 export function loadRiskProfile(): string | null {
   if (typeof window === "undefined") return null;
   try { return window.localStorage.getItem(RISK_KEY); } catch { return null; }
+}
+
+/** Carga el risk_profile desde Supabase y lo siembra en localStorage si no estaba. */
+export async function syncRiskProfile(address: string): Promise<string | null> {
+  const { store } = await import("@/lib/store");
+  const remote = await store.getRiskProfile(address);
+  if (remote && !loadRiskProfile()) {
+    try { window.localStorage.setItem(RISK_KEY, remote); } catch {}
+  }
+  return remote ?? loadRiskProfile();
 }
 
