@@ -617,26 +617,74 @@ function AddVaultModal({ plan, onClose, onCreate }: { plan: VaultPlan; onClose: 
 function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; onClose: () => void; onConfirm: (amt: number) => void | Promise<void> }) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
   const max = mode === "abonar" ? Math.max(0, vault.goal - vault.bal) : vault.bal;
   const n = Number(amount);
   const valid = n > 0 && n <= max && !submitting;
+
   const submit = async () => {
     setSubmitting(true);
     try {
       await onConfirm(n);
+      setDone(true);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (done && mode === "retirar") {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-grab" />
+          <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+            <span style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="check" size={32} />
+            </span>
+            <p className="modal-title" style={{ marginTop: 16, textAlign: "center" }}>Listo</p>
+            <p className="modal-sub" style={{ textAlign: "center" }}>
+              <b style={{ color: "var(--txt)" }}>${FMT(n, 2)} MXN</b> retirados de{" "}
+              <b style={{ color: "var(--txt)" }}>{vault.nm}</b>.<br />
+              Ya están disponibles en tus <b style={{ color: "var(--accent)" }}>Pesos digitales</b>.
+            </p>
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={onClose}>Listo</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="modal-overlay" onClick={submitting ? undefined : onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
         <p className="modal-title">{mode === "abonar" ? "Abonar a" : "Retirar de"} {vault.nm}</p>
+
+        {mode === "retirar" && (
+          <div className="card" style={{ marginTop: 4, marginBottom: 4, background: "var(--accent-soft)", border: "none", display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="recv" size={16} color="var(--accent)" />
+            <p style={{ margin: 0, fontSize: "var(--t-xs)", color: "var(--txt-muted)", lineHeight: 1.5 }}>
+              El monto pasará a tus <b style={{ color: "var(--accent)" }}>Pesos digitales</b>, disponible al instante.
+            </p>
+          </div>
+        )}
+
         <span className="field-label">Monto (MXN)</span>
-        <input className="input num-input" type="number" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <p className="modal-sub" style={{ margin: "8px 0 0" }}>{mode === "abonar" ? `Falta para la meta: $${FMT(max, 2)}` : `Disponible: $${FMT(max, 2)}`}</p>
-        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={!valid} onClick={submit}>{submitting ? <span className="spin" /> : mode === "abonar" ? "Abonar" : "Retirar"}</button>
+        <input
+          className="input num-input"
+          type="number"
+          inputMode="decimal"
+          placeholder="0.00"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <p className="modal-sub" style={{ margin: "8px 0 0" }}>
+          {mode === "abonar" ? `Falta para la meta: $${FMT(max, 2)}` : `Disponible en bóveda: $${FMT(max, 2)}`}
+        </p>
+
+        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={!valid} onClick={submit}>
+          {submitting ? <span className="spin" /> : mode === "abonar" ? "Abonar" : "Retirar a Pesos digitales"}
+        </button>
         <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose} disabled={submitting}>Cancelar</button>
       </div>
     </div>
