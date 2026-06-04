@@ -236,6 +236,50 @@ export function ScreenProfile({ go }: { go: Go }) {
   );
 }
 
+/* ---------------- NOTIFICACIONES ---------------- */
+export function ScreenNotifs({ go }: { go: Go }) {
+  return (
+    <div className="screen screen-enter">
+      <div className="safe-top" />
+      <SubHeader title="Notificaciones" go={go} back="home" />
+      <div className="screen-pad">
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 16,
+            paddingTop: 64,
+            textAlign: "center",
+          }}
+        >
+          <span
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 22,
+              background: "var(--surface-2)",
+              border: "1px solid var(--line)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="bell" size={32} color="var(--txt-dim)" />
+          </span>
+          <div>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 18 }}>Todo tranquilo por aquí</p>
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--txt-muted)", lineHeight: 1.55, maxWidth: 260 }}>
+              Aquí verás alertas de movimientos, rendimientos y novedades de tu cuenta.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SecRow({ icon, t, right, last, danger, onClick }: { icon: string; t: string; right?: React.ReactNode; last?: boolean; danger?: boolean; onClick?: () => void }) {
   return (
     <div className="lrow" onClick={onClick} style={{ padding: "12px 12px", borderBottom: last ? "none" : "1px solid var(--line)", cursor: onClick ? "pointer" : undefined }}>

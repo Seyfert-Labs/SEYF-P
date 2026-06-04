@@ -7,7 +7,7 @@ import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet, DepositOnboarding } from "./screens/core";
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
-import { ScreenCard, ScreenProfile } from "./screens/account";
+import { ScreenCard, ScreenProfile, ScreenNotifs } from "./screens/account";
 import { useWallet } from "@/components/wallet/WalletContext";
 
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
@@ -83,7 +83,7 @@ export default function ReyfApp() {
     cambio: <ScreenConvert go={go} />,
     perfil: <ScreenProfile go={go} />,
     recompensas: <ScreenProfile go={go} />,
-    notifs: <ScreenProfile go={go} />,
+    notifs: <ScreenNotifs go={go} />,
     txn: <ScreenWallet go={go} />,
   };
 

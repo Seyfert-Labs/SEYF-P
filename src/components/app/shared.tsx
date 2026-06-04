@@ -38,8 +38,8 @@ export function TopBar({ go }: { go: Go }) {
         </p>
       </div>
       <div className="head-actions">
-        <button className="icon-btn" onClick={() => go("bovedas")} aria-label="Bóvedas de ahorro">
-          <Icon name="vault" size={20} />
+        <button className="icon-btn" onClick={() => go("notifs")} aria-label="Notificaciones">
+          <Icon name="bell" size={20} />
         </button>
         <AvatarButton go={go} />
       </div>
