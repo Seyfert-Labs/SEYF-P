@@ -32,6 +32,8 @@ export default function PrivyBridge({ children }: { children: React.ReactNode })
     (user?.google?.email as string | undefined) ||
     undefined;
 
+  const name = (user?.google?.name as string | undefined) || undefined;
+
   // Guarda/actualiza el perfil del usuario (smart wallet + wallet embebida + correo).
   useEffect(() => {
     if (!authenticated || !address) return;
@@ -106,6 +108,7 @@ export default function PrivyBridge({ children }: { children: React.ReactNode })
     address,
     smartAddress,
     gaslessReady,
+    name,
     email,
     balance,
     balanceLoading,

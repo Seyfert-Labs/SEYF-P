@@ -18,6 +18,8 @@ export interface WalletState {
   smartAddress?: string;
   /** true si la smart wallet está lista para enviar transacciones patrocinadas. */
   gaslessReady: boolean;
+  /** nombre del usuario (Google o similar). */
+  name?: string;
   /** correo del usuario (si lo hay). */
   email?: string;
   /** saldo MXNB on-chain (unidades), leído de la wallet del usuario. */

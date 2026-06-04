@@ -101,12 +101,25 @@ export function ScreenHome({ go }: { go: Go }) {
               <Icon name="eye" size={16} color="var(--txt-dim)" />
             </button>
           </div>
-          <p className="amount num" style={{ marginTop: 8 }}>
-            {hide ? "••••••" : <><span>${FMT(pesos, 2).split(".")[0]}</span><span className="cents">.{FMT(pesos, 2).split(".")[1]}</span></>}
-            <span className="cur">MXN</span>
-          </p>
+          {hide ? (
+            <p style={{
+              marginTop: 10, fontSize: 52, fontWeight: 800, letterSpacing: "-0.03em",
+              fontFamily: "var(--font-display)", lineHeight: 1, color: "var(--txt-muted)",
+            }}>
+              ••••••
+            </p>
+          ) : (
+            <div style={{ marginTop: 10, lineHeight: 1 }}>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>
+                <span style={{ fontSize: 28, verticalAlign: "top", marginTop: 10, display: "inline-block", color: "var(--txt-muted)", fontWeight: 700 }}>$</span>
+                <span style={{ fontSize: 62, color: "var(--txt)" }}>{FMT(pesos, 2).split(".")[0]}</span>
+                <span style={{ fontSize: 32, color: "var(--txt-muted)", fontWeight: 700 }}>.{FMT(pesos, 2).split(".")[1]}</span>
+                <span style={{ fontSize: 16, color: "var(--txt-muted)", fontWeight: 600, marginLeft: 6, letterSpacing: 0 }}>MXN</span>
+              </span>
+            </div>
+          )}
           {totalSaved > 0 && (
-            <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
+            <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
               + <span className="num" style={{ color: "var(--accent)", fontWeight: 700 }}>${FMT(totalSaved, 0)}</span> en ahorro
             </p>
           )}

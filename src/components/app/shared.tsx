@@ -25,7 +25,9 @@ export function AvatarButton({ go }: { go: Go }) {
 export function TopBar({ go }: { go: Go }) {
   const wallet = useWallet();
   const authed = wallet.enabled && wallet.authenticated;
-  const display = authed ? wallet.email ?? "Mi cuenta" : "Diego Robles";
+  const display = authed
+    ? wallet.name ?? wallet.email?.split("@")[0] ?? "Mi cuenta"
+    : "Diego Robles";
   return (
     <div className="app-head">
       <div style={{ minWidth: 0, flex: 1 }}>
