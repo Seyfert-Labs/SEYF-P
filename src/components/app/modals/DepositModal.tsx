@@ -1,8 +1,8 @@
 "use client";
 
-/* SEYF — Modal de "Agregar": fondea la smart wallet del usuario con MXNB
-   on-chain (Juno emite y envía a SU dirección). Loader corto + transacción
-   pendiente en el historial (se confirma sola al llegar on-chain). */
+/* Modal de recepción de fondos.
+   Dos métodos: SPEI (CLABE) y Cuenta Reyf (dirección on-chain).
+   El bloque "Simular depósito" solo aparece fuera de producción. */
 import React, { useState } from "react";
 import { Icon } from "../ui";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -11,8 +11,11 @@ import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
 import { ClabeCard } from "../ClabeCard";
 import { FMT } from "../data";
+import { explorerBase } from "@/lib/chain";
 
-type Status = "idle" | "sending" | "done" | "error";
+const IS_DEV = process.env.NODE_ENV !== "production";
+
+type Tab = "spei" | "cuenta";
 
 export function DepositModal({
   onClose,
@@ -24,115 +27,152 @@ export function DepositModal({
   const wallet = useWallet();
   const pending = usePendingTxns(wallet.address);
   const limits = useMonthlyLimits(wallet.address);
-  const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<Status>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("spei");
+  const [addrCopied, setAddrCopied] = useState(false);
 
-  const remainingDeposit = limits.remaining("deposit");
+  // Dev-only
+  const [devAmt, setDevAmt] = useState("");
+  const [devStatus, setDevStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [devError, setDevError] = useState<string | null>(null);
 
-  const fund = async () => {
-    const n = Number(amount);
+  const copyAddress = () => {
+    if (!wallet.address) return;
+    navigator.clipboard?.writeText(wallet.address).then(() => {
+      setAddrCopied(true);
+      setTimeout(() => setAddrCopied(false), 1500);
+    }).catch(() => {});
+  };
+
+  const simulateDeposit = async () => {
+    const n = Number(devAmt);
     if (!wallet.address || n <= 0) return;
-    // Límite mensual de depósito.
     if (!limits.canDo("deposit", n)) {
-      setError(`Límite mensual de depósito alcanzado. Disponible este mes: $${FMT(remainingDeposit, 2)} de $${FMT(limits.limit, 0)}.`);
-      setStatus("error");
+      setDevError(`Límite mensual alcanzado. Disponible: $${FMT(limits.remaining("deposit"), 2)}`);
+      setDevStatus("error");
       return;
     }
-    setStatus("sending");
-    setError(null);
+    setDevStatus("sending");
+    setDevError(null);
     try {
       await junoService.fundWallet(wallet.address, n);
       await limits.record("deposit", n);
-      pending.add("deposit", n); // aparece como "pendiente" en el historial
+      pending.add("deposit", n);
       onSuccess?.();
-      setStatus("done");
-      setTimeout(onClose, 1600);
+      setDevStatus("done");
+      setTimeout(onClose, 1500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo agregar fondos");
-      setStatus("error");
+      setDevError(e instanceof Error ? e.message : "Error al simular depósito");
+      setDevStatus("error");
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={() => status !== "sending" && onClose()}>
+    <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
+        <p className="modal-title">Agregar dinero</p>
 
-        {status === "idle" && (
+        <div className="seg" style={{ marginBottom: 20 }}>
+          <button className={tab === "spei" ? "on" : ""} onClick={() => setTab("spei")}>SPEI</button>
+          <button className={tab === "cuenta" ? "on" : ""} onClick={() => setTab("cuenta")}>Cuenta Reyf</button>
+        </div>
+
+        {/* ── SPEI ── */}
+        {tab === "spei" && (
           <>
-            <p className="modal-title">Agregar dinero</p>
-            <p className="modal-sub">
-              Acreditamos el dinero directo a <b style={{ color: "var(--txt)" }}>tu cuenta</b> al instante.
-            </p>
-            <span className="field-label">Monto a recibir (MXN)</span>
-            <input
-              className="input num-input"
-              type="number"
-              inputMode="decimal"
-              placeholder="500.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              {[100, 500, 1000].map((q) => (
-                <button key={q} className="chip" onClick={() => setAmount(String(q))}>${q}</button>
-              ))}
-            </div>
-            <p style={{ margin: "12px 2px 0", fontSize: 12, color: "var(--txt-dim)" }}>
-              Disponible este mes: <b className="num" style={{ color: "var(--txt-muted)" }}>${FMT(remainingDeposit, 2)}</b> de ${FMT(limits.limit, 0)}.
-            </p>
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: 16 }}
-              onClick={fund}
-              disabled={!amount || Number(amount) <= 0}
-            >
-              <Icon name="recv" size={18} /> Agregar {amount ? `$${amount}` : "dinero"}
-            </button>
-
-            <div className="divider" style={{ marginTop: 20 }} />
-            <span className="field-label" style={{ marginTop: 0 }}>O recibe por SPEI a tu CLABE</span>
             <ClabeCard />
-            <p className="modal-sub" style={{ marginTop: 10, marginBottom: 0 }}>
-              Deposita por SPEI a esta CLABE y se acredita a tu cuenta automáticamente.
+            <p className="modal-sub" style={{ marginTop: 12, marginBottom: 0 }}>
+              Transfiere desde cualquier banco mexicano. El dinero se acredita automáticamente.
             </p>
-
-            <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={onClose}>Cancelar</button>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <span className="chip"><Icon name="clock" size={12} /> ~15 minutos</span>
+              <span className="chip"><Icon name="info" size={12} /> Mínimo $500 MXN</span>
+            </div>
           </>
         )}
 
-        {status === "sending" && (
-          <div style={{ textAlign: "center", paddingBottom: 16 }}>
-            <div className="logo-mark brand" style={{ margin: "8px auto 18px", background: "var(--accent-soft)", color: "var(--accent)" }}>
-              <Icon name="recv" size={26} />
+        {/* ── Cuenta Reyf ── */}
+        {tab === "cuenta" && (
+          <>
+            <div className="deposit-card">
+              <div className="dc-glow" />
+              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <p className="eyebrow">Cuenta Reyf</p>
+                  <p style={{ margin: "4px 0 0", fontSize: "var(--t-xs)", fontWeight: 800, color: "var(--accent)" }}>
+                    Red Arbitrum · MXNB
+                  </p>
+                </div>
+                <span className="pos-pill"><Icon name="shield" size={11} /> ERC-4337</span>
+              </div>
+              <p className="num dc-clabe" style={{ marginTop: 18, fontSize: 13, letterSpacing: "0.04em", wordBreak: "break-all", lineHeight: 1.7 }}>
+                {wallet.address ?? "—"}
+              </p>
+              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                {wallet.address ? (
+                  <a
+                    className="chip"
+                    href={`${explorerBase}/address/${wallet.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none" }}
+                  >
+                    <Icon name="arrowR" size={12} /> Explorador
+                  </a>
+                ) : <span />}
+                <button className="icon-btn" onClick={copyAddress} aria-label="Copiar dirección">
+                  <Icon name={addrCopied ? "check" : "copy"} size={18} color={addrCopied ? "var(--accent)" : "var(--txt)"} />
+                </button>
+              </div>
             </div>
-            <p className="modal-title" style={{ textAlign: "center" }}>Agregando dinero…</p>
-            <p className="modal-sub" style={{ textAlign: "center" }}>Estamos acreditando tu cuenta.</p>
-            <div style={{ display: "flex", justifyContent: "center", margin: "20px 0 4px" }}>
-              <span className="spin" style={{ width: 26, height: 26, color: "var(--accent)" }} />
+
+            <div className="card" style={{ marginTop: 12, background: "var(--accent-2-soft)", border: "none", display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <span style={{ flexShrink: 0, marginTop: 1, display: "flex" }}><Icon name="info" size={16} color="var(--accent-2)" /></span>
+              <p style={{ margin: 0, fontSize: "var(--t-xs)", color: "var(--txt-muted)", lineHeight: 1.55 }}>
+                Solo envía <b style={{ color: "var(--txt)" }}>MXNB</b> en la red{" "}
+                <b style={{ color: "var(--txt)" }}>Arbitrum</b>. Otros tokens o redes pueden resultar en pérdida de fondos.
+              </p>
             </div>
-          </div>
+          </>
         )}
 
-        {status === "done" && (
-          <div style={{ textAlign: "center", paddingBottom: 16 }}>
-            <div style={{ fontSize: 52, margin: "6px 0 4px" }}>✓</div>
-            <p className="modal-title" style={{ textAlign: "center" }}>¡En camino!</p>
-            <p className="modal-sub" style={{ textAlign: "center" }}>
-              Tu depósito aparece como <b style={{ color: "var(--accent-2)" }}>pendiente</b> y se confirmará en unos segundos.
-            </p>
-          </div>
+        {/* ── Dev: simular depósito ── */}
+        {IS_DEV && (
+          <>
+            <div className="divider" style={{ marginTop: 22 }} />
+            <p className="eyebrow" style={{ marginBottom: 10 }}>Dev · Simular depósito</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                className="input num-input"
+                type="number"
+                inputMode="decimal"
+                placeholder="500.00"
+                value={devAmt}
+                onChange={(e) => { setDevAmt(e.target.value); setDevStatus("idle"); setDevError(null); }}
+                style={{ flex: 1, margin: 0 }}
+                disabled={devStatus === "sending"}
+              />
+              <button
+                className="btn btn-ghost"
+                style={{ flex: "none", width: "auto", padding: "0 20px", margin: 0 }}
+                disabled={!devAmt || Number(devAmt) <= 0 || devStatus === "sending"}
+                onClick={simulateDeposit}
+              >
+                {devStatus === "sending" ? <span className="spin" /> : "Simular"}
+              </button>
+            </div>
+            {devStatus === "done" && (
+              <p style={{ margin: "8px 2px 0", fontSize: "var(--t-xs)", color: "var(--accent)", fontWeight: 700 }}>
+                ✓ Depósito simulado
+              </p>
+            )}
+            {devError && (
+              <p style={{ margin: "8px 2px 0", fontSize: "var(--t-xs)", color: "var(--neg)" }}>{devError}</p>
+            )}
+          </>
         )}
 
-        {status === "error" && (
-          <div style={{ textAlign: "center", paddingBottom: 16 }}>
-            <div style={{ fontSize: 44, margin: "6px 0 4px" }}>!</div>
-            <p className="modal-title" style={{ textAlign: "center" }}>No se pudo agregar</p>
-            <div className="alert alert-error" style={{ textAlign: "left" }}>{error}</div>
-            <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setStatus("idle")}>Reintentar</button>
-          </div>
-        )}
+        <button className="btn btn-ghost" style={{ marginTop: 20 }} onClick={onClose}>Cerrar</button>
       </div>
     </div>
   );
