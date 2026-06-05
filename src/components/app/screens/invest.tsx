@@ -16,7 +16,7 @@ import { useAdvance } from "@/hooks/useAdvance";
 import { useBitsoRates, useBitsoBalances } from "@/hooks/useBitsoRates";
 import { useConversions } from "@/hooks/useConversions";
 import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
-import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN } from "@/lib/chain";
+import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN, readMXNBBalance } from "@/lib/chain";
 
 // Con Supabase, el ledger de conversiones lo escribe /api/convert (servidor);
 // sin él, el cliente lo persiste localmente con la capa `store`.
@@ -364,6 +364,9 @@ export function ScreenConvert({ go }: { go: Go }) {
   const [amount, setAmount] = useState("1000");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
+  const [doneInfo, setDoneInfo] = useState<
+    { fwd: boolean; received: number; recCode: string; spent: number; spentCode: string } | null
+  >(null);
 
   const from = assetByCode(fromCode)!;
   const to = assetByCode(toCode)!;
@@ -379,6 +382,30 @@ export function ScreenConvert({ go }: { go: Go }) {
   // (pool del negocio) y el USDT se atribuye al usuario en el ledger.
   const sellingMXNB = fromCode === "MXN";
 
+  // Saldo disponible del lado origen: MXNB on-chain (forward) o divisa del ledger (inverse).
+  const availableFrom = sellingMXNB ? wallet.balance : localBalances[fromCode] ?? 0;
+  const setPct = (p: number) => {
+    const v = availableFrom * (p / 100);
+    setAmount(v > 0 ? String(Number(v.toFixed(from.dec))) : "0");
+    setStatus("idle");
+  };
+
+  // Mantiene el pop-up "en camino" hasta que el cambio se refleje en el saldo
+  // MXNB on-chain (o agota ~18s; la conversión ya quedó confirmada en el server).
+  const confirmBalance = async (startBal: number) => {
+    if (!wallet.address) return;
+    for (let i = 0; i < 7; i++) {
+      await new Promise((r) => setTimeout(r, 2600));
+      wallet.refreshBalance();
+      try {
+        const now = await readMXNBBalance(wallet.address as `0x${string}`);
+        if (Math.abs(now - startBal) > 0.01) return;
+      } catch {
+        /* reintenta */
+      }
+    }
+  };
+
   const doConvert = async () => {
     if (!oneSideIsMXN || amt <= 0 || result == null) return;
     if (!wallet.address) {
@@ -387,6 +414,8 @@ export function ScreenConvert({ go }: { go: Go }) {
       return;
     }
     setStatus("sending");
+    setDoneInfo(null);
+    const startBal = wallet.balance;
     try {
       // Validación previa según el sentido.
       if (sellingMXNB) {
@@ -458,11 +487,19 @@ export function ScreenConvert({ go }: { go: Go }) {
         });
       }
 
-      // Refrescar el saldo MXNB on-chain (Home) y el live de Bitso.
-      wallet.refreshBalance();
+      // Reflejar el resultado y refrescar el live de Bitso.
       void refreshBalances();
-      setStatus("done");
+      setDoneInfo({
+        fwd: sellingMXNB,
+        received: d.filledTo ?? result ?? 0,
+        recCode: sellingMXNB ? toCode : "MXN",
+        spent: d.filledFrom ?? amt,
+        spentCode: fromCode,
+      });
       setMsg("");
+      // Pop-up "en camino" hasta que el cambio se valide en el saldo de la wallet.
+      await confirmBalance(startBal);
+      setStatus("done");
     } catch (e) {
       setStatus("error");
       setMsg(e instanceof Error ? e.message : "No se pudo completar la conversión.");
@@ -505,6 +542,26 @@ export function ScreenConvert({ go }: { go: Go }) {
           </div>
         </div>
 
+        {/* % del balance a convertir */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "12px 4px 8px" }}>
+          <span style={{ fontSize: 12, color: "var(--txt-dim)" }}>
+            Disponible: <b className="num" style={{ color: "var(--txt-muted)" }}>{FMT(availableFrom, from.dec)} {from.code}</b>
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[25, 50, 75, 100].map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPct(p)}
+              disabled={availableFrom <= 0}
+              style={{ flex: 1, padding: "9px 0", borderRadius: 11, border: "1px solid var(--line)", background: "var(--surface-2)", color: "var(--txt-muted)", fontWeight: 800, fontSize: 12.5, cursor: availableFrom > 0 ? "pointer" : "not-allowed", opacity: availableFrom > 0 ? 1 : 0.5 }}
+            >
+              {p === 100 ? "MÁX" : `${p}%`}
+            </button>
+          ))}
+        </div>
+
         <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div className="gmatch">
             <Icon name="globe" size={16} color="var(--accent)" /> 1 {from.code} = <b>{unitRate == null ? "—" : FMT(unitRate, 4)} {to.code}</b>
@@ -524,30 +581,55 @@ export function ScreenConvert({ go }: { go: Go }) {
         {!oneSideIsMXN && (
           <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0" }}>Una de las divisas debe ser MXN para ejecutar la conversión.</p>
         )}
-        {status === "done" && (
-          <div className="card" style={{ marginTop: 12, background: "var(--accent-soft)", border: "none" }}>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--accent)", fontWeight: 800 }}>✓ Orden ejecutada en Bitso</p>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>
-              {sellingMXNB ? (
-                <>
-                  Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(result ?? 0, to.dec)} {to.code}</b>.
-                  {TREASURY_ENABLED ? " Se descontó de tu saldo MXN" : ""}; quedó en tus movimientos y tu saldo en divisas.
-                </>
-              ) : (
-                <>
-                  Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(result ?? 0, 2)} MXN</b> emitidos a tu wallet.
-                  Se descontó <b className="num" style={{ color: "var(--txt)" }}>{FMT(amt, from.dec)} {from.code}</b> de tu saldo en divisas.
-                </>
-              )}
-            </p>
-          </div>
-        )}
-        {status === "error" && (
-          <div className="card" style={{ marginTop: 12 }}>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-              La tasa mostrada es real de Bitso. La ejecución no se completó: <b style={{ color: "var(--txt)" }}>{msg}</b>
-            </p>
-          </div>
+        {/* Pop-up de estado: "en camino" (loader) → completado / error */}
+        {status !== "idle" && (
+          <Portal>
+            <div
+              onClick={status === "sending" ? undefined : () => setStatus("idle")}
+              style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.62)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "grid", placeItems: "center", padding: 22 }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="screen-enter"
+                style={{ width: "100%", maxWidth: 360, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 24, padding: "30px 24px", textAlign: "center" }}
+              >
+                {status === "sending" && (
+                  <>
+                    <span className="spin" style={{ width: 46, height: 46, color: "var(--accent)", margin: "0 auto" }} />
+                    <h3 style={{ margin: "20px 0 0", fontSize: 19, fontWeight: 800 }}>Tu cambio está en camino</h3>
+                    <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+                      Estamos procesando tu conversión y confirmándola en tu saldo. Puede tardar unos segundos…
+                    </p>
+                  </>
+                )}
+                {status === "done" && doneInfo && (
+                  <>
+                    <div style={{ width: 58, height: 58, borderRadius: "50%", background: "var(--accent-soft)", display: "grid", placeItems: "center", margin: "0 auto" }}>
+                      <Icon name="check" size={30} color="var(--accent)" />
+                    </div>
+                    <h3 style={{ margin: "18px 0 0", fontSize: 19, fontWeight: 800 }}>¡Cambio completado!</h3>
+                    <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "var(--txt-muted)", lineHeight: 1.55 }}>
+                      Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(doneInfo.received, doneInfo.fwd ? to.dec : 2)} {doneInfo.recCode}</b>
+                      {doneInfo.fwd ? " en tu saldo en divisas." : " en tu wallet."}
+                      <br />
+                      Se descontó <b className="num" style={{ color: "var(--txt)" }}>{FMT(doneInfo.spent, doneInfo.fwd ? 2 : assetByCode(doneInfo.spentCode)?.dec ?? 2)} {doneInfo.fwd ? "MXN" : doneInfo.spentCode}</b> de tu saldo.
+                    </p>
+                    <button className="btn btn-primary" style={{ marginTop: 22 }} onClick={() => setStatus("idle")}>Listo</button>
+                  </>
+                )}
+                {status === "error" && (
+                  <>
+                    <div style={{ width: 58, height: 58, borderRadius: "50%", background: "rgba(255,90,90,0.14)", display: "grid", placeItems: "center", margin: "0 auto" }}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--neg)" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    </div>
+                    <h3 style={{ margin: "18px 0 0", fontSize: 19, fontWeight: 800 }}>No se completó</h3>
+                    <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>{msg || "No se pudo ejecutar la conversión."}</p>
+                    <button className="btn btn-primary" style={{ marginTop: 22 }} onClick={() => setStatus("idle")}>Entendido</button>
+                  </>
+                )}
+              </div>
+            </div>
+          </Portal>
         )}
 
         {/* Tus divisas: tarjetas horizontales (saldo por-usuario derivado de tus conversiones) */}
