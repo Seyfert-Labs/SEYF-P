@@ -70,7 +70,7 @@
 .lp .nav-inner.nav-hidden { transform: translate(-50%, -160%); }
 .lp .nav-inner.nav-scrolled { background: rgba(10,9,18,0.82); box-shadow: 0 10px 40px -20px rgba(0,0,0,0.9); }
 .lp .brand-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; }
-.lp .brand-logo .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; }
+.lp .brand-logo .mk { width: 30px; height: 30px; border-radius: 9px; background: #0A0912; border: 1px solid rgba(255,255,255,.08); display: grid; place-items: center; }
 .lp .nav-links { display: flex; gap: 30px; align-items: center; }
 .lp .nav-links a { font-size: 14.5px; color: var(--muted); font-weight: 600; transition: color .15s; }
 .lp .nav-links a:hover { color: var(--txt); }

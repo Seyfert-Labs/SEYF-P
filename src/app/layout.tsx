@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   title: "Reyf — Super app de finanzas",
   description:
     "Pesos digitales, bonos de gobierno y bóvedas de ahorro. Integración Bitso Business / Juno (MXNB).",
+  icons: {
+    icon: [{ url: "/brand/reyf-favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/brand/reyf-appicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export const viewport: Viewport = {

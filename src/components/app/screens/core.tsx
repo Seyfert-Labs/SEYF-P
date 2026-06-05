@@ -23,6 +23,7 @@ import { loadRiskProfile, planById } from "../data";
 import { Portal } from "../Portal";
 import { ClabeCard } from "../ClabeCard";
 import { ProjectionCard } from "../ProjectionCard";
+import { ReyfMark } from "@/components/brand/ReyfLogo";
 import { explorerBase } from "@/lib/chain";
 
 /* ---------------- ONBOARDING ---------------- */
@@ -33,7 +34,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   if (phase === 0)
     return (
       <div className="onb screen-enter">
-        <div className="logo-mark brand">R</div>
+        <ReyfMark size={56} style={{ borderRadius: 17 }} />
         <div className="onb-hero">
           <h1>Tu retiro, con el <em>doble de rendimiento</em> que tu Afore.</h1>
           <p className="sub">Instrumentos soberanos diversificados, liquidez sin penalización y cero comisiones sobre tu saldo.</p>

@@ -24,7 +24,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         loginMethods: ["email"],
         appearance: {
           theme: "dark",
-          accentColor: "#C8FF4D",
+          accentColor: "#8B5CF6",
           walletChainType: "ethereum-only",
         },
         defaultChain: activeChain,

@@ -4,6 +4,7 @@
    Gating por sesión: onboarding → login (Privy) → app. */
 import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
+import { ReyfMark } from "@/components/brand/ReyfLogo";
 import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens/core";
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
@@ -36,7 +37,7 @@ function Splash() {
   return (
     <div className="app-shell">
       <div className="uto-root style-expresivo" style={{ alignItems: "center", justifyContent: "center" }}>
-        <div className="logo-mark brand" style={{ marginBottom: 18 }}>S</div>
+        <ReyfMark size={56} style={{ marginBottom: 18, borderRadius: 17 }} />
         <span className="spin" style={{ color: "var(--accent)" }} />
       </div>
     </div>

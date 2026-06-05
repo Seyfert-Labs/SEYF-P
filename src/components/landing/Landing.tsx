@@ -5,6 +5,7 @@
    + rAF), nav hide-on-scroll, FAQ acordeón, tilt 3D de la tarjeta. CTAs → /app. */
 import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
+import { ReyfSymbol } from "@/components/brand/ReyfLogo";
 
 /* ---------- counter animado ---------- */
 function Counter({
@@ -211,7 +212,7 @@ export default function Landing() {
 
       {/* NAV */}
       <div className={`nav-inner${navHidden ? " nav-hidden" : ""}${navScrolled ? " nav-scrolled" : ""}`}>
-        <a href="#" className="brand-logo"><span className="mk">S</span> Reyf</a>
+        <a href="#" className="brand-logo"><span className="mk"><ReyfSymbol size={20} /></span> Reyf</a>
         <div className="nav-links">
           <a href="#producto">Producto</a>
           <a href="#bonos">Bonos</a>
@@ -462,7 +463,7 @@ export default function Landing() {
               <div className="credit" ref={creditRef} onMouseMove={onCardMove} onMouseLeave={onCardLeave}>
                 <div className="sheen" /><div className="blob" />
                 <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <span className="display" style={{ fontSize: 22, fontWeight: 800 }}>Reyf</span>
+                  <span className="display" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 22, fontWeight: 800 }}><ReyfSymbol size={22} /> Reyf</span>
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" /></svg>
                 </div>
                 <div style={{ position: "relative" }}>
@@ -601,7 +602,7 @@ export default function Landing() {
           <div className="wrap">
             <div className="foot-grid">
               <div className="foot-col">
-                <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk">S</span> Reyf</a>
+                <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk"><ReyfSymbol size={20} /></span> Reyf</a>
                 <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 280, margin: 0 }}>La super app de finanzas para ahorrar, invertir y gastar sin fronteras.</p>
               </div>
               <div className="foot-col"><h5>Producto</h5><a href="#producto">Pesos digitales</a><a href="#bonos">Bonos</a><a href="#producto">Bóvedas</a><a href="#tarjeta">Tarjeta</a></div>
