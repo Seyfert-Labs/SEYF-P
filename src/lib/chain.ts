@@ -101,6 +101,57 @@ export const explorerBase = IS_TESTNET
 export const SEYF_VAULTS_ADDRESS = (process.env.NEXT_PUBLIC_SEYF_VAULTS_ADDRESS || "") as Address | "";
 export const VAULTS_ONCHAIN = Boolean(SEYF_VAULTS_ADDRESS);
 
+// ============================================================
+// Adelanto de liquidez on-chain (contrato ReyfAdvance).
+// Requiere que ReyfVaults también esté configurado.
+// ============================================================
+
+export const SEYF_ADVANCE_ADDRESS = (process.env.NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS || "") as Address | "";
+export const ADVANCE_ONCHAIN = Boolean(SEYF_ADVANCE_ADDRESS) && VAULTS_ONCHAIN;
+
+export const reyfAdvanceAbi = [
+  {
+    type: "function",
+    name: "requestAdvance",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "vaultId", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "repay",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "vaultId", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "maxAdvance",
+    stateMutability: "view",
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "vaultId", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "debt",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "address" },
+      { name: "", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
 export const reyfVaultsAbi = [
   {
     type: "function",

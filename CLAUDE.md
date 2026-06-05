@@ -100,6 +100,7 @@ src/
 | `NEXT_PUBLIC_CHAIN` | cliente | `arbitrum` o `arbitrum-sepolia` |
 | `NEXT_PUBLIC_MXNB_ADDRESS` | cliente | Sobreescribe dirección por defecto |
 | `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` | cliente | Contrato ReyfVaults on-chain; sin valor, bóvedas usan `store` |
+| `NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS` | cliente | Contrato ReyfAdvance on-chain; sin valor, el adelanto de liquidez muestra aviso de configuración. Requiere `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` |
 | `NEXT_PUBLIC_TREASURY_ADDRESS` | cliente | Tesorería: destino on-chain del MXNB al convertir a divisa. Sin valor, la conversión no mueve fondos on-chain |
 | `NEXT_PUBLIC_ARBITRUM_RPC` | cliente | RPC custom (si no, usa el público) |
 | `NEXT_PUBLIC_BACKEND_URL` | cliente | Solo si el backend está en otro origen |

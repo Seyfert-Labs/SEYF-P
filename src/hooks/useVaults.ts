@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { encodeFunctionData, parseUnits, type Address } from "viem";
 import { store, type StoreVault } from "@/lib/store";
 import { useWallet } from "@/components/wallet/WalletContext";
-import { planByApy } from "@/components/app/data";
+import { planByApy, planById } from "@/components/app/data";
 import {
   VAULTS_ONCHAIN,
   SEYF_VAULTS_ADDRESS,
@@ -75,6 +75,8 @@ export function useVaults(address?: string) {
   const addVault = useCallback(
     async (v: { nm: string; goal: number; apy: number; color: string }): Promise<UserVault | undefined> => {
       if (!address) return;
+      // Un usuario, una bóveda (la de su perfil de riesgo).
+      if (vaults.length >= 1) return vaults[0];
       if (onchain) {
         setBusy(true);
         try {
@@ -159,7 +161,17 @@ export function useVaults(address?: string) {
     [address, onchain, wallet, reload],
   );
 
+  /** Devuelve la bóveda existente o crea una nueva basada en el perfil de riesgo. */
+  const ensureVault = useCallback(
+    async (planId: string): Promise<UserVault | undefined> => {
+      if (vaults.length > 0) return vaults[0];
+      const plan = planById(planId);
+      return addVault({ nm: plan.name, goal: 0, apy: plan.apy, color: plan.color });
+    },
+    [vaults, addVault],
+  );
+
   const totalSaved = vaults.reduce((s, v) => s + v.bal, 0);
 
-  return { vaults, ready, busy, onchain, addVault, updateBalance, removeVault, totalSaved };
+  return { vaults, ready, busy, onchain, addVault, ensureVault, updateBalance, removeVault, totalSaved };
 }

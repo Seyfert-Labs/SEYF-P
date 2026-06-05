@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { Icon, Spark, Flag } from "../ui";
 import { TopBar, SubHeader, TxnRow, PendingTxnRow, ConvTxnRow } from "../shared";
-import { ALLOC, TXNS, FMT, type Txn } from "../data";
+import { TXNS, FMT, type Txn } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
@@ -63,7 +63,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
-  const { vaults, totalSaved } = useVaults(wallet.address);
+  const { vaults, totalSaved, onchain } = useVaults(wallet.address);
   const refreshBal = wallet.refreshBalance;
 
   // Rendimiento promedio ponderado del ahorro (para el adelanto de liquidez).
@@ -81,15 +81,11 @@ export function ScreenHome({ go }: { go: Go }) {
     pend.reconcile(homeTxns.txns);
   }, [homeTxns.txns, pend.reconcile]);
 
-  // Con sesión iniciada mostramos datos reales: Pesos digitales = saldo MXNB
-  // on-chain del usuario; las demás categorías aún no tienen integración → $0.
   const realData = wallet.enabled && wallet.authenticated;
-  const pesos = realData ? wallet.balance : ALLOC[0].vl;
-  const alloc = ALLOC.map((a) => {
-    if (a.key === "pesos") return { ...a, vl: pesos };
-    return realData ? { ...a, vl: 0 } : a;
-  });
-  const total = alloc.reduce((s, a) => s + a.vl, 0);
+  // Spot: saldo MXNB on-chain. Las bóvedas se muestran en la pantalla de Ahorro.
+  const pesos = realData ? wallet.balance : 48250.4;
+  // vaultId numérico para el adelanto (solo válido en modo on-chain).
+  const firstVaultId = onchain && vaults.length > 0 ? parseInt(vaults[0].id) : undefined;
 
   return (
     <div className="screen screen-enter">
@@ -206,7 +202,7 @@ export function ScreenHome({ go }: { go: Go }) {
 
       {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
       {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
-      {modal === "advance" && <Portal><LiquidityAdvanceModal saved={totalSaved} apy={weightedApy} onClose={() => setModal(null)} /></Portal>}
+      {modal === "advance" && <Portal><LiquidityAdvanceModal saved={totalSaved} apy={weightedApy} vaultId={firstVaultId} onClose={() => setModal(null)} /></Portal>}
       {modal === "more" && <Portal><MoreSheet onClose={() => setModal(null)} /></Portal>}
     </div>
   );
