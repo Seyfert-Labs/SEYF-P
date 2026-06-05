@@ -54,12 +54,18 @@ export async function POST(request: Request) {
     // 2. Orden de mercado en Bitso.
     const order = await placeConversionOrder(from, to, Number(amount));
     const filledFrom = order.filledFrom ?? Number(quotedFrom) ?? Number(amount);
-    const filledTo = order.filledTo ?? Number(quotedTo) ?? 0;
+    const filledToRaw = order.filledTo ?? Number(quotedTo) ?? 0;
+    // El withdrawal de Juno acepta máx 2 decimales. En el inverso redondeamos
+    // hacia abajo el MXNB a emitir (el polvo < 0.01 queda como reserva); en el
+    // forward el destino es el ledger, que admite la precisión completa.
+    const filledTo = inverse ? Math.floor(filledToRaw * 100) / 100 : filledToRaw;
 
     // 3. Inverso: emite MXNB a la wallet del usuario (idempotente por `key`).
     if (inverse) {
       try {
-        await withdrawMXNB(address!, filledTo, `conv-${key}`);
+        // `key` ya es un UUID (Juno valida X-Idempotency-Key como UUID; un
+        // prefijo como `conv-${key}` lo rechaza con "Request validation failed").
+        await withdrawMXNB(address!, filledTo, key);
       } catch (e) {
         // Vendido en Bitso pero la emisión falló: NO debitamos el ledger (el
         // usuario conserva su saldo en divisa). El MXN queda en el pool y la
