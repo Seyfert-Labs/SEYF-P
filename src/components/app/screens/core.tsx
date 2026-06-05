@@ -457,7 +457,7 @@ export function DepositOnboarding({ onDone }: { onDone: () => void }) {
         <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--accent-2-soft)", border: "none" }}>
           <Icon name="info" size={18} color="var(--accent-2)" />
           <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-            Depósito mínimo: <b style={{ color: "var(--txt)" }}>$500 MXN</b>. Sin comisión por conversión a MXNB.
+            Depósito mínimo: <b style={{ color: "var(--txt)" }}>$500 MXN</b>. Sin comisión.
           </p>
         </div>
 

@@ -8,8 +8,7 @@ import type { Go, Screen } from "./nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import type { Conversion } from "@/hooks/useConversions";
 
-/* etiqueta de divisa para mostrar (MXN ≡ MXNB peso digital) */
-const curLabel = (code: string) => (code === "MXN" ? "MXNB" : code);
+const curLabel = (code: string) => code;
 
 /* avatar clickable → perfil (reutilizable en cualquier pantalla de tab) */
 export function AvatarButton({ go }: { go: Go }) {

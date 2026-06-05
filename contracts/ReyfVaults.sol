@@ -90,6 +90,7 @@ contract ReyfVaults is ReentrancyGuard {
     // -------- admin --------
 
     function setAdvanceManager(address manager) external onlyOwner {
+        require(manager != address(0), "zero addr");
         advanceManager = manager;
         emit AdvanceManagerSet(manager);
     }

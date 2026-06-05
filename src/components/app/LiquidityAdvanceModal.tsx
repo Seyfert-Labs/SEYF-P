@@ -75,10 +75,10 @@ export function LiquidityAdvanceModal({
             </span>
             <p style={{ margin: "16px 0 0", fontWeight: 800, fontSize: 20 }}>¡Adelanto recibido!</p>
             <p className="num" style={{ margin: "8px 0 0", fontSize: 30, fontWeight: 700, color: "var(--accent)" }}>
-              ${FMT(n, 2)} MXNB
+              ${FMT(n, 2)} MXN
             </p>
             <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-              Ya tienes el MXNB en tu wallet. Tu ahorro sigue invertido y creciendo.
+              Ya tienes el dinero en tu wallet. Tu ahorro sigue invertido y creciendo.
             </p>
             {txHash && (
               <a
@@ -130,7 +130,7 @@ export function LiquidityAdvanceModal({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Recibes</span>
               <span className="num" style={{ fontWeight: 800, fontSize: 22, color: "var(--accent)" }}>
-                ${FMT(n, 2)} MXNB
+                ${FMT(n, 2)} MXN
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
@@ -174,7 +174,7 @@ export function LiquidityAdvanceModal({
           <Icon name="bolt" size={22} color="var(--accent)" /> Adelanto de liquidez
         </p>
         <p className="modal-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>
-          Recibe MXNB hoy sin vender tu ahorro. Se cubre con el rendimiento que tu dinero generará el próximo año.
+          Recibe MXN hoy sin vender tu ahorro. Se cubre con el rendimiento que tu dinero generará el próximo año.
         </p>
 
         <div className="card" style={{ marginTop: 14, padding: 14 }}>
@@ -208,7 +208,7 @@ export function LiquidityAdvanceModal({
           <button className="chip" onClick={() => setAmount(String(max))} style={{ cursor: "pointer" }}>Máx</button>
         </div>
 
-        <span className="field-label">Monto (MXNB)</span>
+        <span className="field-label">Monto (MXN)</span>
         <input
           className="input num-input"
           type="number"

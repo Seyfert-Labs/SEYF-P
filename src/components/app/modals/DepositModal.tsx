@@ -100,7 +100,7 @@ export function DepositModal({
                 <div>
                   <p className="eyebrow">Cuenta Reyf</p>
                   <p style={{ margin: "4px 0 0", fontSize: "var(--t-xs)", fontWeight: 800, color: "var(--accent)" }}>
-                    Red Arbitrum · MXNB
+                    Red Arbitrum · MXN
                   </p>
                 </div>
                 <span className="pos-pill"><Icon name="shield" size={11} /> ERC-4337</span>
@@ -129,8 +129,7 @@ export function DepositModal({
             <div className="card" style={{ marginTop: 12, background: "var(--accent-2-soft)", border: "none", display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ flexShrink: 0, marginTop: 1, display: "flex" }}><Icon name="info" size={16} color="var(--accent-2)" /></span>
               <p style={{ margin: 0, fontSize: "var(--t-xs)", color: "var(--txt-muted)", lineHeight: 1.55 }}>
-                Solo envía <b style={{ color: "var(--txt)" }}>MXNB</b> en la red{" "}
-                <b style={{ color: "var(--txt)" }}>Arbitrum</b>. Otros tokens o redes pueden resultar en pérdida de fondos.
+                Solo envía <b style={{ color: "var(--txt)" }}>MXN (Arbitrum)</b> a esta dirección. Otros tokens o redes pueden resultar en pérdida de fondos.
               </p>
             </div>
           </>

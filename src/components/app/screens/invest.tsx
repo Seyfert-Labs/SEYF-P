@@ -115,7 +115,7 @@ export function ScreenVaults({ go }: { go: Go }) {
           <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)" }}>
             <Icon name="info" size={20} color="var(--txt-muted)" />
             <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
-              Puedes planear tu estrategia. <b style={{ color: "var(--txt)" }}>Fondear con MXNB real</b> se activa al conectar el contrato on-chain.
+              Puedes planear tu estrategia. <b style={{ color: "var(--txt)" }}>Fondear con MXN real</b> se activa al conectar el contrato on-chain.
             </p>
           </div>
         )}
@@ -230,7 +230,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       <SubHeader title={v.nm} go={go} back="bovedas" />
       <div className="screen-pad" style={{ textAlign: "center" }}>
         <p className="num" style={{ fontSize: 46, fontWeight: 800, margin: "18px 0 0" }}>${FMT(v.bal, 2)}</p>
-        <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: "4px 0 0" }}>MXNB en bóveda</p>
+        <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: "4px 0 0" }}>MXN en bóveda</p>
         <div className="stat-grid" style={{ marginTop: 22, textAlign: "left" }}>
           <div className="tile"><div className="k">Rendimiento</div><div className="v" style={{ color: "var(--accent)", fontSize: 20 }}>{FMT(v.apy, 1)}%</div></div>
           <div className="tile"><div className="k">Proyección 10 años</div><div className="v num" style={{ fontSize: 16 }}>${FMT(projectSavings(v.bal, 0, v.apy, 10), 0)}</div></div>
@@ -281,7 +281,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         </div>
         {!onchain && (
           <p style={{ margin: "12px 4px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
-            Abonar y retirar con MXNB real se activan al conectar el contrato on-chain.
+            Abonar y retirar se activan al conectar el contrato on-chain.
           </p>
         )}
         {v.bal > 0 && (
@@ -371,7 +371,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         if (TREASURY_ENABLED) {
           if (wallet.balance < amt) {
             setStatus("error");
-            setMsg(`Saldo MXNB insuficiente. Disponible: ${FMT(wallet.balance, 2)}.`);
+            setMsg(`Saldo insuficiente. Disponible: ${FMT(wallet.balance, 2)} MXN.`);
             return;
           }
           await wallet.sendMXNB(TREASURY_ADDRESS, String(amt));
@@ -414,7 +414,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         setStatus("error");
         setMsg(
           sellingMXNB && TREASURY_ENABLED
-            ? `Tu MXNB quedó en tesorería; la conversión no se completó (${d.error || "error"}).`
+            ? `Tu MXN quedó en tesorería; la conversión no se completó (${d.error || "error"}).`
             : d.error || "No se pudo ejecutar la conversión.",
         );
         return;
@@ -498,7 +498,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         </button>
 
         {!oneSideIsMXN && (
-          <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0" }}>Una de las divisas debe ser MXN (MXNB) para ejecutar la conversión.</p>
+          <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0" }}>Una de las divisas debe ser MXN para ejecutar la conversión.</p>
         )}
         {status === "done" && (
           <div className="card" style={{ marginTop: 12, background: "var(--accent-soft)", border: "none" }}>
@@ -507,7 +507,7 @@ export function ScreenConvert({ go }: { go: Go }) {
               {sellingMXNB ? (
                 <>
                   Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(result ?? 0, to.dec)} {to.code}</b>.
-                  {TREASURY_ENABLED ? " Se descontó de tu saldo MXNB" : ""}; quedó en tus movimientos y tu saldo en divisas.
+                  {TREASURY_ENABLED ? " Se descontó de tu saldo MXN" : ""}; quedó en tus movimientos y tu saldo en divisas.
                 </>
               ) : (
                 <>
@@ -553,7 +553,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         )}
 
         <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "14px 4px 0", lineHeight: 1.5 }}>
-          Tasas y ejecución vía <b style={{ color: "var(--txt)" }}>Bitso</b> en tiempo real. MXN = MXNB (peso digital). USDC no opera contra MXN en Bitso; el dólar digital disponible es USDT.
+          Tasas y ejecución vía <b style={{ color: "var(--txt)" }}>Bitso</b> en tiempo real. USDC no opera contra MXN en Bitso; el dólar digital disponible es USDT.
         </p>
 
         <div className="sec-head"><h3>Tipos de cambio (Bitso)</h3>{error && <span className="link" style={{ color: "var(--neg)" }}>sin conexión</span>}</div>

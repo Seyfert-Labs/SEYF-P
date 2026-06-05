@@ -15,6 +15,7 @@ interface IReyfVaults {
         bool exists;
     }
     function getVault(address user, uint256 vaultId) external view returns (Vault memory);
+    function lockedAmount(address user, uint256 vaultId) external view returns (uint256);
     function lock(address user, uint256 vaultId, uint256 amount) external;
     function unlock(address user, uint256 vaultId, uint256 amount) external;
 }
@@ -93,11 +94,14 @@ contract ReyfAdvance is ReentrancyGuard {
 
     // -------- usuario --------
 
-    /// @notice Adelanto máximo disponible: ≈ 1 año de rendimiento proyectado (balance × apyBps / 10000), menos deuda actual.
+    /// @notice Adelanto máximo disponible: ≈ 1 año de rendimiento sobre el saldo LIBRE
+    ///         (balance menos lo ya bloqueado como colateral), menos deuda actual.
     function maxAdvance(address user, uint256 vaultId) public view returns (uint256) {
         IReyfVaults.Vault memory v = vaults.getVault(user, vaultId);
         if (!v.exists) return 0;
-        uint256 cap = (v.balance * v.apyBps) / 10000;
+        uint256 locked = vaults.lockedAmount(user, vaultId);
+        uint256 free = v.balance > locked ? v.balance - locked : 0;
+        uint256 cap = (free * v.apyBps) / 10000;
         uint256 owed = debt[user][vaultId];
         return cap > owed ? cap - owed : 0;
     }
