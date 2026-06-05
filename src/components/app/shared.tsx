@@ -105,15 +105,16 @@ export function Money({
 }
 
 /* fila de transacción pendiente (optimistic UI · confirmando on-chain) */
-export function PendingTxnRow({ p }: { p: { kind: "deposit" | "send"; amount: number } }) {
-  const pos = p.kind === "deposit";
+export function PendingTxnRow({ p }: { p: { kind: "deposit" | "send" | "convert"; dir?: "in" | "out"; amount: number } }) {
+  const pos = p.kind === "deposit" || (p.kind === "convert" && p.dir === "in");
+  const title = p.kind === "deposit" ? "Depósito" : p.kind === "send" ? "Envío" : "Cambio";
   return (
     <div className="lrow" style={{ opacity: 0.92 }}>
       <div className="ava" style={{ background: "var(--surface-3)" }}>
         <span className="spin" style={{ width: 18, height: 18, color: "var(--accent)" }} />
       </div>
       <div className="mid">
-        <p className="ti">{pos ? "Depósito" : "Envío"}</p>
+        <p className="ti">{title}</p>
         <p className="su" style={{ color: "var(--accent-2)" }}>Pendiente · confirmando…</p>
       </div>
       <div className="amt">

@@ -15,8 +15,9 @@ import { Portal } from "../Portal";
 import { useAdvance } from "@/hooks/useAdvance";
 import { useBitsoRates, useBitsoBalances } from "@/hooks/useBitsoRates";
 import { useConversions } from "@/hooks/useConversions";
+import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
-import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN, readMXNBBalance } from "@/lib/chain";
+import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN } from "@/lib/chain";
 
 // Con Supabase, el ledger de conversiones lo escribe /api/convert (servidor);
 // sin él, el cliente lo persiste localmente con la capa `store`.
@@ -358,6 +359,7 @@ export function ScreenConvert({ go }: { go: Go }) {
   const { loading, error, quote, mxnPriceOf } = useBitsoRates();
   const wallet = useWallet();
   const { add: addConversion, balances: localBalances, reload: reloadConversions } = useConversions(wallet.address);
+  const pending = usePendingTxns(wallet.address);
   const { balances: liveBalances, refresh: refreshBalances } = useBitsoBalances();
   const [fromCode, setFromCode] = useState("MXN");
   const [toCode, setToCode] = useState("USDT");
@@ -390,22 +392,6 @@ export function ScreenConvert({ go }: { go: Go }) {
     setStatus("idle");
   };
 
-  // Mantiene el pop-up "en camino" hasta que el cambio se refleje en el saldo
-  // MXNB on-chain (o agota ~18s; la conversión ya quedó confirmada en el server).
-  const confirmBalance = async (startBal: number) => {
-    if (!wallet.address) return;
-    for (let i = 0; i < 7; i++) {
-      await new Promise((r) => setTimeout(r, 2600));
-      wallet.refreshBalance();
-      try {
-        const now = await readMXNBBalance(wallet.address as `0x${string}`);
-        if (Math.abs(now - startBal) > 0.01) return;
-      } catch {
-        /* reintenta */
-      }
-    }
-  };
-
   const doConvert = async () => {
     if (!oneSideIsMXN || amt <= 0 || result == null) return;
     if (!wallet.address) {
@@ -415,7 +401,6 @@ export function ScreenConvert({ go }: { go: Go }) {
     }
     setStatus("sending");
     setDoneInfo(null);
-    const startBal = wallet.balance;
     try {
       // Validación previa según el sentido.
       if (sellingMXNB) {
@@ -487,8 +472,16 @@ export function ScreenConvert({ go }: { go: Go }) {
         });
       }
 
-      // Reflejar el resultado y refrescar el live de Bitso.
+      // Reflejar el resultado y refrescar saldos.
       void refreshBalances();
+      wallet.refreshBalance();
+      // Loader pendiente en el historial (igual que depósito): se confirma al
+      // detectar la tx on-chain — forward = MXNB out (a tesorería), inverse =
+      // MXNB in (withdrawal). `ref` deduplica la fila normal mientras tanto.
+      pending.add("convert", sellingMXNB ? amt : d.filledTo ?? result ?? 0, {
+        dir: sellingMXNB ? "out" : "in",
+        ref: key,
+      });
       setDoneInfo({
         fwd: sellingMXNB,
         received: d.filledTo ?? result ?? 0,
@@ -497,9 +490,9 @@ export function ScreenConvert({ go }: { go: Go }) {
         spentCode: fromCode,
       });
       setMsg("");
-      // Pop-up "en camino" hasta que el cambio se valide en el saldo de la wallet.
-      await confirmBalance(startBal);
+      // Pop-up de confirmación breve (~4s) y se cierra solo (solo si sigue en done).
       setStatus("done");
+      setTimeout(() => setStatus((s) => (s === "done" ? "idle" : s)), 4000);
     } catch (e) {
       setStatus("error");
       setMsg(e instanceof Error ? e.message : "No se pudo completar la conversión.");

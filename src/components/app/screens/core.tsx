@@ -171,7 +171,7 @@ export function ScreenHome({ go }: { go: Go }) {
             ) : (
               <div className="list">
                 {pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
-                {mergeRecent(conv.conversions, homeTxns.txns, go, 3)}
+                {mergeRecent(conv.conversions.filter((c) => !pend.pending.some((p) => p.ref === c.id)), homeTxns.txns, go, 3)}
               </div>
             )
           ) : (
@@ -323,7 +323,7 @@ export function ScreenWallet({ go }: { go: Go }) {
             <div className="list">
               {realMode && pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
               {realMode
-                ? mergeRecent(conv.conversions, onchainTxns, go)
+                ? mergeRecent(conv.conversions.filter((c) => !pend.pending.some((p) => p.ref === c.id)), onchainTxns, go)
                 : TXNS.map((t) => <TxnRow key={t.id} t={t} go={go} />)}
             </div>
           )}

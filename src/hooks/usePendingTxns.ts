@@ -8,7 +8,13 @@ import { useCallback, useEffect, useState } from "react";
 
 export interface PendingTxn {
   id: string;
-  kind: "deposit" | "send";
+  kind: "deposit" | "send" | "convert";
+  /** Dirección on-chain (para `convert`: in = recibe MXNB, out = envía MXNB).
+   *  Para deposit/send se infiere del kind. */
+  dir?: "in" | "out";
+  /** Referencia al registro real (id de la conversión) para deduplicar la fila
+   *  del historial mientras el pendiente está activo. */
+  ref?: string;
   amount: number;
   createdAt: number;
 }
@@ -48,9 +54,9 @@ export function usePendingTxns(address?: string) {
   }, [address]);
 
   const add = useCallback(
-    (kind: "deposit" | "send", amount: number) => {
+    (kind: "deposit" | "send" | "convert", amount: number, opts?: { dir?: "in" | "out"; ref?: string }) => {
       const list = read(address);
-      list.push({ id: `p_${Date.now()}`, kind, amount, createdAt: Date.now() });
+      list.push({ id: `p_${Date.now()}`, kind, amount, createdAt: Date.now(), dir: opts?.dir, ref: opts?.ref });
       write(address, list);
     },
     [address],
@@ -68,7 +74,7 @@ export function usePendingTxns(address?: string) {
       const list = read(address);
       if (list.length === 0) return;
       const kept = list.filter((p) => {
-        const dir = p.kind === "deposit" ? "in" : "out";
+        const dir = p.kind === "convert" ? p.dir ?? "in" : p.kind === "deposit" ? "in" : "out";
         const matched = onchain.some(
           (t) =>
             t.direction === dir &&
