@@ -692,9 +692,11 @@ function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" 
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const max = mode === "abonar" ? Math.max(0, vault.goal - vault.bal) : vault.bal;
+  // Abonar: sin meta fija (goal=0), cualquier monto positivo es válido.
+  // Retirar: limitado por el saldo de la bóveda.
+  const max = mode === "retirar" ? vault.bal : Infinity;
   const n = Number(amount);
-  const valid = n > 0 && n <= max && !submitting;
+  const valid = n > 0 && (mode === "abonar" || n <= max) && !submitting;
 
   const submit = async () => {
     setSubmitting(true);
@@ -752,9 +754,16 @@ function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" 
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <p className="modal-sub" style={{ margin: "8px 0 0" }}>
-          {mode === "abonar" ? `Falta para la meta: $${FMT(max, 2)}` : `Disponible en bóveda: $${FMT(max, 2)}`}
-        </p>
+        {mode === "retirar" && (
+          <p className="modal-sub" style={{ margin: "8px 0 0" }}>
+            Disponible en bóveda: ${FMT(max, 2)}
+          </p>
+        )}
+        {mode === "retirar" && n > max && (
+          <p className="modal-sub" style={{ margin: "4px 0 0", color: "var(--neg)" }}>
+            El máximo retirable es ${FMT(max, 2)}.
+          </p>
+        )}
 
         <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={!valid} onClick={submit}>
           {submitting ? <span className="spin" /> : mode === "abonar" ? "Abonar" : "Retirar a Pesos digitales"}
