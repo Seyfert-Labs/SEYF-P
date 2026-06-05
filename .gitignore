@@ -53,3 +53,6 @@ next-env.d.ts
 /contracts/broadcast/*/31337/
 !/contracts/broadcast/*/31337/run-latest.json
 /contracts/lib/
+
+# docs de contexto de sesión (local, no se versionan)
+docs/sesion-*.md
