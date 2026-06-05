@@ -14,13 +14,33 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["400", "500", "600", "700"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+const title = "Reyf — Super app de finanzas";
+const description =
+  "Pesos digitales, bonos de gobierno y bóvedas de ahorro. Integración Bitso Business / Juno (MXNB).";
+
 export const metadata: Metadata = {
-  title: "Reyf — Super app de finanzas",
-  description:
-    "Pesos digitales, bonos de gobierno y bóvedas de ahorro. Integración Bitso Business / Juno (MXNB).",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
   icons: {
     icon: [{ url: "/brand/reyf-favicon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/brand/reyf-appicon.svg", type: "image/svg+xml" }],
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Reyf",
+    title,
+    description,
+    locale: "es_MX",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
   },
 };
 
