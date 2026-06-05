@@ -105,9 +105,19 @@ const FAQ_ITEMS = [
 export default function Landing() {
   const rootRef = useRef<HTMLDivElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
+  const phoneStageRef = useRef<HTMLDivElement>(null);
+  const phoneTiltRef = useRef<HTMLDivElement>(null);
   const [navHidden, setNavHidden] = useState(false);
   const [navScrolled, setNavScrolled] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [screen, setScreen] = useState(0); // pantalla activa del cel (0=Inicio,1=Convertir,2=Bóvedas)
+
+  // auto-cycle de las pantallas del celular (pausa si reduce-motion)
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setScreen((s) => (s + 1) % 3), 3800);
+    return () => clearInterval(id);
+  }, []);
 
   // reveal on scroll (con stagger por grupo)
   useEffect(() => {
@@ -171,6 +181,25 @@ export default function Landing() {
     if (creditRef.current) creditRef.current.style.transform = "rotateY(0) rotateX(0)";
   };
 
+  // tilt 3D del celular siguiendo el mouse (parallax sobre el stage)
+  const onPhoneMove = (ev: React.MouseEvent) => {
+    const stage = phoneStageRef.current;
+    const tilt = phoneTiltRef.current;
+    if (!stage || !tilt) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = stage.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width - 0.5;
+    const py = (ev.clientY - r.top) / r.height - 0.5;
+    tilt.style.setProperty("--ptx", `${px * 14}deg`);
+    tilt.style.setProperty("--pty", `${-py * 14}deg`);
+  };
+  const onPhoneLeave = () => {
+    const tilt = phoneTiltRef.current;
+    if (!tilt) return;
+    tilt.style.setProperty("--ptx", "0deg");
+    tilt.style.setProperty("--pty", "0deg");
+  };
+
   return (
     <div className="lp" ref={rootRef}>
       {/* atmospheric bg */}
@@ -221,7 +250,7 @@ export default function Landing() {
             </div>
 
             {/* phone mockup */}
-            <div className="phone-stage">
+            <div className="phone-stage" ref={phoneStageRef} onMouseMove={onPhoneMove} onMouseLeave={onPhoneLeave}>
               <div className="float-card fc1 reveal">
                 <div className="k">Rinde solo</div>
                 <div className="v"><span style={{ color: "var(--accent)" }}>+</span><span className="num"><Counter target={9} suffix="% anual" /></span></div>
@@ -230,42 +259,107 @@ export default function Landing() {
                 <div className="k">Bono México</div>
                 <div className="v num"><Counter target={10.25} decimals={2} suffix="%" /></div>
               </div>
-              <div className="phone" id="phone">
-                <div className="phone-screen">
-                  <div className="mini">
-                    <div className="mini-top">
-                      <div>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>Buenas tardes</div>
-                        <div style={{ fontWeight: 800, fontSize: 15 }}>Diego</div>
+              <div className="phone-tilt" ref={phoneTiltRef}>
+                <div className="phone" id="phone">
+                  <div className="phone-screen">
+                    <div className="mini-stack">
+                      {/* Pantalla 1 — Inicio */}
+                      <div className={`mini${screen === 0 ? " active" : ""}`}>
+                        <div className="mini-top">
+                          <div>
+                            <div style={{ fontSize: 11, color: "var(--muted)" }}>Buenas tardes</div>
+                            <div style={{ fontWeight: 800, fontSize: 15 }}>Diego</div>
+                          </div>
+                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,var(--accent-2),var(--accent))", display: "grid", placeItems: "center", fontWeight: 800, color: "var(--on-accent)", fontSize: 12 }}>DR</div>
+                        </div>
+                        <div className="mini-bal">
+                          <div className="mini-eyebrow">Patrimonio total</div>
+                          <div className="num" style={{ fontSize: 27, fontWeight: 700, marginTop: 7 }}>$585,050<span style={{ opacity: 0.5 }}>.40</span></div>
+                          <div className="mini-alloc">
+                            <span style={{ width: "8%", background: "var(--accent)" }} />
+                            <span style={{ width: "53%", background: "var(--accent-2)" }} />
+                            <span style={{ width: "16%", background: "#5BD6C0" }} />
+                            <span style={{ width: "23%", background: "#F5A623" }} />
+                          </div>
+                        </div>
+                        <div className="mini-row">
+                          <div className="mini-flag"><FlagMX /></div>
+                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>Bono México</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Bonos M · MXN</div></div>
+                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>10.25%</div>
+                        </div>
+                        <div className="mini-row">
+                          <div className="mini-flag"><FlagUS /></div>
+                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>US Treasury</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Bono · USD</div></div>
+                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>4.45%</div>
+                        </div>
+                        <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
+                          <Link href="/app" style={{ flex: 1, background: "var(--accent)", color: "var(--on-accent)", borderRadius: 13, padding: 11, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Invertir</Link>
+                          <Link href="/app" style={{ flex: 1, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 13, padding: 11, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Convertir</Link>
+                        </div>
                       </div>
-                      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,var(--accent-2),var(--accent))", display: "grid", placeItems: "center", fontWeight: 800, color: "var(--on-accent)", fontSize: 12 }}>DR</div>
-                    </div>
-                    <div className="mini-bal">
-                      <div className="mini-eyebrow">Patrimonio total</div>
-                      <div className="num" style={{ fontSize: 27, fontWeight: 700, marginTop: 7 }}>$585,050<span style={{ opacity: 0.5 }}>.40</span></div>
-                      <div className="mini-alloc">
-                        <span style={{ width: "8%", background: "var(--accent)" }} />
-                        <span style={{ width: "53%", background: "var(--accent-2)" }} />
-                        <span style={{ width: "16%", background: "#5BD6C0" }} />
-                        <span style={{ width: "23%", background: "#F5A623" }} />
+
+                      {/* Pantalla 2 — Convertir */}
+                      <div className={`mini${screen === 1 ? " active" : ""}`}>
+                        <div className="mini-top">
+                          <div style={{ fontWeight: 800, fontSize: 16 }}>Convertir</div>
+                          <span style={{ fontSize: 10.5, color: "var(--accent)", fontWeight: 800, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 99, padding: "4px 9px" }}>Tipo Bitso</span>
+                        </div>
+                        <div className="mini-bal" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div><div className="mini-eyebrow">Peso digital</div><div className="num" style={{ fontSize: 25, fontWeight: 700, marginTop: 5 }}>1,000</div></div>
+                          <span style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 11, padding: "8px 13px", fontWeight: 800, fontSize: 13 }}>MXN</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "center", margin: "-6px 0" }}>
+                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface-2)", border: "1px solid var(--line)", display: "grid", placeItems: "center", color: "var(--accent)" }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 4v13M7 4L4 7M7 4l3 3M17 20V7M17 20l3-3M17 20l-3-3" /></svg>
+                          </div>
+                        </div>
+                        <div className="mini-bal" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div><div className="mini-eyebrow">Dólar digital</div><div className="num" style={{ fontSize: 25, fontWeight: 700, marginTop: 5, color: "var(--accent)" }}>57.48</div></div>
+                          <span style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 11, padding: "8px 13px", fontWeight: 800, fontSize: 13 }}>USDT</span>
+                        </div>
+                        <div className="mini-row" style={{ justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 12, color: "var(--muted)" }}>1 MXN</span>
+                          <span className="num" style={{ fontWeight: 800, color: "var(--accent)", fontSize: 13 }}>0.0575 USDT</span>
+                        </div>
+                        <div style={{ marginTop: "auto" }}>
+                          <Link href="/app" style={{ display: "block", background: "var(--accent)", color: "var(--on-accent)", borderRadius: 13, padding: 12, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Convertir 1,000 MXN</Link>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mini-row">
-                      <div className="mini-flag"><FlagMX /></div>
-                      <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>Bono México</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Bonos M · MXN</div></div>
-                      <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>10.25%</div>
-                    </div>
-                    <div className="mini-row">
-                      <div className="mini-flag"><FlagUS /></div>
-                      <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>US Treasury</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Bono · USD</div></div>
-                      <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>4.45%</div>
-                    </div>
-                    <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
-                      <Link href="/app" style={{ flex: 1, background: "var(--accent)", color: "var(--on-accent)", borderRadius: 13, padding: 11, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Invertir</Link>
-                      <Link href="/app" style={{ flex: 1, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 13, padding: 11, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Convertir</Link>
+
+                      {/* Pantalla 3 — Bóvedas */}
+                      <div className={`mini${screen === 2 ? " active" : ""}`}>
+                        <div className="mini-top">
+                          <div style={{ fontWeight: 800, fontSize: 16 }}>Bóvedas</div>
+                          <span style={{ fontSize: 11, color: "var(--muted)" }}>Ahorro con meta</span>
+                        </div>
+                        <div className="mini-bal">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>Viaje a Japón</div>
+                            <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 13 }}>11.2%</div>
+                          </div>
+                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6 }}>$32,000 <span style={{ opacity: 0.45, fontSize: 13 }}>/ $50,000</span></div>
+                          <div className="mini-alloc"><span style={{ width: "64%", background: "var(--accent)" }} /><span style={{ width: "36%", background: "var(--line-2)" }} /></div>
+                        </div>
+                        <div className="mini-bal">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>Fondo de emergencia</div>
+                            <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 13 }}>9.0%</div>
+                          </div>
+                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6 }}>$18,500 <span style={{ opacity: 0.45, fontSize: 13 }}>/ $20,000</span></div>
+                          <div className="mini-alloc"><span style={{ width: "92%", background: "#5BD6C0" }} /><span style={{ width: "8%", background: "var(--line-2)" }} /></div>
+                        </div>
+                        <div style={{ marginTop: "auto" }}>
+                          <Link href="/app" style={{ display: "block", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 13, padding: 12, textAlign: "center", fontWeight: 800, fontSize: 13 }}>+ Nueva bóveda</Link>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+              <div className="phone-pager">
+                {[0, 1, 2].map((i) => (
+                  <i key={i} className={screen === i ? "on" : ""} onClick={() => setScreen(i)} />
+                ))}
               </div>
             </div>
           </div>

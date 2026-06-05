@@ -119,7 +119,7 @@
 @keyframes heroUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
 
 /* phone mockup */
-.lp .phone-stage { display: flex; justify-content: center; align-items: center; position: relative; }
+.lp .phone-stage { display: flex; justify-content: center; align-items: center; position: relative; perspective: 1200px; }
 .lp .phone-stage::before { content: ''; position: absolute; width: 340px; height: 340px; border-radius: 50%;
   background: radial-gradient(circle, var(--accent-2-soft), transparent 70%); filter: blur(40px); }
 .lp .phone {
@@ -138,6 +138,45 @@
 @keyframes phoneFloat { to { transform: translateY(-14px); } }
 @keyframes fcFloat1 { to { transform: translateY(-18px); } }
 @keyframes fcFloat2 { to { transform: translateY(16px); } }
+
+/* --- celular: tilt 3D al mouse + sheen + cycle de pantallas --- */
+.lp .phone-tilt {
+  transform: rotateX(var(--pty, 0deg)) rotateY(var(--ptx, 0deg));
+  transition: transform .45s cubic-bezier(.2,.7,.2,1);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+/* brillo que barre el vidrio */
+.lp .phone-screen::after {
+  content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.14) 48%, rgba(255,255,255,.03) 56%, transparent 66%);
+  background-size: 260% 100%;
+  animation: phoneSheen 7s ease-in-out 2.4s infinite;
+}
+@keyframes phoneSheen { 0%,100% { background-position: 140% 0; } 50% { background-position: -40% 0; } }
+
+/* stack de pantallas que rotan dentro del cel */
+.lp .mini-stack { position: absolute; inset: 0; }
+.lp .mini-stack > .mini {
+  position: absolute; inset: 0; opacity: 0; transform: translateX(9%) scale(.985);
+  transition: opacity .55s ease, transform .55s cubic-bezier(.2,.7,.2,1);
+  pointer-events: none;
+}
+.lp .mini-stack > .mini.active { opacity: 1; transform: none; pointer-events: auto; }
+
+/* pager vertical a la derecha del cel */
+.lp .phone-pager { position: absolute; right: -22px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 7px; z-index: 3; }
+.lp .phone-pager i { width: 6px; height: 6px; border-radius: 99px; background: var(--line-2);
+  cursor: pointer; transition: height .4s, background .4s; }
+.lp .phone-pager i.on { height: 20px; background: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp .phone-tilt { transition: none; transform: none !important; }
+  .lp .phone-screen::after { animation: none; opacity: .5; }
+  .lp .mini-stack > .mini { transition: opacity .3s; transform: none; }
+}
+@media (max-width: 720px) { .lp .phone-pager { display: none; } }
 
 /* mini app screen */
 .lp .mini { padding: 46px 16px 16px; height: 100%; display: flex; flex-direction: column; gap: 12px; }
