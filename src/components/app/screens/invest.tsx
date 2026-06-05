@@ -10,7 +10,9 @@ import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
+import { RepayModal } from "../modals/RepayModal";
 import { Portal } from "../Portal";
+import { useAdvance } from "@/hooks/useAdvance";
 import { useBitsoRates, useBitsoBalances } from "@/hooks/useBitsoRates";
 import { useConversions } from "@/hooks/useConversions";
 import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
@@ -193,8 +195,15 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   const { vaults, updateBalance, removeVault, busy, onchain } = useVaults(wallet.address);
   const ctxV = ctx as UserVault | undefined;
   const v = vaults.find((x) => x.id === ctxV?.id) ?? ctxV;
+
+  // vaultId numérico solo cuando estamos on-chain (ids son índices del contrato).
+  // Se calcula antes del early return para no violar reglas de hooks.
+  const numVaultId = onchain && v ? parseInt(v.id) : undefined;
+  const advanceState = useAdvance(wallet.address, numVaultId);
+
   const [action, setAction] = useState<null | "abonar" | "retirar">(null);
   const [advance, setAdvance] = useState(false);
+  const [repay, setRepay] = useState(false);
 
   if (!v) {
     return (
@@ -205,9 +214,6 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       </div>
     );
   }
-
-  // vaultId numérico solo cuando estamos on-chain (ids son índices del contrato).
-  const numVaultId = onchain ? parseInt(v.id) : undefined;
 
   return (
     <div className="screen screen-enter">
@@ -269,7 +275,28 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             Abonar y retirar se activan al conectar el contrato on-chain.
           </p>
         )}
-        {v.bal > 0 && (
+        {/* Advance activo — card prominente cuando hay deuda */}
+        {advanceState.debt > 0 && (
+          <div className="card" style={{ marginTop: 16, textAlign: "left", background: "var(--accent-2-soft, #fff8ec)", border: "1px solid var(--warning, #E8A838)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Icon name="bolt" size={18} color="var(--warning, #E8A838)" />
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>Adelanto activo</p>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Pendiente</span>
+              <span className="num" style={{ fontWeight: 800, fontSize: 16 }}>${FMT(advanceState.debt, 2)} MXN</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Colateral bloqueado</span>
+              <span className="num" style={{ fontWeight: 700, fontSize: 14 }}>${FMT(advanceState.locked, 2)} MXN</span>
+            </div>
+            <button className="btn btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={() => setRepay(true)} disabled={busy}>
+              Repagar adelanto
+            </button>
+          </div>
+        )}
+
+        {v.bal > 0 && advanceState.debt === 0 && (
           <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setAdvance(true)} disabled={busy}>
             <Icon name="bolt" size={18} /> Adelantar rendimiento
           </button>
@@ -288,6 +315,18 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         </Portal>
       )}
       {advance && <Portal><LiquidityAdvanceModal saved={v.bal} apy={v.apy} vaultId={numVaultId} onClose={() => setAdvance(false)} /></Portal>}
+      {repay && numVaultId !== undefined && (
+        <Portal>
+          <RepayModal
+            vaultId={numVaultId}
+            debt={advanceState.debt}
+            apy={v.apy}
+            balance={v.bal}
+            onClose={() => setRepay(false)}
+            onDone={() => { void advanceState.reload(); }}
+          />
+        </Portal>
+      )}
     </div>
   );
 }
