@@ -78,7 +78,9 @@ export function ScreenVaults({ go }: { go: Go }) {
       <div className="app-head" style={{ paddingTop: 4 }}>
         <p className="name">Ahorro</p>
         <div className="head-actions">
-          {onchain && <span className="pos-pill"><Icon name="shield" size={12} /> On-chain</span>}
+          <button className="icon-btn" onClick={() => go("notifs")} aria-label="Notificaciones">
+            <Icon name="bell" size={20} />
+          </button>
           <AvatarButton go={go} />
         </div>
       </div>
@@ -154,47 +156,30 @@ export function ScreenVaults({ go }: { go: Go }) {
           </>
         )}
 
-        {/* Sin bóveda: CTA para abrir */}
-        {!hasVault && (
-          <>
-            <div className="sec-head">
-              <h3>{recPlan ? "Tu estrategia" : "Elige tu estrategia"}</h3>
-            </div>
-            {recPlan ? (
-              <div className="card glow" style={{ padding: 18 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <span style={{ width: 50, height: 50, borderRadius: 15, flexShrink: 0, background: recPlan.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
-                    {recPlan.emoji}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{recPlan.name}</p>
-                      <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>
-                    </div>
-                    <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{recPlan.exposure}</p>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div className="num" style={{ fontWeight: 800, fontSize: 20, color: "var(--accent)" }}>{FMT(recPlan.apy, 1)}%</div>
-                    <div style={{ fontSize: 11, color: "var(--txt-muted)" }}>anual</div>
-                  </div>
-                </div>
-                <button
-                  className="btn btn-primary"
-                  style={{ marginTop: 16 }}
-                  disabled={opening || busy}
-                  onClick={() => handleOpen(recPlan)}
-                >
-                  {opening ? <span className="spin" /> : <><Icon name="plus" size={18} /> Abrir mi bóveda {recPlan.name}</>}
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {RISK_PROFILES.map((p) => (
-                  <PlanCard key={p.id} plan={p} onPick={() => handleOpen(p)} />
-                ))}
-              </div>
-            )}
-          </>
+        {/* Estrategias — siempre visibles */}
+        <div className="sec-head">
+          <h3>Estrategias de ahorro</h3>
+        </div>
+        <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+          {recPlan
+            ? <>Según tu perfil te recomendamos <b style={{ color: "var(--accent)" }}>{recPlan.name}</b>.</>
+            : <>Cada perfil ajusta tu mezcla de instrumentos soberanos según tu horizonte.</>}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {RISK_PROFILES.map((p) => (
+            <PlanCard
+              key={p.id}
+              plan={p}
+              recommended={recPlan?.id === p.id}
+              onPick={hasVault ? () => {} : () => handleOpen(p)}
+            />
+          ))}
+        </div>
+        {!hasVault && opening && (
+          <p style={{ margin: "12px 4px 0", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
+            <span className="spin" style={{ display: "inline-block", marginRight: 8 }} />
+            Abriendo tu bóveda…
+          </p>
         )}
       </div>
       <div className="scroll-bottom" />
