@@ -346,6 +346,37 @@ export async function sumLedgerByAsset(): Promise<Record<string, number>> {
   return acc;
 }
 
+// ---------- Depósitos SPEI ----------
+
+/** Devuelve la wallet asociada a una CLABE de depósito, o null si no existe. */
+export async function getWalletByClabe(clabe: string): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("deposit_clabes")
+    .select("wallet_address")
+    .eq("clabe", clabe)
+    .maybeSingle();
+  return data?.wallet_address ?? null;
+}
+
+/** Registra un movimiento en el ledger de transacciones. */
+export async function addTransaction(
+  wallet: string,
+  tx: { kind: string; amount: number; status: string; tx_hash?: string },
+) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await ensureProfile(wallet);
+  await sb.from("transactions").insert({
+    wallet_address: wallet,
+    kind: tx.kind,
+    amount: tx.amount,
+    status: tx.status,
+    tx_hash: tx.tx_hash ?? null,
+  });
+}
+
 // ---------- Límites mensuales (depósito / retiro) ----------
 export interface MonthlyUsage {
   deposit: number;
