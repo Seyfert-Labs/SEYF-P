@@ -210,6 +210,16 @@ export const reyfVaultsAbi = [
       },
     ],
   },
+  {
+    type: "function",
+    name: "lockedAmount",
+    stateMutability: "view",
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "vaultId", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 export interface OnchainVault {
