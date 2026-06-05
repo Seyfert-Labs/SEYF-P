@@ -57,8 +57,8 @@ contract ReyfAdvanceTest is Test {
         assertEq(vault.availableToWithdraw(alice, id), 900 * UNIT);
         assertEq(token.balanceOf(alice), 100 * UNIT);
         assertEq(advance.treasuryBalance(), 400 * UNIT);
-        // tope restante: 115 - 100 = 15
-        assertEq(advance.maxAdvance(alice, id), 15 * UNIT);
+        // tope restante: saldo libre=900, cap=900*11.5%=103.5, owed=100 → 3.5 UNIT
+        assertEq(advance.maxAdvance(alice, id), (900 * UNIT * 1150) / 10000 - 100 * UNIT);
     }
 
     function test_RequestExceedingMaxReverts() public {

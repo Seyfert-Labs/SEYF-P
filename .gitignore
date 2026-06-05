@@ -46,13 +46,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# foundry (anclado a contracts/ para no ignorar src/lib, src/cache, etc.)
+# foundry
 /contracts/cache/
 /contracts/out/
-/contracts/broadcast/*/dry-run/
-/contracts/broadcast/*/31337/
-!/contracts/broadcast/*/31337/run-latest.json
 /contracts/lib/
+
+# foundry — deploys: ignora simulaciones y red local; conserva deploys reales
+/contracts/broadcast/**/dry-run/
+/contracts/broadcast/**/31337/
+!/contracts/broadcast/**/31337/run-latest.json
 
 # docs de contexto de sesión (local, no se versionan)
 docs/sesion-*.md
