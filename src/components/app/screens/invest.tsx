@@ -269,7 +269,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         )}
         <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setAction("abonar")} disabled={!onchain || busy}><Icon name="plus" size={18} /> Abonar</button>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAction("retirar")} disabled={v.bal <= 0 || !onchain || busy}>Retirar</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAction("retirar")} disabled={(v.bal - advanceState.locked) <= 0 || !onchain || busy}>Retirar</button>
         </div>
         {!onchain && (
           <p style={{ margin: "12px 4px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
@@ -302,7 +302,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             <Icon name="bolt" size={18} /> Adelantar rendimiento
           </button>
         )}
-        <button disabled={busy} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }}>Eliminar bóveda</button>
+        <button disabled={busy || advanceState.locked > 0} title={advanceState.locked > 0 ? "Repaga tu adelanto para liberar el colateral antes de eliminar la bóveda" : undefined} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy || advanceState.locked > 0 ? "default" : "pointer", opacity: busy || advanceState.locked > 0 ? 0.5 : 1 }}>Eliminar bóveda</button>
       </div>
       <div className="scroll-bottom" />
       {action && (
@@ -310,6 +310,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           <VaultAmountModal
             mode={action}
             vault={v}
+            locked={advanceState.locked}
             onClose={() => setAction(null)}
             onConfirm={(amt) => updateBalance(v.id, action === "abonar" ? amt : -amt)}
           />
@@ -681,14 +682,16 @@ export function ScreenConvert({ go }: { go: Go }) {
 }
 
 
-function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
+function VaultAmountModal({ mode, vault, locked = 0, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; locked?: number; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [txHash, setTxHash] = useState("");
   // Abonar: sin meta fija (goal=0), cualquier monto positivo es válido.
-  // Retirar: limitado por el saldo de la bóveda.
-  const max = mode === "retirar" ? vault.bal : Infinity;
+  // Retirar: limitado por el saldo LIBRE (saldo − colateral bloqueado por un
+  // adelanto activo). El contrato revierte con "exceeds free balance" si se
+  // intenta retirar el colateral bloqueado.
+  const max = mode === "retirar" ? Math.max(0, vault.bal - locked) : Infinity;
   const n = Number(amount);
   const valid = n > 0 && (mode === "abonar" || n <= max) && !submitting;
 
@@ -774,12 +777,15 @@ function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" 
         />
         {mode === "retirar" && (
           <p className="modal-sub" style={{ margin: "8px 0 0" }}>
-            Disponible en bóveda: ${FMT(max, 2)}
+            Disponible para retirar: ${FMT(max, 2)}
+            {locked > 0 && (
+              <> · <span style={{ color: "var(--warning, #E8A838)" }}>${FMT(locked, 2)} bloqueado por adelanto</span></>
+            )}
           </p>
         )}
         {mode === "retirar" && n > max && (
           <p className="modal-sub" style={{ margin: "4px 0 0", color: "var(--neg)" }}>
-            El máximo retirable es ${FMT(max, 2)}.
+            El máximo retirable es ${FMT(max, 2)}{locked > 0 ? " (tienes colateral bloqueado por un adelanto activo)" : ""}.
           </p>
         )}
 
