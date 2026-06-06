@@ -100,12 +100,19 @@ cast send $ADVANCE "fundTreasury(uint256)" 10000000000 \
   --rpc-url $RPC_URL --private-key $PRIVATE_KEY
 ```
 
+## Direcciones desplegadas (Arbitrum Sepolia · testnet)
+| Contrato | Dirección |
+|----------|-----------|
+| `ReyfVaults` | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` |
+| `ReyfAdvance` | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` |
+| Tesorería (conversión FX) | `0xae0AEAd08f5984E6CD00aB4Fd4e9c569D11b2eaF` |
+
 ## Conectar al frontend
 En `.env.local`:
 ```bash
-NEXT_PUBLIC_SEYF_VAULTS_ADDRESS=0x...   # dirección de ReyfVaults
-# (cuando se cablee el adelanto on-chain)
-# NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS=0x...
+NEXT_PUBLIC_SEYF_VAULTS_ADDRESS=0x0212d50490FE5D7183B5B3A403d5C44937a44cF1
+NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS=0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654
+NEXT_PUBLIC_TREASURY_ADDRESS=0xae0AEAd08f5984E6CD00aB4Fd4e9c569D11b2eaF
 ```
 Reinicia `npm run dev`. La pantalla **Ahorro** opera las bóvedas contra el
 contrato (badge "On-chain"). Sin la variable, la app sigue con la capa `store`
