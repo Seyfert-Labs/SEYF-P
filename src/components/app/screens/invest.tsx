@@ -17,7 +17,7 @@ import { useBitsoRates, useBitsoBalances } from "@/hooks/useBitsoRates";
 import { useConversions } from "@/hooks/useConversions";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
-import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN } from "@/lib/chain";
+import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN, explorerBase } from "@/lib/chain";
 
 // Con Supabase, el ledger de conversiones lo escribe /api/convert (servidor);
 // sin él, el cliente lo persiste localmente con la capa `store`.
@@ -311,7 +311,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             mode={action}
             vault={v}
             onClose={() => setAction(null)}
-            onConfirm={async (amt) => { await updateBalance(v.id, action === "abonar" ? amt : -amt); setAction(null); }}
+            onConfirm={(amt) => updateBalance(v.id, action === "abonar" ? amt : -amt)}
           />
         </Portal>
       )}
@@ -681,10 +681,11 @@ export function ScreenConvert({ go }: { go: Go }) {
 }
 
 
-function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; onClose: () => void; onConfirm: (amt: number) => void | Promise<void> }) {
+function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [txHash, setTxHash] = useState("");
   // Abonar: sin meta fija (goal=0), cualquier monto positivo es válido.
   // Retirar: limitado por el saldo de la bóveda.
   const max = mode === "retirar" ? vault.bal : Infinity;
@@ -694,14 +695,17 @@ function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" 
   const submit = async () => {
     setSubmitting(true);
     try {
-      await onConfirm(n);
+      const hash = await onConfirm(n);
+      if (typeof hash === "string" && hash) setTxHash(hash);
       setDone(true);
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (done && mode === "retirar") {
+  // Pop-up de confirmación (abonar y retirar) con comprobante del explorador.
+  if (done) {
+    const isAbono = mode === "abonar";
     return (
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
@@ -710,14 +714,35 @@ function VaultAmountModal({ mode, vault, onClose, onConfirm }: { mode: "abonar" 
             <span style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="check" size={32} />
             </span>
-            <p className="modal-title" style={{ marginTop: 16, textAlign: "center" }}>Listo</p>
-            <p className="modal-sub" style={{ textAlign: "center" }}>
-              <b style={{ color: "var(--txt)" }}>${FMT(n, 2)} MXN</b> retirados de{" "}
-              <b style={{ color: "var(--txt)" }}>{vault.nm}</b>.<br />
-              Ya están disponibles en tus <b style={{ color: "var(--accent)" }}>Pesos digitales</b>.
+            <p className="modal-title" style={{ marginTop: 16, textAlign: "center" }}>
+              {isAbono ? "¡Guardado en tu bóveda!" : "Retiro listo"}
             </p>
+            <p className="num" style={{ margin: "6px 0 0", fontSize: 30, fontWeight: 700, color: "var(--accent)" }}>
+              ${FMT(n, 2)} MXN
+            </p>
+            <p className="modal-sub" style={{ textAlign: "center", marginTop: 8 }}>
+              {isAbono ? (
+                <>Tu dinero quedó guardado en <b style={{ color: "var(--txt)" }}>{vault.nm}</b> y ya está rindiendo on-chain.</>
+              ) : (
+                <>Retirados de <b style={{ color: "var(--txt)" }}>{vault.nm}</b>. Ya están en tus <b style={{ color: "var(--accent)" }}>Pesos digitales</b>.</>
+              )}
+            </p>
+            {txHash ? (
+              <a
+                href={`${explorerBase}/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 16, padding: "10px 16px", borderRadius: 12, background: "var(--accent-soft)", color: "var(--accent)", fontSize: 13, fontWeight: 700 }}
+              >
+                <Icon name="check" size={15} /> Ver comprobante en el explorador →
+              </a>
+            ) : (
+              <p className="modal-sub" style={{ textAlign: "center", marginTop: 12, fontSize: 12, opacity: 0.7 }}>
+                Confirmado on-chain.
+              </p>
+            )}
           </div>
-          <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={onClose}>Listo</button>
+          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={onClose}>Listo</button>
         </div>
       </div>
     );

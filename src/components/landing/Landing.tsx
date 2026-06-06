@@ -608,6 +608,15 @@ export default function Landing() {
               <div className="foot-col"><h5>Producto</h5><a href="#producto">Pesos digitales</a><a href="#bonos">Bonos</a><a href="#producto">Bóvedas</a><a href="#tarjeta">Tarjeta</a></div>
               <div className="foot-col"><h5>Compañía</h5><a href="#">Sobre nosotros</a><a href="#seguridad">Seguridad</a><a href="#">Carreras</a><a href="#">Prensa</a></div>
               <div className="foot-col"><h5>Legal</h5><a href="#">Términos</a><a href="#">Privacidad</a><a href="#">Comisiones</a><a href="#">Soporte</a></div>
+              <div className="foot-col">
+                <h5>Inversionistas</h5>
+                <a className="foot-pitch" href="/reyf-pitch.html" target="_blank" rel="noopener noreferrer">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="20" y2="10" /><line x1="18" x2="18" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="16" /></svg>
+                  Pitch · Lean Canvas
+                </a>
+                <p className="foot-pitch-note">Conoce el modelo de negocio, la tecnología y la tracción de Reyf.</p>
+                <a href="mailto:inversionistas@reyf.app">Contacto inversión</a>
+              </div>
             </div>
             <div className="foot-bottom">
               <span>© 2026 Reyf. Todos los derechos reservados.</span>

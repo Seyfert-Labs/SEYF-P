@@ -280,8 +280,11 @@
 
 /* ---------- footer ---------- */
 .lp footer { border-top: 1px solid var(--line); margin-top: 80px; padding: 56px 0 40px; position: relative; z-index: 1; }
-.lp .foot-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 30px; }
+.lp .foot-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr; gap: 30px; }
 .lp .foot-col h5 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 0 0 16px; }
+.lp .foot-col a.foot-pitch { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; color: var(--accent); }
+.lp .foot-col a.foot-pitch:hover { color: var(--accent); filter: brightness(1.12); }
+.lp .foot-col .foot-pitch-note { font-size: 12.5px; color: var(--dim); margin: 2px 0 0; max-width: 200px; line-height: 1.45; }
 .lp .foot-col a { display: block; font-size: 14.5px; color: var(--muted); margin-bottom: 11px; transition: color .15s; }
 .lp .foot-col a:hover { color: var(--txt); }
 .lp .foot-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 44px; padding-top: 26px; border-top: 1px solid var(--line); font-size: 13px; color: var(--dim); flex-wrap: wrap; gap: 14px; }

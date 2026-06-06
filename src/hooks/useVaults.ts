@@ -110,7 +110,7 @@ export function useVaults(address?: string) {
   );
 
   const updateBalance = useCallback(
-    async (id: string, delta: number) => {
+    async (id: string, delta: number): Promise<string | undefined> => {
       if (!address || delta === 0) return;
       // Sin contrato no se fondea: abonar/retirar solo existen on-chain.
       if (!onchain) return;
@@ -118,6 +118,7 @@ export function useVaults(address?: string) {
       try {
         const vaultId = BigInt(id);
         const amount = toUnits(Math.abs(delta));
+        let hash: string;
         if (delta > 0) {
           // Abonar: aprobar MXNB al contrato y depositar.
           const approve = encodeFunctionData({
@@ -127,13 +128,16 @@ export function useVaults(address?: string) {
           });
           await waitForTx((await wallet.sendTx(MXNB_ADDRESS as string, approve)) as `0x${string}`);
           const deposit = encodeFunctionData({ abi: reyfVaultsAbi, functionName: "deposit", args: [vaultId, amount] });
-          await waitForTx((await wallet.sendTx(SEYF_VAULTS_ADDRESS as string, deposit)) as `0x${string}`);
+          hash = await wallet.sendTx(SEYF_VAULTS_ADDRESS as string, deposit);
+          await waitForTx(hash as `0x${string}`);
         } else {
           // Retirar.
           const withdraw = encodeFunctionData({ abi: reyfVaultsAbi, functionName: "withdraw", args: [vaultId, amount] });
-          await waitForTx((await wallet.sendTx(SEYF_VAULTS_ADDRESS as string, withdraw)) as `0x${string}`);
+          hash = await wallet.sendTx(SEYF_VAULTS_ADDRESS as string, withdraw);
+          await waitForTx(hash as `0x${string}`);
         }
         await reload();
+        return hash;
       } finally {
         setBusy(false);
       }
