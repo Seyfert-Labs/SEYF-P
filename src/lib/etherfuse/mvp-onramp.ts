@@ -1,0 +1,225 @@
+import {
+  createMxOnrampQuote,
+  fetchRampableAssetsForWallet,
+  pickOnrampTargetIdentifier,
+  createMxOnrampOrderStellarResilient,
+} from "./ramp-api";
+import {
+  type MvpPartnerRampIdentity,
+  resolveMvpPartnerCryptoWalletId,
+  resolveMvpPartnerRampIdentity,
+} from "./partner-accounts";
+import {
+  cancelOrder,
+  fetchOrderDetails,
+  fetchOrgOrdersAllPages,
+  findPendingOnrampOrderForAmount,
+} from "./orders-api";
+import { AppError } from "@/lib/reyf/api-error";
+import { quoteIdFromEtherfusePayload } from "@/lib/etherfuse/quote-id";
+
+function depositFromCreateOrderResponse(data: unknown): {
+  orderId: string;
+  clabe: string;
+  depositAmount: number;
+} | null {
+  if (!data || typeof data !== "object") return null;
+  const root = data as Record<string, unknown>;
+  const onramp = root.onramp ?? root.onRamp ?? root.on_ramp;
+  if (!onramp || typeof onramp !== "object") return null;
+  const o = onramp as Record<string, unknown>;
+  const orderId =
+    typeof o.orderId === "string"
+      ? o.orderId
+      : typeof o.order_id === "string"
+        ? o.order_id
+        : "";
+  const clabe =
+    typeof o.depositClabe === "string"
+      ? o.depositClabe
+      : typeof o.deposit_clabe === "string"
+        ? o.deposit_clabe
+        : "";
+  const rawAmt =
+    typeof o.depositAmount === "number" || typeof o.depositAmount === "string"
+      ? o.depositAmount
+      : typeof o.deposit_amount === "number" || typeof o.deposit_amount === "string"
+        ? o.deposit_amount
+        : NaN;
+  const amt = typeof rawAmt === "string" ? Number.parseFloat(rawAmt) : rawAmt;
+  if (!orderId || !clabe || !Number.isFinite(amt)) return null;
+  return { orderId, clabe, depositAmount: amt };
+}
+
+function depositFromOrderDetail(data: unknown): {
+  orderId: string;
+  clabe: string;
+  depositAmount: number;
+} | null {
+  if (!data || typeof data !== "object") return null;
+  const o = data as Record<string, unknown>;
+  const orderId =
+    typeof o.orderId === "string"
+      ? o.orderId
+      : typeof o.order_id === "string"
+        ? o.order_id
+        : "";
+  const clabe =
+    typeof o.depositClabe === "string"
+      ? o.depositClabe
+      : typeof o.deposit_clabe === "string"
+        ? o.deposit_clabe
+        : "";
+  let amt: number = NaN;
+  const raw = o.amountInFiat ?? o.amount_in_fiat;
+  if (typeof raw === "number") amt = raw;
+  else if (typeof raw === "string") amt = Number.parseFloat(raw);
+  if (!orderId || !clabe || !Number.isFinite(amt)) return null;
+  return { orderId, clabe, depositAmount: amt };
+}
+
+export type MvpOnrampResult = {
+  mode: "new" | "reused";
+  walletPublicKey: string;
+  bankAccountId: string;
+  customerId: string;
+  targetAsset: string;
+  quote: unknown;
+  deposit: {
+    orderId: string;
+    clabe: string;
+    depositAmount: number;
+  };
+  reusedFromPending: boolean;
+};
+
+/**
+ * Cotización + orden onramp usando solo wallet y cuenta bancaria de la org (API key).
+ * Ante 409 reutiliza la orden pendiente misma cuenta + monto; opcionalmente cancela y reintenta.
+ *
+ * @param targetAssetIdentifier — p. ej. `CETES:GCRY...` para forzar MXN → CETES sin depender del orden de pick.
+ * @param identity — Si se omite, se usa `resolveMvpPartnerRampIdentity()` (solo org/API). Pasa identidad explícita para cookie `/identidad` o mismo shape desde `getEtherfuseRampContext()`.
+ */
+export async function executeMvpPartnerOnramp(params: {
+  sourceAmount: string;
+  amountMxn: number;
+  forceNew?: boolean;
+  targetAssetIdentifier?: string | null;
+  identity?: MvpPartnerRampIdentity;
+}): Promise<MvpOnrampResult> {
+  const identity =
+    params.identity ?? (await resolveMvpPartnerRampIdentity());
+
+  let targetAsset: string;
+  if (params.targetAssetIdentifier?.trim()) {
+    targetAsset = params.targetAssetIdentifier.trim();
+  } else {
+    const { assets } = await fetchRampableAssetsForWallet({
+      walletPublicKey: identity.publicKey,
+    });
+    const picked = pickOnrampTargetIdentifier(assets);
+    if (!picked) {
+      throw new Error(
+        "No hay activo destino. Define ETHERFUSE_ONRAMP_TARGET_ASSET (CODE:ISSUER).",
+      );
+    }
+    targetAsset = picked;
+  }
+
+  if (params.forceNew) {
+    const orders = await fetchOrgOrdersAllPages();
+    const pendingId = findPendingOnrampOrderForAmount(
+      orders,
+      identity.bankAccountId,
+      params.amountMxn,
+    );
+    if (pendingId) {
+      await cancelOrder(pendingId);
+    }
+  }
+
+  const quote = await createMxOnrampQuote({
+    customerId: identity.customerId,
+    sourceAmount: params.sourceAmount,
+    targetAssetIdentifier: targetAsset,
+  });
+  const quoteId = quoteIdFromEtherfusePayload(quote);
+  if (!quoteId) {
+    throw new Error("Cotización sin quoteId");
+  }
+
+  let cryptoWalletId: string;
+  try {
+    cryptoWalletId = await resolveMvpPartnerCryptoWalletId(identity.publicKey);
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    throw new AppError("validation_error", {
+      retryable: false,
+      message: detail,
+      messageEs:
+        "Tu wallet Stellar no aparece en Etherfuse para esta API key. Completa /identidad (KYC y registro de wallet) o revisa el panel de Etherfuse.",
+    });
+  }
+
+  let orderJson: unknown;
+  try {
+    orderJson = await createMxOnrampOrderStellarResilient({
+      bankAccountId: identity.bankAccountId,
+      quoteId,
+      publicKey: identity.publicKey,
+      cryptoWalletId,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    const lm = msg.toLowerCase();
+    if (
+      msg.includes("(409)") ||
+      lm.includes("pending onramp order already exists")
+    ) {
+      const orders = await fetchOrgOrdersAllPages();
+      const pendingId = findPendingOnrampOrderForAmount(
+        orders,
+        identity.bankAccountId,
+        params.amountMxn,
+      );
+      if (pendingId) {
+        const detail = await fetchOrderDetails(pendingId);
+        const dep = depositFromOrderDetail(detail);
+        if (dep) {
+          return {
+            mode: "reused",
+            walletPublicKey: identity.publicKey,
+            bankAccountId: identity.bankAccountId,
+            customerId: identity.customerId,
+            targetAsset,
+            quote,
+            deposit: dep,
+            reusedFromPending: true,
+          };
+        }
+      }
+    }
+    throw e;
+  }
+
+  const dep = depositFromCreateOrderResponse(orderJson);
+  const text =
+    typeof orderJson === "object" && orderJson !== null
+      ? JSON.stringify(orderJson)
+      : "";
+  if (!dep) {
+    throw new Error(
+      "Orden creada pero sin datos onramp en respuesta: " + text.slice(0, 300),
+    );
+  }
+  return {
+    mode: "new",
+    walletPublicKey: identity.publicKey,
+    bankAccountId: identity.bankAccountId,
+    customerId: identity.customerId,
+    targetAsset,
+    quote,
+    deposit: dep,
+    reusedFromPending: false,
+  };
+}

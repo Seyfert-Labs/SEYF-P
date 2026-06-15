@@ -180,6 +180,24 @@ export function ScreenProfile({ go }: { go: Go }) {
           <span className="pos-pill"><Icon name="check" size={12} /> Verificado</span>
         </div>
 
+        {/* Verificación de identidad (KYC) — habilita todas las bóvedas */}
+        <button
+          onClick={() => go("kyc")}
+          className="card"
+          style={{ marginTop: 14, width: "100%", display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", border: "1px solid var(--accent-soft)", background: "var(--accent-soft)" }}
+        >
+          <span style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon name="shield" size={22} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Verifica tu identidad</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+              Un solo paso para habilitar todas tus bóvedas de ahorro.
+            </p>
+          </div>
+          <Icon name="chevR" size={18} color="var(--txt-dim)" />
+        </button>
+
         {wallet.enabled && wallet.authenticated && wallet.address && (
           <div className="card" style={{ marginTop: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

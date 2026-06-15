@@ -40,7 +40,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           <p className="sub">Instrumentos soberanos diversificados, liquidez sin penalización y cero comisiones sobre tu saldo.</p>
           <div style={{ marginTop: 30 }}>
             <div className="feat"><span className="tk"><Icon name="leaf" size={15} /></span><span className="tx">8–14% anual según tu perfil de riesgo</span></div>
-            <div className="feat"><span className="tk"><Icon name="globe" size={15} /></span><span className="tx">CETES, Treasuries, Tesouro, KTB coreanos</span></div>
+            <div className="feat"><span className="tk"><Icon name="globe" size={15} /></span><span className="tx">Deuda soberana diversificada por país</span></div>
             <div className="feat"><span className="tk"><Icon name="shield" size={15} /></span><span className="tx">0% de comisión sobre tu saldo</span></div>
           </div>
         </div>

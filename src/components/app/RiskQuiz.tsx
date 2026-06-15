@@ -156,7 +156,7 @@ function QuizResultFull({ plan, onDone }: { plan: VaultPlan; onDone: () => void 
         <div className="divider" />
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--txt-muted)" }}>
           <Icon name="globe" size={14} color="var(--accent)" />
-          Instrumentos soberanos: CETES, Treasuries, Tesouro, KTB
+          Instrumentos soberanos diversificados por país
         </div>
       </div>
 

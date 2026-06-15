@@ -58,3 +58,14 @@ next-env.d.ts
 
 # docs de contexto de sesión (local, no se versionan)
 docs/sesion-*.md
+
+# marketing (plan local, no se versiona)
+/marketing/
+
+# artefactos del pitch (binarios pesados / entorno local, no se versionan)
+docs/.venv/
+docs/.export-slides/
+docs/reyf-pitch-kit/
+docs/reyf-pitch-kit.zip
+docs/reyf-pitch.pptx
+docs/reyf-demo.mp4

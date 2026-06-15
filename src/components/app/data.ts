@@ -65,6 +65,11 @@ export interface VaultPlan {
   featured?: boolean;
   riskProfile?: boolean; // true = perfil de riesgo del cuestionario; false/undefined = producto (AFORE)
   blend?: string;        // mezcla de instrumentos soberanos diversificados
+  /** Riel que respalda la bóveda (detalle interno, nunca visible al usuario).
+     "etherfuse" = bonos soberanos tokenizados vía Etherfuse (requiere KYC). */
+  backend?: "etherfuse" | "defi";
+  /** Exige verificación de identidad antes de abrir/fondear esta bóveda. */
+  kycGated?: boolean;
 }
 
 /* Los 4 perfiles de riesgo del MVP (riskProfile: true) + el producto AFORE
@@ -76,7 +81,7 @@ export const VAULT_PLANS: VaultPlan[] = [
     tagline: "Ahorra para tu pensión",
     risk: "Medio",
     exposure: "Deuda soberana global diversificada",
-    blend: "CETES · Treasuries · Tesouro · KTB",
+    blend: "Deuda soberana de varios países",
     apy: 10.5,
     horizon: "Para el retiro · acceso a los 65",
     structured: "Aportaciones deducibles de impuestos. Tu pensión, en tus manos, sin las comisiones de una Afore tradicional.",
@@ -90,13 +95,16 @@ export const VAULT_PLANS: VaultPlan[] = [
     tagline: "Protege tu capital",
     risk: "Bajo",
     exposure: "100% deuda soberana de corto plazo",
-    blend: "CETES · US Treasuries",
+    blend: "Deuda soberana de corto plazo",
     apy: 8.0,
     horizon: "0 a 3 años",
     structured: "Tu capital protegido con rendimiento estable y predecible. Para metas cercanas.",
     color: "#5BD6C0",
     emoji: "🛡️",
     riskProfile: true,
+    // Riel soberano respaldado por Etherfuse (bonos tokenizados). Interno.
+    backend: "etherfuse",
+    kycGated: true,
   },
   {
     id: "moderado",
@@ -104,7 +112,7 @@ export const VAULT_PLANS: VaultPlan[] = [
     tagline: "Crece con prudencia",
     risk: "Bajo",
     exposure: "Deuda soberana diversificada por país",
-    blend: "CETES · Treasuries · KTB",
+    blend: "Deuda soberana diversificada",
     apy: 9.5,
     horizon: "3 a 7 años",
     structured: "Diversificas entre gobiernos para crecer un poco más, manteniendo bajo el riesgo.",
@@ -118,7 +126,7 @@ export const VAULT_PLANS: VaultPlan[] = [
     tagline: "Equilibrio seguridad y crecimiento",
     risk: "Medio",
     exposure: "Deuda soberana + algo de renta variable",
-    blend: "CETES · Tesouro · Treasuries · índices",
+    blend: "Deuda soberana + índices",
     apy: 11.5,
     horizon: "7 a 15 años",
     structured: "El equilibrio entre seguridad y crecimiento para tu futuro de mediano plazo.",
@@ -132,7 +140,7 @@ export const VAULT_PLANS: VaultPlan[] = [
     tagline: "Máximo rendimiento a largo plazo",
     risk: "Alto",
     exposure: "Mayor exposición a renta variable global",
-    blend: "Tesouro · índices globales · tecnología",
+    blend: "Índices globales + tecnología",
     apy: 14.0,
     horizon: "15+ años",
     structured: "Máxima exposición a mercados para horizontes largos. El tiempo trabaja a tu favor.",

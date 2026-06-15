@@ -8,13 +8,19 @@ import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
 import { activeChain } from "@/lib/chain";
 import { WalletCtx, defaultWalletState } from "./wallet/WalletContext";
 import PrivyBridge from "./wallet/PrivyBridge";
+import ReyfPollarProvider from "./providers/ReyfPollarProvider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
   // Sin App ID configurado: modo demo (sin Privy), contexto por defecto.
+  // Pollar envuelve igual: la wallet Stellar de verificación vive dentro del shell.
   if (!appId) {
-    return <WalletCtx.Provider value={defaultWalletState}>{children}</WalletCtx.Provider>;
+    return (
+      <WalletCtx.Provider value={defaultWalletState}>
+        <ReyfPollarProvider>{children}</ReyfPollarProvider>
+      </WalletCtx.Provider>
+    );
   }
 
   return (
@@ -36,7 +42,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <SmartWalletsProvider>
-        <PrivyBridge>{children}</PrivyBridge>
+        <PrivyBridge>
+          <ReyfPollarProvider>{children}</ReyfPollarProvider>
+        </PrivyBridge>
       </SmartWalletsProvider>
     </PrivyProvider>
   );

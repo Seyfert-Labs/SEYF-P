@@ -10,14 +10,20 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@pollar/core": "^0.5.3",
+    "@pollar/react": "^0.5.3",
     "@privy-io/react-auth": "3.28.0",
+    "@stellar/stellar-sdk": "^14.6.1",
     "@supabase/supabase-js": "2.106.2",
+    "@upstash/redis": "^1.37.0",
+    "canonicalize": "^2.1.0",
     "next": "16.2.6",
     "ox": "^0.8.9",
     "permissionless": "0.2.57",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "viem": "2.51.2"
+    "viem": "2.51.2",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.0",
