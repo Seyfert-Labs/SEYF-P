@@ -42,6 +42,23 @@ interface IdentityForm {
   postalCode: string;
 }
 
+/** Extrae un mensaje legible de la respuesta de error de /api/reyf/* .
+   La API puede devolver `error` como objeto estructurado + `debug_message`. */
+function readApiError(j: unknown, status: number): string {
+  if (j && typeof j === "object") {
+    const o = j as Record<string, unknown>;
+    if (typeof o.debug_message === "string" && o.debug_message.trim()) return o.debug_message;
+    const e = o.error;
+    if (typeof e === "string" && e.trim()) return e;
+    if (e && typeof e === "object") {
+      const eo = e as Record<string, unknown>;
+      const m = eo.message_es ?? eo.message;
+      if (typeof m === "string" && m.trim()) return m;
+    }
+  }
+  return `No se pudo procesar (HTTP ${status}).`;
+}
+
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -139,14 +156,14 @@ export function ScreenKyc({ go }: { go: Go }) {
               postalCode: form.postalCode, country: "MX",
             },
             idNumbers: [
-              { type: "curp", value: form.curp },
-              { type: "rfc", value: form.rfc },
+              { type: "mx_curp", value: form.curp },
+              { type: "mx_rfc", value: form.rfc },
             ],
           },
         }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      if (!r.ok) throw new Error(readApiError(j, r.status));
       setStep("documents");
     });
   };
@@ -170,7 +187,7 @@ export function ScreenKyc({ go }: { go: Go }) {
         }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      if (!r.ok) throw new Error(readApiError(j, r.status));
       setStep("agreements");
     });
   };
@@ -183,7 +200,7 @@ export function ScreenKyc({ go }: { go: Go }) {
         body: JSON.stringify({}),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      if (!r.ok) throw new Error(readApiError(j, r.status));
       await refreshStatus();
       setStep("done");
     });
@@ -279,6 +296,15 @@ export function ScreenKyc({ go }: { go: Go }) {
 
         {/* 2 · Datos personales */}
         {step === "identity" && (
+          <>
+            <div className="card" style={{ marginBottom: 14, background: "var(--accent-soft)", border: "none", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 34, height: 34, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon name="check" size={18} />
+              </span>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--txt)", lineHeight: 1.4 }}>
+                <b>Código verificado.</b> Ahora completa tus datos.
+              </p>
+            </div>
           <form onSubmit={submitIdentity} className="card" style={{ display: "grid", gap: 12 }}>
             <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Tus datos</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -299,6 +325,7 @@ export function ScreenKyc({ go }: { go: Go }) {
               {busy ? <span className="spin" /> : "Continuar"}
             </button>
           </form>
+          </>
         )}
 
         {/* 3 · Documentos */}
