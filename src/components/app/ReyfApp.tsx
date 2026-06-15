@@ -9,6 +9,7 @@ import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens/core";
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
 import { ScreenCard, ScreenProfile, ScreenNotifs } from "./screens/account";
+import { ScreenKyc } from "./screens/kyc";
 import { useWallet } from "@/components/wallet/WalletContext";
 
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
@@ -73,11 +74,12 @@ export default function ReyfApp() {
     cambio: <ScreenConvert go={go} />,
     perfil: <ScreenProfile go={go} />,
     recompensas: <ScreenProfile go={go} />,
+    kyc: <ScreenKyc go={go} />,
     notifs: <ScreenNotifs go={go} />,
     txn: <ScreenTxnDetail go={go} ctx={route.ctx} />,
   };
 
-  const showTabs = !["boveda", "convertir", "cambio", "txn"].includes(route.screen);
+  const showTabs = !["boveda", "convertir", "cambio", "txn", "kyc"].includes(route.screen);
 
   return (
     <div className="app-shell">
