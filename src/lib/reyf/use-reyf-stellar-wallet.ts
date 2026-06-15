@@ -127,7 +127,10 @@ export function useReyfStellarWallet() {
 
   return {
     ready: true,
-    enabled: Boolean(process.env.NEXT_PUBLIC_POLLAR_API_KEY?.trim()),
+    // Mismo fallback de llave que ReyfPollarProvider (publishable o api key).
+    enabled: Boolean(
+      (process.env.NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_POLLAR_API_KEY)?.trim(),
+    ),
     authenticated: isAuthenticated,
     wallet,
     publicKey,
