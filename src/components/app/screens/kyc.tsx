@@ -184,8 +184,8 @@ export function ScreenKyc({ go }: { go: Go }) {
             // Valores oficiales de Etherfuse: `curp`/`rfc` (no `mx_curp`/`mx_rfc`).
             // El servidor reenvía cada uno con `type` e `idType` para cubrir ambas variantes de la doc.
             idNumbers: [
-              { type: "curp", value: form.curp },
-              { type: "rfc", value: form.rfc },
+              { type: "mx_curp", value: form.curp },
+              { type: "mx_rfc", value: form.rfc },
             ],
           },
         }),
@@ -334,7 +334,7 @@ export function ScreenKyc({ go }: { go: Go }) {
                 <b>Código verificado.</b> Ahora completa tus datos.
               </p>
             </div>
-          <form onSubmit={submitIdentity} className="card" autoComplete="off" style={{ display: "grid", gap: 12 }}>
+          <form onSubmit={submitIdentity} className="card" style={{ display: "grid", gap: 12 }}>
             <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Tus datos</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {FIELDS.map((f) => (
