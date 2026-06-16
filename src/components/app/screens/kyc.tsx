@@ -32,7 +32,7 @@ const FIELDS: FieldDef[] = [
   { key: "firstName", label: "Nombre(s)", autoComplete: "given-name" },
   { key: "paternalLastName", label: "Apellido paterno", half: true, autoComplete: "family-name" },
   { key: "maternalLastName", label: "Apellido materno", half: true, autoComplete: "off" },
-  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA/MM/DD", autoComplete: "bday", inputMode: "numeric" },
+  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA-MM-DD", autoComplete: "bday", inputMode: "numeric" },
   { key: "curp", label: "CURP", half: true, autoComplete: "off" },
   { key: "rfc", label: "RFC", half: true, autoComplete: "off" },
   { key: "phone", label: "Teléfono", half: true, autoComplete: "tel", type: "tel", inputMode: "tel" },
