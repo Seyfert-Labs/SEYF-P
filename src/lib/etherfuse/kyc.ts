@@ -44,7 +44,7 @@ export type EtherfuseKycSubmitIdentity = {
   phoneNumber?: string;
   occupation?: string;
   accountType?: string;
-  name: { givenName: string; familyName: string };
+  name: { givenName: string; familyName: string; motherMaidenName?: string };
   dateOfBirth: string;
   address: {
     street: string;
@@ -53,7 +53,7 @@ export type EtherfuseKycSubmitIdentity = {
     postalCode: string;
     country: string;
   };
-  idNumbers: Array<{ id: string; value?: string; type: string }>;
+  idNumbers: Array<{ type: string; idType?: string; value: string }>;
 };
 
 export type EtherfuseKycDocumentType = "document" | "selfie";
