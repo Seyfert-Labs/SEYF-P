@@ -10,32 +10,48 @@ import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
 import { useEnsureCetesTrustline } from "@/lib/reyf/use-ensure-cetes-trustline";
-import { normalizeDateOfBirthToIso } from "@/lib/reyf/normalize-date-of-birth";
 import type { EtherfuseKycSnapshot } from "@/lib/etherfuse/kyc";
 
 type Step = "connect" | "identity" | "documents" | "agreements" | "done";
 
 // Etiquetas en español para el formulario de identidad (sin claves crudas).
-const FIELDS: { key: keyof IdentityForm; label: string; placeholder?: string; half?: boolean }[] = [
-  { key: "firstName", label: "Nombre(s)", half: true },
-  { key: "lastName", label: "Apellidos", half: true },
-  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA-MM-DD" },
-  { key: "curp", label: "CURP", half: true },
-  { key: "rfc", label: "RFC", half: true },
-  { key: "phone", label: "Teléfono" },
-  { key: "street", label: "Calle y número" },
-  { key: "city", label: "Ciudad", half: true },
-  { key: "state", label: "Estado", half: true },
-  { key: "postalCode", label: "Código postal" },
+// `autoComplete` semántico evita que el navegador sugiera tarjetas de pago:
+// con un token explícito (given-name, bday, tel…) Chrome ya no adivina cc.
+// CURP/RFC no tienen token estándar → `off` para silenciar el autocompletado.
+type FieldDef = {
+  key: keyof IdentityForm;
+  label: string;
+  placeholder?: string;
+  half?: boolean;
+  autoComplete: string;
+  type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+};
+
+const FIELDS: FieldDef[] = [
+  { key: "firstName", label: "Nombre(s)", autoComplete: "given-name" },
+  { key: "paternalLastName", label: "Apellido paterno", half: true, autoComplete: "family-name" },
+  { key: "maternalLastName", label: "Apellido materno", half: true, autoComplete: "off" },
+  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA-MM-DD", autoComplete: "bday", inputMode: "numeric" },
+  { key: "curp", label: "CURP", half: true, autoComplete: "off" },
+  { key: "rfc", label: "RFC", half: true, autoComplete: "off" },
+  { key: "phone", label: "Teléfono", half: true, autoComplete: "tel", type: "tel", inputMode: "tel" },
+  { key: "occupation", label: "Ocupación", half: true, autoComplete: "off" },
+  { key: "street", label: "Calle y número", autoComplete: "address-line1" },
+  { key: "city", label: "Ciudad", half: true, autoComplete: "address-level2" },
+  { key: "state", label: "Estado", half: true, autoComplete: "address-level1" },
+  { key: "postalCode", label: "Código postal", autoComplete: "postal-code", inputMode: "numeric" },
 ];
 
 interface IdentityForm {
   firstName: string;
-  lastName: string;
+  paternalLastName: string;
+  maternalLastName: string;
   dateOfBirth: string;
   curp: string;
   rfc: string;
   phone: string;
+  occupation: string;
   street: string;
   city: string;
   state: string;
@@ -81,8 +97,9 @@ export function ScreenKyc({ go }: { go: Go }) {
   const [kyc, setKyc] = useState<EtherfuseKycSnapshot | null>(null);
 
   const [form, setForm] = useState<IdentityForm>({
-    firstName: "", lastName: "", dateOfBirth: "", curp: "", rfc: "",
-    phone: "", street: "", city: "", state: "", postalCode: "",
+    firstName: "", paternalLastName: "", maternalLastName: "", dateOfBirth: "",
+    curp: "", rfc: "", phone: "", occupation: "",
+    street: "", city: "", state: "", postalCode: "",
   });
   const [ineFront, setIneFront] = useState<File | null>(null);
   const [ineBack, setIneBack] = useState<File | null>(null);
@@ -147,14 +164,25 @@ export function ScreenKyc({ go }: { go: Go }) {
         body: JSON.stringify({
           publicKey: stellar.publicKey,
           identity: {
-            name: { givenName: form.firstName, familyName: form.lastName },
-            dateOfBirth: normalizeDateOfBirthToIso(form.dateOfBirth),
+            // Nombre mexicano mapeado a los campos de Etherfuse (ver ejemplo oficial de submit-kyc):
+            // apellido paterno → familyName, apellido materno → motherMaidenName.
+            name: {
+              givenName: form.firstName,
+              familyName: form.paternalLastName,
+              motherMaidenName: form.maternalLastName,
+            },
+            // Se manda crudo: el servidor normaliza (acepta -, / o . y día/mes 1–2 dígitos).
+            // Pre-normalizar aquí convertía formatos válidos en null → 400.
+            dateOfBirth: form.dateOfBirth,
             email,
             phoneNumber: form.phone,
+            occupation: form.occupation,
             address: {
               street: form.street, city: form.city, region: form.state,
               postalCode: form.postalCode, country: "MX",
             },
+            // Valores oficiales de Etherfuse: `curp`/`rfc` (no `mx_curp`/`mx_rfc`).
+            // El servidor reenvía cada uno con `type` e `idType` para cubrir ambas variantes de la doc.
             idNumbers: [
               { type: "mx_curp", value: form.curp },
               { type: "mx_rfc", value: form.rfc },
@@ -278,6 +306,7 @@ export function ScreenKyc({ go }: { go: Go }) {
                 <input
                   className="input num-input"
                   inputMode="numeric"
+                  autoComplete="one-time-code"
                   placeholder="••••••"
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, ""))}
@@ -314,6 +343,10 @@ export function ScreenKyc({ go }: { go: Go }) {
                   <input
                     className="input"
                     required
+                    name={f.key}
+                    type={f.type ?? "text"}
+                    inputMode={f.inputMode}
+                    autoComplete={f.autoComplete}
                     value={form[f.key]}
                     placeholder={f.placeholder}
                     onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}

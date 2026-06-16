@@ -14,13 +14,15 @@ export function normalizeDateOfBirthToIso(input: string): string | null {
   const t = input.trim()
   if (!t) return null
 
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t)
-  if (iso) {
-    const y = Number(iso[1])
-    const m = Number(iso[2])
-    const d = Number(iso[3])
+  // Año primero con cualquier separador (-, /, .) y mes/día de 1–2 dígitos:
+  // cubre `1990-05-15`, `1990/05/15` (slashes respetando el placeholder AAAA-MM-DD) y `1990/5/15`.
+  const ymd = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(t)
+  if (ymd) {
+    const y = Number(ymd[1])
+    const m = Number(ymd[2])
+    const d = Number(ymd[3])
     if (!isValidYmd(y, m, d)) return null
-    return `${iso[1]}-${iso[2]}-${iso[3]}`
+    return `${ymd[1]}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
   }
 
   // `1990-05-15T00:00:00.000Z` u otra ISO con hora

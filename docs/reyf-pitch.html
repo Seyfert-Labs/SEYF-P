@@ -27,7 +27,7 @@
     overflow:hidden; -webkit-font-smoothing:antialiased; line-height:1.5;
   }
   .num{font-family:var(--display);font-feature-settings:'tnum' 1;letter-spacing:-.02em}
-  .display{font-family:var(--display);font-weight:700;letter-spacing:-.035em;line-height:1.02}
+  .display{font-family:var(--display);font-weight:700;letter-spacing:-.03em;line-height:1.05}
 
   /* ---------- atmosphere ---------- */
   .atmos{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
@@ -40,194 +40,224 @@
     background-size:64px 64px;opacity:.22;
     -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 40%,#000 0%,transparent 80%);
     mask-image:radial-gradient(ellipse 90% 80% at 50% 40%,#000 0%,transparent 80%)}
-  @keyframes gf1{to{transform:translate(20px,30px)}}
-  @keyframes gf2{to{transform:translate(-30px,-22px)}}
+  @keyframes gf1{to{transform:translate(18px,24px)}}
+  @keyframes gf2{to{transform:translate(-24px,-18px)}}
 
   /* ---------- deck ---------- */
   .deck{position:relative;z-index:1;height:100vh;width:100vw;overflow:hidden}
   .track{display:flex;height:100%;transition:transform .85s cubic-bezier(.76,0,.24,1)}
   .slide{min-width:100vw;height:100vh;display:grid;place-items:center;padding:78px 6vw 104px;position:relative}
-  .slide-inner{width:100%;max-width:1120px}
+  .slide-inner{width:100%;max-width:1140px}
 
   .kicker{display:inline-flex;align-items:center;gap:11px;padding:7px 15px 7px 7px;border-radius:999px;
-    background:var(--surface-2);border:1px solid var(--line);font-size:13px;font-weight:700;
-    letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:24px}
+    background:var(--surface-2);border:1px solid var(--line);font-size:12px;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:24px}
   .kicker .n{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;
     background:var(--accent);color:var(--on-accent);font-family:var(--display);font-size:13px;font-weight:700}
   .kicker.v{color:var(--accent-2)} .kicker.v .n{background:var(--accent-2);color:#fff}
 
   h1.title{font-size:clamp(34px,5.4vw,68px)}
-  h2.title{font-size:clamp(30px,4.4vw,54px);max-width:20ch}
-  .lede{font-size:clamp(17px,1.7vw,21px);color:var(--muted);margin-top:22px;max-width:62ch}
+  h2.title{font-size:clamp(28px,4.2vw,52px);max-width:22ch}
+  .lede{font-size:clamp(16px,1.6vw,20px);color:var(--muted);margin-top:20px;max-width:62ch}
   .em{color:var(--accent)} .em2{color:var(--accent-2)}
 
   /* reveal */
-  .rv{opacity:0;transform:translateY(34px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .rv{opacity:0;transform:translateY(28px);transition:opacity .65s cubic-bezier(.2,.7,.2,1),transform .65s cubic-bezier(.2,.7,.2,1)}
   .slide.active .rv{opacity:1;transform:none}
   .slide.active .rv:nth-child(1){transition-delay:.05s}
-  .slide.active .rv:nth-child(2){transition-delay:.13s}
-  .slide.active .rv:nth-child(3){transition-delay:.21s}
+  .slide.active .rv:nth-child(2){transition-delay:.12s}
+  .slide.active .rv:nth-child(3){transition-delay:.19s}
   .d1{transition-delay:.1s!important}.d2{transition-delay:.2s!important}.d3{transition-delay:.3s!important}
   .d4{transition-delay:.4s!important}.d5{transition-delay:.5s!important}.d6{transition-delay:.6s!important}
 
   /* ---------- hero ---------- */
-  .hero{display:grid;place-items:center;text-align:center;gap:30px}
+  .hero{display:grid;place-items:center;text-align:center;gap:28px}
   .hero .mark{width:118px;height:118px;display:grid;place-items:center;border-radius:30px;
     background:linear-gradient(160deg,rgba(139,92,246,.18),rgba(200,255,77,.10));
     border:1px solid var(--line-2);box-shadow:0 30px 80px -30px rgba(139,92,246,.6);
     animation:floaty 5s ease-in-out infinite}
-  .hero .mark svg{width:62px;height:auto}
-  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-  .hero h1{font-size:clamp(40px,8vw,100px);line-height:.98}
+  .hero .mark svg{width:58px;height:auto}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .hero h1{font-size:clamp(38px,7.5vw,96px);line-height:.98}
   .hero h1 .l1{color:var(--accent)} .hero h1 .l2{color:var(--txt)}
-  .hero .sub{font-size:clamp(15px,1.6vw,19px);color:var(--muted)}
+  .hero .sub{font-size:clamp(15px,1.5vw,19px);color:var(--muted);max-width:48ch}
   .badge-lc{display:inline-flex;align-items:center;gap:9px;padding:9px 18px;border-radius:999px;
-    background:var(--surface-2);border:1px solid var(--line-2);font-size:13.5px;font-weight:700;color:var(--txt)}
+    background:var(--surface-2);border:1px solid var(--line-2);font-size:13px;font-weight:600;color:var(--txt)}
   .badge-lc b{color:var(--accent)}
-
-  /* ---------- Lean Canvas board ---------- */
-  .lc{display:grid;gap:10px;margin-top:30px;
-    grid-template-columns:repeat(5,1fr);
-    grid-template-rows:auto auto auto;
-    grid-template-areas:
-      "prob sol  uvp  adv  cust"
-      "prob met  uvp  chan cust"
-      "cost cost rev  rev  rev";}
-  .lc .cell{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;
-    position:relative;overflow:hidden;min-height:0}
-  .lc .cell .h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-  .lc .cell .b{width:19px;height:19px;border-radius:50%;display:grid;place-items:center;flex:none;
-    font-family:var(--display);font-size:11px;font-weight:700;background:var(--accent);color:var(--on-accent)}
-  .lc .cell.alt .b{background:var(--accent-2);color:#fff}
-  .lc .cell .t{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--txt)}
-  .lc .cell ul{list-style:none;display:grid;gap:5px}
-  .lc .cell li{font-size:11.5px;color:var(--muted);line-height:1.35;padding-left:11px;position:relative}
-  .lc .cell li::before{content:"";position:absolute;left:0;top:6px;width:4px;height:4px;border-radius:50%;background:var(--accent)}
-  .lc .cell.alt li::before{background:var(--accent-2)}
-  .lc .cell.hi{background:linear-gradient(155deg,var(--accent-2-soft),transparent 70%)}
-  /* board enters cell-by-cell in canonical order 1→9 */
-  .lc .cell{opacity:0;transform:translateY(16px) scale(.98);transition:opacity .5s,transform .5s}
-  .slide.active .lc .cell{opacity:1;transform:none}
-  .slide.active .lc .prob{transition-delay:.10s}
-  .slide.active .lc .cust{transition-delay:.16s}
-  .slide.active .lc .uvp{transition-delay:.22s}
-  .slide.active .lc .sol{transition-delay:.28s}
-  .slide.active .lc .chan{transition-delay:.34s}
-  .slide.active .lc .rev{transition-delay:.40s}
-  .slide.active .lc .cost{transition-delay:.46s}
-  .slide.active .lc .met{transition-delay:.52s}
-  .slide.active .lc .adv{transition-delay:.58s}
-  .lc .prob{grid-area:prob} .lc .sol{grid-area:sol} .lc .met{grid-area:met}
-  .lc .uvp{grid-area:uvp} .lc .adv{grid-area:adv} .lc .chan{grid-area:chan}
-  .lc .cust{grid-area:cust} .lc .cost{grid-area:cost} .lc .rev{grid-area:rev}
-  .lc .uvp .t{color:var(--accent)} .lc .uvp{border-color:var(--line-2)}
-  .lc-cap{font-size:12px;color:var(--dim);margin-top:14px;text-align:center}
 
   /* ---------- mini canvas locator ---------- */
   .mini{position:absolute;top:78px;right:6vw;z-index:6;width:190px;display:grid;gap:3px;
     grid-template-columns:repeat(5,1fr);
     grid-template-areas:"prob sol uvp adv cust" "prob met uvp chan cust" "cost cost rev rev rev";
     opacity:0;transform:translateY(-8px);transition:opacity .6s .25s,transform .6s .25s}
-  .slide.active .mini{opacity:.95;transform:none}
+  .slide.active .mini{opacity:.9;transform:none}
   .mini .mc{grid-area:var(--a);background:var(--surface);border:1px solid var(--line);border-radius:4px;
     min-height:14px;display:grid;place-items:center;font-family:var(--display);font-size:8px;font-weight:700;color:var(--dim);transition:all .3s}
   .mini .mc.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);box-shadow:0 0 12px var(--accent-soft);transform:scale(1.06)}
   .mini .cap{grid-column:1/-1;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:right;margin-top:1px}
 
   /* ---------- generic cards ---------- */
-  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
-  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:34px}
-  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:34px}
-  .card{padding:30px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);
-    transition:transform .25s,border-color .25s,background .25s}
-  .card:hover{transform:translateY(-7px);border-color:var(--line-2);background:var(--surface-2)}
-  .card .ic{width:62px;height:62px;border-radius:18px;display:grid;place-items:center;color:var(--accent);
-    background:linear-gradient(155deg,var(--accent-soft),transparent);border:1px solid var(--line-2);margin-bottom:20px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:30px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px}
+  .card{padding:26px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);
+    transition:transform .25s,border-color .25s,background .25s;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0;transition:opacity .3s}
+  .card:hover{transform:translateY(-5px);border-color:var(--line-2);background:var(--surface-2)}
+  .card:hover::before{opacity:.6}
+  .card .ic{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;color:var(--accent);
+    background:linear-gradient(155deg,var(--accent-soft),transparent);border:1px solid var(--line);margin-bottom:16px}
   .card.v .ic{color:var(--accent-2);background:linear-gradient(155deg,var(--accent-2-soft),transparent)}
-  .card .ic svg{width:30px;height:30px}
-  /* shared icon stroke styling */
+  .card .ic svg{width:28px;height:28px}
   .ic svg,.chip-x svg,.badge-lc svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .chip-x svg{width:18px;height:18px;flex:none;color:var(--accent)}
   .badge-lc svg{width:17px;height:17px;color:var(--accent)}
-  .card h3{font-size:19px;font-weight:800;margin-bottom:6px}
-  .card p{font-size:14.5px;color:var(--muted)}
-  .card .step-n{font-family:var(--display);font-size:54px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:14px;
-    -webkit-text-stroke:0;text-shadow:0 0 30px var(--accent-soft)}
+  .card h3{font-size:17px;font-weight:700;margin-bottom:5px;font-family:var(--display)}
+  .card p{font-size:14px;color:var(--muted)}
+  .card .step-n{font-family:var(--display);font-size:48px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:12px;text-shadow:0 0 30px var(--accent-soft)}
   .card.v .step-n{color:var(--accent-2);text-shadow:0 0 30px var(--accent-2-soft)}
-  .card .tagline{font-size:12px;color:var(--dim);margin-top:10px}
-  /* inline chip row */
-  .chips-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}
-  .chip-x{display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border-radius:999px;
-    background:var(--surface-2);border:1px solid var(--line);font-size:15px;font-weight:600;color:var(--muted)}
-  .chip-x b{color:var(--txt);font-weight:800}
+  .card .tagline{font-size:11px;color:var(--dim);margin-top:8px}
+  .chips-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+  .chip-x{display:inline-flex;align-items:center;gap:9px;padding:10px 16px;border-radius:999px;
+    background:var(--surface-2);border:1px solid var(--line);font-size:14px;font-weight:500;color:var(--muted)}
+  .chip-x b{color:var(--txt);font-weight:700}
 
   /* stat cards */
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
-  .stat{padding:26px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);position:relative;overflow:hidden}
-  .stat::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,var(--accent-2-soft),transparent 60%);opacity:.6}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}
+  .stat{padding:24px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,var(--accent-2-soft),transparent 60%);opacity:.5}
   .stat>*{position:relative}
-  .stat .big{font-size:clamp(34px,4.4vw,54px);font-weight:700;color:var(--accent)}
+  .stat .big{font-size:clamp(32px,4.2vw,50px);font-weight:700;color:var(--accent)}
   .stat:nth-child(2) .big{color:var(--accent-2)} .stat:nth-child(3) .big{color:var(--neg)}
-  .stat .lbl{font-size:14px;color:var(--muted);margin-top:10px}
+  .stat .lbl{font-size:13px;color:var(--muted);margin-top:8px}
 
-  /* simple list panel */
-  .panel{padding:22px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
-  .panel h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;font-weight:800}
-  .panel li{list-style:none;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:11px;align-items:center}
+  /* panels */
+  .panel{padding:20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+  .panel h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-weight:700;font-family:var(--display)}
+  .panel li{list-style:none;font-size:14px;padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
   .panel li:last-child{border:0}
-  .panel li .d{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+  .panel li .d{width:7px;height:7px;border-radius:2px;background:var(--accent);flex:none}
   .panel.v li .d{background:var(--accent-2)}
   .panel .soon{color:var(--dim)} .panel .soon .d{background:var(--dim)}
 
-  /* metrics big row */
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:34px}
-  .kpi{padding:24px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);text-align:center}
-  .kpi .v{font-family:var(--display);font-size:34px;font-weight:700;color:var(--accent)}
-  .kpi:nth-child(even) .v{color:var(--accent-2)}
-  .kpi .k{font-size:13px;color:var(--muted);margin-top:8px}
+  /* combined cliente + valor */
+  .cv-split{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:28px;align-items:start}
+  .cv-block{padding:24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+  .cv-block h3{font-family:var(--display);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;font-weight:700}
+  .cv-block .pillars{display:grid;gap:12px}
+  .pillar{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+  .pillar .pi{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:none;color:var(--accent);background:var(--accent-soft);border:1px solid var(--line)}
+  .pillar.v .pi{color:var(--accent-2);background:var(--accent-2-soft)}
+  .pillar .pi svg{width:20px;height:20px}
+  .pillar h4{font-size:15px;font-weight:700;font-family:var(--display);margin-bottom:2px}
+  .pillar p{font-size:13px;color:var(--muted)}
+  .uvp-hero{padding:20px 24px;border-radius:var(--r);margin-top:20px;
+    background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(200,255,77,.08));
+    border:1px solid var(--line-2);text-align:center}
+  .uvp-hero p{font-size:clamp(17px,1.8vw,22px);font-weight:600;color:var(--txt);line-height:1.4}
+  .uvp-hero em{font-style:normal;color:var(--accent)}
+
+  /* solution + video (mobile frame) */
+  .sol-layout{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:28px;align-items:center}
+  .demo-wrap{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;padding:12px 0}
+  .demo-wrap::before{content:"";position:absolute;width:320px;height:520px;border-radius:60px;
+    background:radial-gradient(ellipse at center,rgba(139,92,246,.22),transparent 70%);
+    filter:blur(40px);pointer-events:none;z-index:0}
+  .phone{position:relative;z-index:1;width:min(268px,30vw);padding:11px;
+    border-radius:42px;background:linear-gradient(165deg,#1C1B24 0%,#0E0D14 55%,#08080D 100%);
+    border:2px solid rgba(255,255,255,.12);
+    box-shadow:0 48px 96px -28px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04) inset,
+      0 0 80px -16px rgba(139,92,246,.45),0 0 40px -10px rgba(200,255,77,.12)}
+  .phone::after{content:"";position:absolute;inset:-2px;border-radius:44px;padding:2px;
+    background:linear-gradient(145deg,rgba(139,92,246,.5),rgba(200,255,77,.25),rgba(139,92,246,.35));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7}
+  .phone-side{position:absolute;width:3px;border-radius:2px;background:linear-gradient(180deg,#2A2933,#14131A)}
+  .phone-side.l{left:-4px;top:108px;height:44px}
+  .phone-side.r1{right:-4px;top:92px;height:58px}
+  .phone-side.r2{right:-4px;top:168px;height:58px}
+  .phone-screen{position:relative;border-radius:32px;overflow:hidden;background:#000;
+    aspect-ratio:9/19.5;border:1px solid rgba(255,255,255,.06)}
+  .phone-notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:4;
+    width:88px;height:24px;border-radius:16px;background:#0A0A0F;
+    border:1px solid rgba(255,255,255,.08);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .phone-notch::after{content:"";position:absolute;top:50%;right:14px;transform:translateY(-50%);
+    width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#1a2540,#060810);
+    border:1px solid rgba(255,255,255,.06)}
+  .phone-screen video{width:100%;height:100%;display:block;object-fit:cover;background:#0C0B15}
+  .phone-bar{display:flex;justify-content:center;padding:8px 0 4px}
+  .phone-bar span{width:96px;height:4px;border-radius:99px;background:rgba(255,255,255,.22)}
+  .demo-badge{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+    padding:7px 14px;border-radius:999px;background:rgba(8,8,13,.9);border:1px solid var(--line-2);
+    font-size:10px;font-weight:700;color:var(--pos);letter-spacing:.06em;text-transform:uppercase;backdrop-filter:blur(10px);
+    box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .demo-badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--pos);animation:pulse 2s ease infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .sol-steps{display:grid;gap:12px}
+  .sol-step{display:flex;gap:16px;align-items:center;padding:16px 18px;border-radius:14px;
+    background:var(--surface);border:1px solid var(--line);transition:transform .25s,border-color .25s}
+  .sol-step:hover{transform:translateX(6px);border-color:var(--line-2)}
+  .sol-step .sn{font-family:var(--display);font-size:28px;font-weight:700;color:var(--accent);width:36px;flex:none;line-height:1}
+  .sol-step:nth-child(even) .sn{color:var(--accent-2)}
+  .sol-step h4{font-size:16px;font-weight:700;font-family:var(--display)}
+  .sol-step p{font-size:13px;color:var(--muted);margin-top:2px}
+
+  /* economics combined */
+  .econ{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px}
+  .econ-col{padding:24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+  .econ-col.rev{border-color:rgba(200,255,77,.2);background:linear-gradient(160deg,rgba(200,255,77,.06),var(--surface))}
+  .econ-col.cost{border-color:rgba(139,92,246,.2);background:linear-gradient(160deg,rgba(139,92,246,.06),var(--surface))}
+  .econ-col h3{font-family:var(--display);font-size:13px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:18px;font-weight:700}
+  .econ-col.rev h3{color:var(--accent)} .econ-col.cost h3{color:var(--accent-2)}
+  .econ-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .econ-item:last-child{border:0;padding-bottom:0}
+  .econ-item .ei{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;flex:none;
+    background:var(--accent-soft);color:var(--accent);border:1px solid var(--line)}
+  .econ-col.cost .econ-item .ei{background:var(--accent-2-soft);color:var(--accent-2)}
+  .econ-item .ei svg{width:20px;height:20px}
+  .econ-item h4{font-size:15px;font-weight:700;font-family:var(--display)}
+  .econ-item p{font-size:13px;color:var(--muted);margin-top:2px}
 
   /* traction */
-  .trac{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
-  .col{padding:22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
-  .col h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;font-weight:800}
+  .trac{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}
+  .col{padding:20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+  .col h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;font-weight:700;font-family:var(--display)}
   .col.ok h3{color:var(--pos)} .col.mid h3{color:var(--accent)} .col.soon h3{color:var(--muted)}
-  .col li{list-style:none;font-size:14px;padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+  .col li{list-style:none;font-size:13.5px;padding:7px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
   .col li:last-child{border:0}
-  .col li .b{width:9px;height:9px;border-radius:50%;flex:none}
+  .col li .b{width:8px;height:8px;border-radius:2px;flex:none}
   .col.ok li .b{background:var(--pos)}.col.mid li .b{background:var(--accent)}.col.soon li .b{background:var(--dim)}
 
   /* team */
-  .team{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:40px}
+  .team{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:36px}
   .member{text-align:center}
-  .ava{width:90px;height:90px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;
-    font-family:var(--display);font-weight:700;font-size:28px;color:var(--on-accent);
+  .ava{width:84px;height:84px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;
+    font-family:var(--display);font-weight:700;font-size:26px;color:var(--on-accent);
     background:linear-gradient(150deg,var(--accent),var(--accent-2));box-shadow:0 16px 44px -18px var(--accent-2);transition:transform .3s}
-  .member:hover .ava{transform:translateY(-8px) scale(1.04)}
-  .member .nm{font-weight:700;font-size:15px} .member .rl{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .member:hover .ava{transform:translateY(-6px) scale(1.03)}
+  .member .nm{font-weight:700;font-size:14px} .member .rl{font-size:12px;color:var(--muted);margin-top:2px}
 
   /* chrome */
-  .topbar{position:fixed;top:0;left:0;right:0;height:4px;z-index:30;background:rgba(255,255,255,.05)}
+  .topbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:30;background:rgba(255,255,255,.04)}
   .topbar .fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .6s cubic-bezier(.76,0,.24,1);box-shadow:0 0 14px var(--accent-soft)}
   .corner{position:fixed;top:22px;z-index:30;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
-  .corner.l{left:30px} .corner.r{right:30px;font-weight:700}
-  .corner .lg{display:flex;align-items:center;gap:9px;font-weight:800;color:var(--txt);font-size:16px}
+  .corner.l{left:30px} .corner.r{right:30px;font-weight:600;font-family:var(--display)}
+  .corner .lg{display:flex;align-items:center;gap:9px;font-weight:700;color:var(--txt);font-size:15px;font-family:var(--display)}
   .corner .lg svg{width:22px;height:auto}
-  .dots{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:30;display:flex;gap:9px}
-  .dots button{width:9px;height:9px;border-radius:50%;border:0;cursor:pointer;padding:0;background:var(--line-2);transition:all .3s}
-  .dots button.on{background:var(--accent);width:24px;border-radius:6px;box-shadow:0 0 12px var(--accent-soft)}
+  .dots{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:30;display:flex;gap:8px}
+  .dots button{width:8px;height:8px;border-radius:50%;border:0;cursor:pointer;padding:0;background:var(--line-2);transition:all .3s}
+  .dots button.on{background:var(--accent);width:22px;border-radius:5px;box-shadow:0 0 10px var(--accent-soft)}
   .arrows{position:fixed;bottom:20px;right:28px;z-index:30;display:flex;gap:10px}
-  .arrows button{width:42px;height:42px;border-radius:13px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--txt);cursor:pointer;font-size:18px;display:grid;place-items:center;transition:background .2s,transform .12s}
-  .arrows button:hover{background:rgba(255,255,255,.1)} .arrows button:active{transform:scale(.92)}
+  .arrows button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--txt);cursor:pointer;font-size:17px;display:grid;place-items:center;transition:background .2s,transform .12s}
+  .arrows button:hover{background:rgba(255,255,255,.08)} .arrows button:active{transform:scale(.92)}
   .arrows button:disabled{opacity:.3;cursor:default}
-  .hint{position:fixed;bottom:22px;left:28px;z-index:30;font-size:12px;color:var(--dim)}
-  .hint kbd{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-family:var(--sans);font-size:11px}
+  .hint{position:fixed;bottom:22px;left:28px;z-index:30;font-size:11px;color:var(--dim)}
+  .hint kbd{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:2px 6px;font-family:var(--sans);font-size:10px}
 
-  @media(max-width:860px){
-    .stats,.grid3,.grid4,.trac,.kpis,.grid2{grid-template-columns:1fr}
+  @media(max-width:900px){
+    .stats,.grid3,.grid4,.trac,.grid2,.cv-split,.sol-layout,.econ{grid-template-columns:1fr}
     .team{grid-template-columns:repeat(2,1fr)}
-    .lc{grid-template-columns:repeat(2,1fr);grid-template-areas:
-      "prob cust" "uvp uvp" "sol adv" "met chan" "rev rev" "cost cost";}
-    .slide{padding:70px 6vw 100px} .corner.l .sub-h{display:none} .mini{display:none}
+    .slide{padding:70px 5vw 100px} .corner.l .sub-h{display:none} .mini{display:none}
   }
 </style>
 </head>
@@ -242,7 +272,7 @@
     </span>
     <span class="sub-h">· Lean Canvas</span>
   </div>
-  <div class="corner r"><span id="pageno">01 / 13</span></div>
+  <div class="corner r"><span id="pageno">01 / 07</span></div>
 
   <div class="deck"><div class="track" id="track">
 
@@ -258,7 +288,7 @@
       </div>
     </section>
 
-    <!-- PROBLEMA -->
+    <!-- 2 · PROBLEMA -->
     <section class="slide" data-name="Problema">
       <div class="mini" data-active="1"></div>
       <div class="slide-inner">
@@ -277,134 +307,92 @@
       </div>
     </section>
 
-    <!-- 4 · SEGMENTOS -->
-    <section class="slide" data-name="Segmentos">
-      <div class="mini" data-active="2"></div>
+    <!-- 3 · CLIENTE + PROPUESTA (combinado) -->
+    <section class="slide" data-name="Cliente y valor">
+      <div class="mini" data-active="2,3"></div>
       <div class="slide-inner">
-        <span class="kicker rv"><span class="n">2</span>Segmentos de cliente</span>
-        <h2 class="title display rv">Para quién es <span class="em">Reyf</span></h2>
-        <div class="grid3">
-          <div class="card rv d1"><div class="ic"><svg viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg></div><h3>Mercado</h3><p>Mexicanos digitales, 25–45.</p></div>
-          <div class="card v rv d2"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></div><h3>Early adopters</h3><p>Cripto-curiosos sin fricción.</p></div>
-          <div class="card rv d3"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg></div><h3>Liquidez</h3><p>Freelancers que necesitan adelanto.</p></div>
+        <span class="kicker rv"><span class="n">2</span>Cliente · Propuesta de valor</span>
+        <h2 class="title display rv" style="max-width:28ch">Para quién es Reyf y <span class="em">por qué importa</span></h2>
+        <div class="uvp-hero rv d1">
+          <p>Un banco que rinde, <em>sin que sepas que es cripto</em> — DeFi con la cara de tu app de banco.</p>
+        </div>
+        <div class="cv-split">
+          <div class="cv-block rv d2">
+            <h3>Segmentos de cliente</h3>
+            <div class="pillars">
+              <div class="pillar"><div class="pi"><svg viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg></div><div><h4>Mercado</h4><p>Mexicanos digitales, 25–45 años.</p></div></div>
+              <div class="pillar v"><div class="pi"><svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg></div><div><h4>Early adopters</h4><p>Cripto-curiosos sin fricción.</p></div></div>
+              <div class="pillar"><div class="pi"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/></svg></div><div><h4>Liquidez</h4><p>Freelancers que necesitan adelanto.</p></div></div>
+            </div>
+          </div>
+          <div class="cv-block rv d3">
+            <h3>Propuesta única de valor</h3>
+            <div class="pillars">
+              <div class="pillar"><div class="pi"><svg viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><line x1="2" x2="22" y1="2" y2="22"/></svg></div><div><h4>Invisible</h4><p>Se siente como tu banco, no como un exchange.</p></div></div>
+              <div class="pillar v"><div class="pi"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><div><h4>Rinde</h4><p>0% de comisión sobre tu saldo.</p></div></div>
+              <div class="pillar"><div class="pi"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg></div><div><h4>Líquido</h4><p>Adelanto sin vender tu posición.</p></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 5 · PROPUESTA ÚNICA DE VALOR -->
-    <section class="slide" data-name="Propuesta de valor">
-      <div class="mini" data-active="3"></div>
-      <div class="slide-inner" style="text-align:center">
-        <span class="kicker rv" style="margin-inline:auto"><span class="n">3</span>Propuesta única de valor</span>
-        <h2 class="title display rv" style="margin-inline:auto;max-width:22ch">Un banco que rinde, <span class="em">sin que sepas que es cripto</span></h2>
-        <p class="lede rv d1" style="margin-inline:auto;max-width:none"><b style="color:var(--txt)">DeFi con la cara de tu app de banco.</b></p>
-        <div class="grid3" style="margin-top:34px">
-          <div class="card rv d2"><div class="ic"><svg viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg></div><h3>Invisible</h3><p>Se siente como tu banco.</p></div>
-          <div class="card v rv d3"><div class="ic"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><h3>Rinde</h3><p>0% sobre tu saldo.</p></div>
-          <div class="card rv d4"><div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg></div><h3>Líquido</h3><p>Adelanto sin vender.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6 · SOLUCIÓN -->
+    <!-- 4 · SOLUCIÓN + DEMO -->
     <section class="slide" data-name="Solución">
       <div class="mini" data-active="4"></div>
       <div class="slide-inner">
-        <span class="kicker rv"><span class="n">4</span>Solución</span>
-        <h2 class="title display rv">Cuatro pasos. <span class="em">Cero complejidad.</span></h2>
-        <div class="grid4">
-          <div class="card rv d1"><div class="step-n">1</div><h3>Entra</h3><p>Con tu correo.</p></div>
-          <div class="card v rv d2"><div class="step-n">2</div><h3>Deposita</h3><p>Por SPEI → MXNB.</p></div>
-          <div class="card rv d3"><div class="step-n">3</div><h3>Rinde</h3><p>On-chain, sin gas.</p></div>
-          <div class="card v rv d4"><div class="step-n">4</div><h3>Retira</h3><p>A tu banco.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 7 · CANALES -->
-    <section class="slide" data-name="Canales">
-      <div class="mini" data-active="5"></div>
-      <div class="slide-inner">
-        <span class="kicker rv"><span class="n">5</span>Canales</span>
-        <h2 class="title display rv">Cómo llegamos al usuario</h2>
-        <div class="grid4">
-          <div class="card rv d1"><div class="ic"><svg viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg></div><h3>App</h3><p>iOS · Android · web.</p></div>
-          <div class="card v rv d2"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg></div><h3>Referidos</h3><p>Bono viral.</p></div>
-          <div class="card rv d3"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div><h3>Comunidad</h3><p>Cripto MX · EthMex.</p></div>
-          <div class="card v rv d4"><div class="ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3>Alianzas</h3><p>Fintechs y nóminas.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 8 · INGRESOS -->
-    <section class="slide" data-name="Ingresos">
-      <div class="mini" data-active="6"></div>
-      <div class="slide-inner">
-        <span class="kicker rv"><span class="n">6</span>Fuentes de ingreso</span>
-        <h2 class="title display rv">Cómo gana <span class="em">Reyf</span></h2>
-        <div class="grid3">
-          <div class="card rv d1"><div class="ic"><svg viewBox="0 0 24 24"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg></div><h3>Spread de yield</h3><p>APR real − 0% al usuario.</p></div>
-          <div class="card v rv d2"><div class="ic"><svg viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></div><h3>Spread de FX</h3><p>Margen por conversión.</p></div>
-          <div class="card rv d3"><div class="ic"><svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></div><h3>Futuro</h3><p>Tarjeta + premium.</p><p class="tagline">en roadmap</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 9 · COSTOS -->
-    <section class="slide" data-name="Costos">
-      <div class="mini" data-active="7"></div>
-      <div class="slide-inner">
-        <span class="kicker rv"><span class="n">7</span>Estructura de costos</span>
-        <h2 class="title display rv">Dónde se va el dinero</h2>
-        <div class="grid2">
-          <div class="panel rv d1"><h3>Variables · por uso</h3>
-            <li><span class="d"></span>Gas patrocinado (ERC-4337)</li>
-            <li><span class="d"></span>Comisiones Juno / Bitso</li>
-            <li><span class="d"></span>RPC on-chain</li>
+        <span class="kicker rv"><span class="n">3</span>Solución</span>
+        <h2 class="title display rv" style="max-width:26ch">Cuatro pasos. <span class="em">Cero complejidad.</span></h2>
+        <div class="sol-layout">
+          <div class="demo-wrap rv d1">
+            <div class="phone" aria-label="Demo móvil de Reyf">
+              <span class="phone-side l" aria-hidden="true"></span>
+              <span class="phone-side r1" aria-hidden="true"></span>
+              <span class="phone-side r2" aria-hidden="true"></span>
+              <div class="phone-screen">
+                <div class="phone-notch" aria-hidden="true"></div>
+                <video src="reyf-demo.mp4" controls playsinline muted loop preload="auto" aria-label="Demo de la app Reyf en móvil"></video>
+              </div>
+              <div class="phone-bar" aria-hidden="true"><span></span></div>
+            </div>
+            <span class="demo-badge">App móvil · en vivo</span>
           </div>
-          <div class="panel v rv d2"><h3>Fijos · operación</h3>
-            <li><span class="d"></span>Infra: Privy, Supabase</li>
-            <li><span class="d"></span>Equipo</li>
-            <li><span class="d"></span>Compliance</li>
+          <div class="sol-steps">
+            <div class="sol-step rv d2"><span class="sn">1</span><div><h4>Entra</h4><p>Con tu correo — sin seed phrase.</p></div></div>
+            <div class="sol-step rv d3"><span class="sn">2</span><div><h4>Deposita</h4><p>Por SPEI → MXNB en segundos.</p></div></div>
+            <div class="sol-step rv d4"><span class="sn">3</span><div><h4>Rinde</h4><p>On-chain, sin gas para el usuario.</p></div></div>
+            <div class="sol-step rv d5"><span class="sn">4</span><div><h4>Retira</h4><p>Directo a tu cuenta bancaria.</p></div></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 10 · MÉTRICAS CLAVE -->
-    <section class="slide" data-name="Métricas">
-      <div class="mini" data-active="8"></div>
+    <!-- 5 · INGRESOS + COSTOS (combinado) -->
+    <section class="slide" data-name="Modelo económico">
+      <div class="mini" data-active="6,7"></div>
       <div class="slide-inner">
-        <span class="kicker rv"><span class="n">8</span>Métricas clave</span>
-        <h2 class="title display rv">Qué medimos para crecer</h2>
-        <div class="kpis">
-          <div class="kpi rv d1"><div class="v">AUM</div><div class="k">Saldo total en bóvedas (norte)</div></div>
-          <div class="kpi rv d2"><div class="v">Retención</div><div class="k">Usuarios activos que regresan</div></div>
-          <div class="kpi rv d3"><div class="v">Net deposits</div><div class="k">Depósitos − retiros por mes</div></div>
-          <div class="kpi rv d4"><div class="v">% adelanto</div><div class="k">Usuarios que toman liquidez</div></div>
+        <span class="kicker rv"><span class="n">4</span>Modelo económico</span>
+        <h2 class="title display rv">Cómo gana y <span class="em2">en qué invierte</span> Reyf</h2>
+        <div class="econ">
+          <div class="econ-col rev rv d1">
+            <h3>Fuentes de ingreso</h3>
+            <div class="econ-item"><div class="ei"><svg viewBox="0 0 24 24"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg></div><div><h4>Spread de yield</h4><p>APR real − 0% al usuario.</p></div></div>
+            <div class="econ-item"><div class="ei"><svg viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></div><div><h4>Spread de FX</h4><p>Margen por conversión de divisas.</p></div></div>
+            <div class="econ-item"><div class="ei"><svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></div><div><h4>Futuro</h4><p>Tarjeta + premium <span style="color:var(--dim)">· roadmap</span></p></div></div>
+          </div>
+          <div class="econ-col cost rv d2">
+            <h3>Estructura de costos</h3>
+            <div class="econ-item"><div class="ei"><svg viewBox="0 0 24 24"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg></div><div><h4>Variables · por uso</h4><p>Gas patrocinado, comisiones Juno/Bitso, RPC on-chain.</p></div></div>
+            <div class="econ-item"><div class="ei"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div><div><h4>Fijos · operación</h4><p>Infra (Privy, Supabase), equipo y compliance.</p></div></div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 11 · VENTAJA INJUSTA -->
-    <section class="slide" data-name="Ventaja injusta">
-      <div class="mini" data-active="9"></div>
-      <div class="slide-inner">
-        <span class="kicker rv"><span class="n">9</span>Ventaja injusta</span>
-        <h2 class="title display rv">Por qué es real, <span class="em">no humo</span></h2>
-        <div class="grid2">
-          <div class="card rv d1"><div class="ic"><svg viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg></div><h3>Cripto invisible</h3><p>Sin firmas ni gas.</p></div>
-          <div class="card v rv d2"><div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h3>Fiat seguro</h3><p>HMAC · idempotente.</p></div>
-          <div class="card rv d3"><div class="ic"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><line x1="8" x2="16" y1="13" y2="13"/><line x1="8" x2="16" y1="17" y2="17"/></svg></div><h3>Contratos propios</h3><p>Con tests (Foundry).</p></div>
-          <div class="card v rv d4"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m9 12 2 2 4-4"/></svg></div><h3>No custodial</h3><p>Saldo real on-chain.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 12 · TRACCIÓN -->
+    <!-- 7 · TRACCIÓN -->
     <section class="slide" data-name="Tracción">
       <div class="slide-inner">
-        <span class="kicker rv"><span class="n">✓</span>Tracción · estado real</span>
+        <span class="kicker v rv"><span class="n">✓</span>Tracción · estado real</span>
         <h2 class="title display rv">Lo que ya está construido</h2>
         <div class="trac">
           <div class="col ok rv d1"><h3>● Funciona</h3>
@@ -427,7 +415,7 @@
       </div>
     </section>
 
-    <!-- 13 · EQUIPO -->
+    <!-- 8 · EQUIPO -->
     <section class="slide" data-name="Equipo">
       <div class="slide-inner" style="text-align:center">
         <span class="kicker rv" style="margin-inline:auto"><span class="n">★</span>Equipo</span>
@@ -461,12 +449,20 @@
   slides.forEach((s,idx)=>{const b=document.createElement('button');b.title=s.dataset.name||('Slide '+(idx+1));b.onclick=()=>go(idx);dotsWrap.appendChild(b);});
   const dots=[...dotsWrap.children];
 
-  // mini Lean Canvas locator — paints the 9 blocks and highlights the active one
   const LC=[{a:'prob',n:1},{a:'sol',n:4},{a:'uvp',n:3},{a:'adv',n:9},{a:'cust',n:2},{a:'met',n:8},{a:'chan',n:5},{a:'cost',n:7},{a:'rev',n:6}];
   document.querySelectorAll('.mini').forEach(m=>{
-    const active=parseInt(m.dataset.active,10);
-    LC.forEach(({a,n})=>{const c=document.createElement('div');c.className='mc'+(n===active?' on':'');c.style.setProperty('--a',a);c.textContent=n;m.appendChild(c);});
-    const cap=document.createElement('div');cap.className='cap';cap.textContent='Bloque '+active+'/9';m.appendChild(cap);
+    const actives=(m.dataset.active||'').split(',').map(s=>parseInt(s.trim(),10)).filter(Boolean);
+    LC.forEach(({a,n})=>{
+      const c=document.createElement('div');
+      c.className='mc'+(actives.includes(n)?' on':'');
+      c.style.setProperty('--a',a);
+      c.textContent=n;
+      m.appendChild(c);
+    });
+    const cap=document.createElement('div');
+    cap.className='cap';
+    cap.textContent=actives.length>1?'Bloques '+actives.join('·')+'/9':'Bloque '+actives[0]+'/9';
+    m.appendChild(cap);
   });
 
   function countUp(slide){
@@ -479,9 +475,20 @@
         if(p<1)requestAnimationFrame(tick); else el.textContent=pre+target.toFixed(dec)+suf;})(t0);
     });
   }
+
+  function handleVideo(slide){
+    const v=slide.querySelector('video');
+    if(!v)return;
+    if(slide.classList.contains('active')){v.play().catch(()=>{});}else{v.pause();}
+  }
+
   function render(){
     track.style.transform=`translateX(${-i*100}vw)`;
-    slides.forEach((s,idx)=>s.classList.toggle('active',idx===i));
+    slides.forEach((s,idx)=>{
+      const on=idx===i;
+      s.classList.toggle('active',on);
+      handleVideo(s);
+    });
     dots.forEach((d,idx)=>d.classList.toggle('on',idx===i));
     fill.style.width=(i/(N-1)*100)+'%';
     pageno.textContent=String(i+1).padStart(2,'0')+' / '+String(N).padStart(2,'0');

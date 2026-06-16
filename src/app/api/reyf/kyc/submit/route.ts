@@ -43,6 +43,8 @@ const bodySchema = z.object({
     name: z.object({
       givenName: z.string().trim().min(1),
       familyName: z.string().trim().min(1),
+      // Apellido materno → motherMaidenName (campo opcional del nombre en Etherfuse).
+      motherMaidenName: z.preprocess(emptyToUndefined, z.string().trim().min(1).optional()),
     }),
     dateOfBirth: z
       .string()
@@ -209,11 +211,12 @@ export async function POST(req: Request) {
         ...(parsed.data.identity.occupation
           ? { occupation: parsed.data.identity.occupation.trim() }
           : {}),
-        idNumbers: parsed.data.identity.idNumbers.map((x) => ({
-          id: x.id?.trim() || x.value.trim(),
-          type: x.type.trim(),
-          value: x.value.trim(),
-        })),
+        idNumbers: parsed.data.identity.idNumbers.map((x) => {
+          // La doc de Etherfuse usa `type` (guía de onboarding) y `idType` (API ref) indistintamente;
+          // enviamos ambos para máxima compatibilidad. CURP/RFC se normalizan a mayúsculas.
+          const type = x.type.trim()
+          return { type, idType: type, value: x.value.trim().toUpperCase() }
+        }),
         address: {
           ...parsed.data.identity.address,
           country: parsed.data.identity.address.country.toUpperCase(),
@@ -265,12 +268,11 @@ export async function POST(req: Request) {
       try {
         const clabe = getTestnetSyntheticClabe()
         const identity = parsed.data.identity
-        const nameParts = identity.name.familyName.trim().split(/\s+/)
         const firstName = identity.name.givenName.trim()
-        const paternalLastName = nameParts[0] ?? firstName
-        const maternalLastName = nameParts[1] ?? nameParts[0] ?? 'X'
-        const curpEntry = identity.idNumbers.find((n) => n.type === 'mx_curp')
-        const rfcEntry = identity.idNumbers.find((n) => n.type === 'mx_rfc')
+        const paternalLastName = identity.name.familyName.trim() || firstName
+        const maternalLastName = identity.name.motherMaidenName?.trim() || 'X'
+        const curpEntry = identity.idNumbers.find((n) => n.type === 'curp')
+        const rfcEntry = identity.idNumbers.find((n) => n.type === 'rfc')
         // dateOfBirth ya transformado a YYYY-MM-DD, convertir a YYYYMMDD
         const birthDate = identity.dateOfBirth.replace(/-/g, '')
 
