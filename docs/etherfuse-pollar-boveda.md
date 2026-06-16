@@ -123,10 +123,36 @@ Usuario (1 correo)
 |---|---|---|
 | Pantalla "servicio no configurado" en local y Vercel | `NEXT_PUBLIC_POLLAR_API_KEY` no incrustada (dev stale / falta en Vercel) | Reiniciar dev / setear env en Vercel + redeploy. Las `NEXT_PUBLIC_*` se incrustan al **compilar**. |
 | CORS `sdk.api.pollar.xyz` 403 | Dominio no autorizado en Pollar | Agregar el dominio de Vercel en el dashboard de Pollar. |
-| `POST /api/reyf/kyc/submit` → 400 | idNumbers enviados como `curp`/`rfc`; Etherfuse espera `mx_curp`/`mx_rfc` | Cambiados los tipos en `ScreenKyc`. |
+| ~~`POST /api/reyf/kyc/submit` → 400 · idNumbers `mx_curp`/`mx_rfc`~~ | **Hipótesis equivocada** (ver §6.1) | Revertido en §6.1 a `curp`/`rfc`. |
 | Error mostrado como `[object Object]` | `new Error(j.error)` con `error` siendo objeto | Helper `readApiError()` (prioriza `debug_message` / `message_es`). |
 | Sin feedback al verificar OTP | Transición directa a datos | Barra "Código verificado" antes del formulario. |
 | Fix `enabled` perdido | Squash `(#3)` + merge de `main` sobrescribió el hook | Re-aplicado el fallback `PUBLISHABLE_KEY`. |
+
+### 6.1 — 400 en submit KYC: causa real (sesión junio 2026)
+
+El 400 persistía aun con el "fix" `mx_curp`/`mx_rfc` (que nunca se verificó end-to-end,
+ver §9.4). Al contrastar con el **contrato oficial** (`docs.etherfuse.com`, OpenAPI +
+guía de onboarding + API ref de submit-kyc) salieron varios desajustes; el id type era
+el bloqueante:
+
+| Síntoma | Causa real | Fix |
+|---|---|---|
+| `POST /kyc/submit` → 400 (validación) | id types `mx_curp`/`mx_rfc` **no existen** en la doc de Etherfuse | Cambiados a **`curp`/`rfc`** (cliente) y normalizados a MAYÚSCULAS (server). |
+| 400 por fecha de nacimiento | El cliente pre-normalizaba con `normalizeDateOfBirthToIso`; un formato no exacto daba `null` → rompía `z.string()` | El cliente manda el string crudo; el servidor normaliza (fuente única). Además el normalizador acepta año-primero con `-`, `/` o `.` (`1990/05/15`). |
+| Apellidos mal mapeados | Se concatenaban paterno+materno en `familyName` | Paterno → `familyName`, materno → **`motherMaidenName`** (campo oficial del nombre). |
+| Ambigüedad `type` vs `idType` | La guía de onboarding usa `type`; la API ref usa `idType` (la doc se contradice) | El server envía **ambos** campos por idNumber (server tolera campos extra). |
+
+**Contrato confirmado** (`POST /ramp/customer/{id}/kyc`):
+`identity.idNumbers[].{type|idType}` con valor `curp`/`rfc`; `name.{givenName, familyName,
+motherMaidenName?}`; `address.country` requerido (`MX`); `dateOfBirth` `YYYY-MM-DD`.
+
+**Nota sandbox:** un customer `personal` se **auto-aprueba** al enviar KYC (responde
+`status:"approved"`, no `proposed`) y desbloquea órdenes. Producción sí requiere revisión
+manual. El webhook `kyc_updated` notifica el cambio de estado.
+
+Archivos tocados: `src/components/app/screens/kyc.tsx`,
+`src/app/api/reyf/kyc/submit/route.ts`, `src/lib/etherfuse/kyc.ts`,
+`src/lib/reyf/normalize-date-of-birth.ts`.
 
 ### ¿Se confunden el OTP de Privy y el de Pollar?
 
@@ -182,7 +208,9 @@ pendiente a propósito.
 2. Unificar perfil Privy ↔ Stellar en Supabase (`stellar_public_key`,
    `etherfuse_customer_id`) — hoy la sesión de onboarding vive en cookie.
 3. Conectar las otras bóvedas a sus proveedores de yield (rieles separados).
-4. Probar el submit KYC end-to-end en sandbox tras el fix `mx_curp`.
+4. Probar el submit KYC end-to-end en sandbox tras el fix `curp`/`rfc` (§6.1). Si
+   reaparece un 400, leer `debug_message` del cuerpo de la respuesta (lo incluye siempre
+   el route handler).
 5. Decidir si el nombre "etherfuse" en los aliados de la landing se mantiene.
 
 ---
@@ -191,5 +219,8 @@ pendiente a propósito.
 
 - Doc general: `docs/etherfuse-kyc-stablebonds.md`
 - [Etherfuse docs](https://docs.etherfuse.com/)
+  - [Submit KYC (API ref)](https://docs.etherfuse.com/api-reference/kyc/submit-kyc.md)
+  - [Guía de onboarding](https://docs.etherfuse.com/guides/onboarding.md)
+  - Índice para LLMs: https://docs.etherfuse.com/llms.txt
 - [Pollar docs](https://docs.pollar.xyz/)
 - PR: https://github.com/MarxMad/EthMex2026/pull/4
