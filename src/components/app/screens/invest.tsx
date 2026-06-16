@@ -332,6 +332,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             debt={advanceState.debt}
             apy={v.apy}
             balance={v.bal}
+            locked={advanceState.locked}
             onClose={() => setRepay(false)}
             onDone={() => { void advanceState.reload(); }}
           />

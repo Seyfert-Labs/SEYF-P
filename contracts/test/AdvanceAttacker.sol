@@ -25,10 +25,10 @@ contract AdvanceAttacker is IReentered {
         vault.deposit(vid, deposit_);
     }
 
-    function attack(uint256 amount) external {
+    function attack(uint256 years_) external {
         attacking = true;
         token.arm(address(this));
-        advance.requestAdvance(vid, amount);
+        advance.requestAdvance(vid, years_);
     }
 
     function reenter() external {

@@ -116,7 +116,7 @@ export const reyfAdvanceAbi = [
     stateMutability: "nonpayable",
     inputs: [
       { name: "vaultId", type: "uint256" },
-      { name: "amount", type: "uint256" },
+      { name: "years_", type: "uint256" },
     ],
     outputs: [],
   },
@@ -132,7 +132,28 @@ export const reyfAdvanceAbi = [
   },
   {
     type: "function",
-    name: "maxAdvance",
+    name: "maxYears",
+    stateMutability: "view",
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "vaultId", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "quoteAdvance",
+    stateMutability: "view",
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "vaultId", type: "uint256" },
+      { name: "years_", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "freeBalance",
     stateMutability: "view",
     inputs: [
       { name: "user", type: "address" },

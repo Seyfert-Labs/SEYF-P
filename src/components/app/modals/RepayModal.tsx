@@ -26,6 +26,7 @@ export function RepayModal({
   debt,
   apy,
   balance,
+  locked = 0,
   onClose,
   onDone,
 }: {
@@ -33,6 +34,7 @@ export function RepayModal({
   debt: number;     // deuda total actual (MXN)
   apy: number;      // APY de la bóveda (para calcular meses de cobertura)
   balance: number;  // balance total de la bóveda
+  locked?: number;  // colateral bloqueado (MXN) — se libera proporcional al repago
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -44,6 +46,8 @@ export function RepayModal({
 
   const n = Math.min(Number(amount) || 0, debt);
   const valid = n > 0 && n <= debt;
+  // Colateral liberado: proporcional al repago; saldar todo libera todo.
+  const released = debt > 0 ? (n >= debt ? locked : (locked * n) / debt) : 0;
 
   // Meses que faltan para cubrirse solo (con el APY)
   const monthlyYield = balance * (apy / 100) / 12;
@@ -127,7 +131,7 @@ export function RepayModal({
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Colateral que se libera</span>
-              <span style={{ fontWeight: 700, fontSize: 14 }}>${FMT(n, 2)} MXN</span>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>${FMT(released, 2)} MXN</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Deuda restante</span>
