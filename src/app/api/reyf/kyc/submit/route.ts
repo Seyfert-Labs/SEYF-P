@@ -90,6 +90,10 @@ function mapKycProviderSetupError(message: string): AppError | null {
     })
   }
   if (
+    // Texto real de Etherfuse: "claimed by another organization ... registered to a different organization".
+    m.includes('claimed by another organization') ||
+    m.includes('registered to a different organization') ||
+    // Variantes alternativas (por si cambia el wording del proveedor).
     m.includes('cannot claim a wallet') ||
     m.includes('registered to another organization') ||
     m.includes('claimed by a different organization')

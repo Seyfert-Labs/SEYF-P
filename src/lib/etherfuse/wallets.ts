@@ -53,30 +53,33 @@ export async function registerOrganizationWallet(params: {
 }
 
 /**
- * `POST /ramp/wallet` puede devolver 409 si la wallet ya está en la org (p. ej. reintento tras borrar CLABE),
- * o un error de "claimed by a different organization" cuando la wallet viene de un org anterior.
- * En ambos casos el flujo KYC debe continuar: `onboarding-url` + lookup resuelven el `customerId` real.
+ * `POST /ramp/wallet` devuelve 409 / "already …" cuando la wallet YA está en NUESTRA org
+ * (reintento idempotente, p. ej. tras borrar CLABE). Ese caso es recuperable: el KYC continúa.
+ *
+ * El caso **cross-org** ("claimed by another organization") NO es recuperable: la wallet
+ * pertenece a otra organización de Etherfuse y nada del flujo va a funcionar. Lo maneja
+ * `mapKycProviderSetupError` con un mensaje claro (revisar API key/entorno).
  */
 export function isRecoverableRegisterWalletConflict(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
   const m = msg.toLowerCase();
-  const looksLikeRegisterWalletFailure =
-    m.includes("register wallet") ||
-    m.includes("cannot claim a wallet") ||
-    m.includes("registered to another organization") ||
+  if (!m.includes("register wallet")) return false;
+  // Cross-org: NO recuperable, aunque Etherfuse lo devuelva como 409.
+  if (
+    m.includes("claimed by another organization") ||
+    m.includes("registered to a different organization") ||
     m.includes("claimed by a different organization") ||
-    m.includes("previous claim");
-  if (!looksLikeRegisterWalletFailure) return false;
+    m.includes("registered to another organization") ||
+    m.includes("cannot claim a wallet")
+  ) {
+    return false;
+  }
+  // Mismo-org / reintento idempotente: la wallet ya está en NUESTRA org.
   return (
     msg.includes("(409)") ||
     m.includes("already added") ||
     m.includes("already exists") ||
     m.includes("already registered") ||
-    m.includes("duplicate") ||
-    // Wallet registrada en un org anterior — KYC puede continuar sin ownership claim
-    m.includes("claimed by a different organization") ||
-    m.includes("registered to another organization") ||
-    m.includes("cannot claim a wallet") ||
-    m.includes("previous claim")
+    m.includes("duplicate")
   );
 }
