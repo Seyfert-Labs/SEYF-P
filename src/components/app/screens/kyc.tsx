@@ -32,7 +32,7 @@ const FIELDS: FieldDef[] = [
   { key: "firstName", label: "Nombre(s)", autoComplete: "given-name" },
   { key: "paternalLastName", label: "Apellido paterno", half: true, autoComplete: "family-name" },
   { key: "maternalLastName", label: "Apellido materno", half: true, autoComplete: "off" },
-  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA-MM-DD", autoComplete: "bday", inputMode: "numeric" },
+  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA/MM/DD", autoComplete: "bday", inputMode: "numeric" },
   { key: "curp", label: "CURP", half: true, autoComplete: "off" },
   { key: "rfc", label: "RFC", half: true, autoComplete: "off" },
   { key: "phone", label: "Teléfono", half: true, autoComplete: "tel", type: "tel", inputMode: "tel" },
@@ -184,8 +184,8 @@ export function ScreenKyc({ go }: { go: Go }) {
             // Valores oficiales de Etherfuse: `curp`/`rfc` (no `mx_curp`/`mx_rfc`).
             // El servidor reenvía cada uno con `type` e `idType` para cubrir ambas variantes de la doc.
             idNumbers: [
-              { type: "mx_curp", value: form.curp },
-              { type: "mx_rfc", value: form.rfc },
+              { type: "curp", value: form.curp },
+              { type: "rfc", value: form.rfc },
             ],
           },
         }),
