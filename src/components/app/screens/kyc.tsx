@@ -95,6 +95,7 @@ export function ScreenKyc({ go }: { go: Go }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [kyc, setKyc] = useState<EtherfuseKycSnapshot | null>(null);
+  const [resent, setResent] = useState(false);
 
   const [form, setForm] = useState<IdentityForm>({
     firstName: "", paternalLastName: "", maternalLastName: "", dateOfBirth: "",
@@ -147,6 +148,17 @@ export function ScreenKyc({ go }: { go: Go }) {
       if (!email) throw new Error("No encontramos tu correo de acceso.");
       await stellar.sendCode(email);
     });
+
+  const handleResend = () => {
+    setCode("");
+    setResent(false);
+    void run(async () => {
+      if (!email) throw new Error("No encontramos tu correo de acceso.");
+      await stellar.sendCode(email);
+      setResent(true);
+      setTimeout(() => setResent(false), 4000);
+    });
+  };
 
   const verifyCode = () =>
     run(async () => {
@@ -288,7 +300,7 @@ export function ScreenKyc({ go }: { go: Go }) {
             <span style={{ width: 60, height: 60, borderRadius: 18, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="shield" size={30} />
             </span>
-            {stellar.phase !== "code" && stellar.phase !== "verifying" ? (
+            {stellar.phase === "idle" || stellar.phase === "sending" ? (
               <>
                 <p style={{ margin: "16px 0 6px", fontWeight: 800, fontSize: 17 }}>Empecemos tu verificación</p>
                 <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
@@ -310,21 +322,37 @@ export function ScreenKyc({ go }: { go: Go }) {
                     Usa el código de <b style={{ color: "var(--txt)" }}>verificación de identidad</b> más reciente; es distinto al de inicio de sesión.
                   </p>
                 </div>
+                {stellar.phase === "error" && (
+                  <div className="card" style={{ margin: "0 0 12px", borderColor: "var(--neg)", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                    <Icon name="info" size={16} color="var(--neg)" />
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--neg)", lineHeight: 1.4, textAlign: "left" }}>
+                      Código incorrecto. Revisa el correo e inténtalo de nuevo.
+                    </p>
+                  </div>
+                )}
                 <input
                   className="input num-input"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="••••••"
+                  maxLength={6}
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, ""))}
+                  onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+                  onFocus={(e) => e.target.select()}
                   style={{ textAlign: "center", letterSpacing: "0.3em", fontSize: 22 }}
                 />
                 <button className="btn btn-primary" disabled={busy || stellar.phase === "verifying"} onClick={verifyCode} style={{ width: "100%", marginTop: 14 }}>
                   {busy || stellar.phase === "verifying" ? <span className="spin" /> : "Verificar"}
                 </button>
-                <button className="btn btn-ghost" disabled={busy} onClick={sendCode} style={{ width: "100%", marginTop: 10 }}>
-                  Reenviar código
-                </button>
+                {resent ? (
+                  <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--pos)", textAlign: "center" }}>
+                    Código reenviado ✓
+                  </p>
+                ) : (
+                  <button className="btn btn-ghost" disabled={busy} onClick={handleResend} style={{ width: "100%", marginTop: 10 }}>
+                    Reenviar código
+                  </button>
+                )}
               </>
             )}
           </div>
