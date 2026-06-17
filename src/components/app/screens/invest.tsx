@@ -809,11 +809,28 @@ export function ScreenConvert({ go }: { go: Go }) {
 }
 
 
+/** Traduce el error de un revert/cancelación on-chain a un mensaje claro para el usuario. */
+function friendlyVaultError(e: unknown): string {
+  const s = ((e instanceof Error ? e.message : String(e)) || "").toLowerCase();
+  if (s.includes("beta cap"))
+    return "Durante la beta, tu saldo total en bóvedas no puede superar $10,000 MXN. Reduce el monto e intenta de nuevo.";
+  if (s.includes("free balance") || s.includes("exceeds free"))
+    return "No puedes retirar el colateral bloqueado por un adelanto activo. Repaga el adelanto primero.";
+  if (s.includes("paused"))
+    return "Las bóvedas están en mantenimiento por el momento. Intenta más tarde.";
+  if (s.includes("user rejected") || s.includes("denied") || s.includes("rejected the request"))
+    return "Cancelaste la operación.";
+  if (s.includes("insufficient"))
+    return "Saldo insuficiente para completar la operación.";
+  return "No se pudo completar la operación. Intenta de nuevo en un momento.";
+}
+
 function VaultAmountModal({ mode, vault, locked = 0, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; locked?: number; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [txHash, setTxHash] = useState("");
+  const [error, setError] = useState<string | null>(null);
   // Abonar: sin meta fija (goal=0), cualquier monto positivo es válido.
   // Retirar: limitado por el saldo LIBRE (saldo − colateral bloqueado por un
   // adelanto activo). El contrato revierte con "exceeds free balance" si se
@@ -824,10 +841,13 @@ function VaultAmountModal({ mode, vault, locked = 0, onClose, onConfirm }: { mod
 
   const submit = async () => {
     setSubmitting(true);
+    setError(null);
     try {
       const hash = await onConfirm(n);
       if (typeof hash === "string" && hash) setTxHash(hash);
       setDone(true);
+    } catch (e) {
+      setError(friendlyVaultError(e));
     } finally {
       setSubmitting(false);
     }
@@ -914,6 +934,13 @@ function VaultAmountModal({ mode, vault, locked = 0, onClose, onConfirm }: { mod
           <p className="modal-sub" style={{ margin: "4px 0 0", color: "var(--neg)" }}>
             El máximo retirable es ${FMT(max, 2)}{locked > 0 ? " (tienes colateral bloqueado por un adelanto activo)" : ""}.
           </p>
+        )}
+
+        {error && (
+          <div className="card" style={{ marginTop: 14, borderColor: "var(--neg)", display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="info" size={18} color="var(--neg)" />
+            <p style={{ margin: 0, color: "var(--neg)", fontSize: 13, lineHeight: 1.45 }}>{error}</p>
+          </div>
         )}
 
         <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={!valid} onClick={submit}>
