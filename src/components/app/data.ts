@@ -51,6 +51,13 @@ export type RiskLevel = "Bajo" | "Medio" | "Alto";
 
 /** Plan de ahorro que define el perfil de una bóveda. El `apy` es único por
    plan: así derivamos el plan de una bóveda guardada sin tocar el schema. */
+export interface AllocationSlice {
+  label: string;
+  pct: number;   // 0–100, suma debe ser 100
+  color: string;
+  apy: number;   // rendimiento individual estimado
+}
+
 export interface VaultPlan {
   id: string;
   name: string;
@@ -65,6 +72,7 @@ export interface VaultPlan {
   featured?: boolean;
   riskProfile?: boolean; // true = perfil de riesgo del cuestionario; false/undefined = producto (AFORE)
   blend?: string;        // mezcla de instrumentos soberanos diversificados
+  allocation?: AllocationSlice[];
   /** Riel que respalda la bóveda (detalle interno, nunca visible al usuario).
      "etherfuse" = bonos soberanos tokenizados vía Etherfuse (requiere KYC). */
   backend?: "etherfuse" | "defi";
@@ -88,6 +96,11 @@ export const VAULT_PLANS: VaultPlan[] = [
     color: "var(--accent-2)",
     emoji: "🏦",
     featured: true,
+    allocation: [
+      { label: "CETES (México)",     pct: 35, color: "#5BD6C0", apy: 9.0 },
+      { label: "T-Bills (EE.UU.)",   pct: 35, color: "#7C9EFF", apy: 6.5 },
+      { label: "Bonos Europa",        pct: 30, color: "#F5A623", apy: 4.5 },
+    ],
   },
   {
     id: "conservador",
@@ -105,6 +118,10 @@ export const VAULT_PLANS: VaultPlan[] = [
     // Riel soberano respaldado por Etherfuse (bonos tokenizados). Interno.
     backend: "etherfuse",
     kycGated: true,
+    allocation: [
+      { label: "CETES (México)",   pct: 60, color: "#5BD6C0", apy: 9.0 },
+      { label: "T-Bills (EE.UU.)", pct: 40, color: "#7C9EFF", apy: 6.5 },
+    ],
   },
   {
     id: "moderado",
@@ -119,6 +136,11 @@ export const VAULT_PLANS: VaultPlan[] = [
     color: "#5BD6C0",
     emoji: "🧭",
     riskProfile: true,
+    allocation: [
+      { label: "CETES (México)",   pct: 40, color: "#5BD6C0", apy: 9.0 },
+      { label: "T-Bills (EE.UU.)", pct: 30, color: "#7C9EFF", apy: 6.5 },
+      { label: "Bonos Europa",      pct: 30, color: "#F5A623", apy: 4.5 },
+    ],
   },
   {
     id: "balanceado",
@@ -133,6 +155,11 @@ export const VAULT_PLANS: VaultPlan[] = [
     color: "var(--accent)",
     emoji: "📊",
     riskProfile: true,
+    allocation: [
+      { label: "CETES (México)",    pct: 40, color: "#5BD6C0", apy: 9.0 },
+      { label: "T-Bills (EE.UU.)",  pct: 30, color: "#7C9EFF", apy: 6.5 },
+      { label: "Índices globales",   pct: 30, color: "#B07EFF", apy: 18.0 },
+    ],
   },
   {
     id: "crecimiento",
@@ -147,6 +174,11 @@ export const VAULT_PLANS: VaultPlan[] = [
     color: "#F5A623",
     emoji: "📈",
     riskProfile: true,
+    allocation: [
+      { label: "Índices globales",   pct: 45, color: "#B07EFF", apy: 18.0 },
+      { label: "Tecnología EE.UU.",  pct: 35, color: "#F5A623", apy: 22.0 },
+      { label: "Deuda soberana",     pct: 20, color: "#7C9EFF", apy: 7.5  },
+    ],
   },
 ];
 
