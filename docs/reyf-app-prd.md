@@ -34,7 +34,7 @@ El resultado: más del 75% de los mexicanos llega al retiro con menos del 30% de
 ### 1.2 Solución: Reyf
 
 Reyf es una plataforma web de ahorro e inversión para el retiro que combina:
-- **Instrumentos soberanos diversificados** (CETES, US Treasuries, Tesouro brasileño, KTB coreanos) con rendimientos de 8–14% APY.
+- **Yield real en DeFi**: fondos conectados a protocolos de Stellar (Blend Protocol, Aquarius) e instrumentos soberanos tokenizados (Etherfuse), con rendimientos de 8–14% APY.
 - **Infraestructura blockchain** (Arbitrum) para tokenizar posiciones, automatizar la bóveda y ofrecer liquidez sin vender activos.
 - **UX sin fricción**: onboarding por correo, sin seed phrases, depósito por SPEI como cualquier banco mexicano.
 
@@ -44,7 +44,7 @@ Reyf es una plataforma web de ahorro e inversión para el retiro que combina:
 |---|---|
 | Validar confianza del usuario | 70% de usuarios activos hacen ≥2 depósitos en primeros 30 días |
 | Validar conversión de onboarding | ≥60% de registros completan depósito inicial |
-| Validar propuesta de valor vs Afore | ≥80% de usuarios interactúan con el comparativo Afore en dashboard |
+| Validar transparencia de rendimiento | ≥80% de usuarios consultan la composición y rendimiento de su bóveda |
 | Validar liquidez como diferenciador | ≥20% de usuarios exploran la función de acceso a liquidez |
 
 ### 1.4 Usuario Target
@@ -87,7 +87,7 @@ Mexicanos de **25–55 años**, urbanos, con acceso a banca digital, que ya pien
 **Nombre ficticio:** Roberto, 44 años  
 **Perfil:** Gerente de logística en empresa manufacturera en Monterrey. Ingreso: $65,000 MXN/mes. Tiene Afore con Sura pero cree que no va a ser suficiente. Tiene ahorros en CETES y un departamento.  
 **Dolor principal:** "Mi Afore va a darme muy poco. Necesito algo adicional que realmente crezca y que pueda ver claramente."  
-**Motivación en Reyf:** Comparativa clara vs su Afore actual. Diversificación en instrumentos internacionales. Dashboard de proyección a 20 años.  
+**Motivación en Reyf:** Proyecciones claras de crecimiento patrimonial. Diversificación en instrumentos internacionales. Dashboard de proyección a 20 años.  
 **Perfil de riesgo esperado:** Conservador o Moderado.
 
 ---
@@ -170,6 +170,21 @@ Mexicanos de **25–55 años**, urbanos, con acceso a banca digital, que ya pien
 - [ ] El rendimiento acumulado se muestra en verde/rojo según ganancia/pérdida.
 - [ ] Existe una sección de "actividad reciente" con los últimos 10 movimientos.
 
+**US-04b: Ticker de rendimiento en tiempo real (centavo a centavo)**
+
+**Como** usuario con fondos en la bóveda,  
+**quiero** ver mi saldo incrementarse visiblemente cada pocos segundos,  
+**para** tener evidencia inmediata y constante de que mi dinero está generando rendimiento.
+
+**Criterios de Aceptación:**
+- [ ] El saldo total de la bóveda se recalcula y actualiza cada **5 segundos** con el yield acumulado desde el último tick.
+- [ ] El cálculo de incremento por tick: `balance × (APY / 365 / 24 / 3600) × 5` (yield de exactamente 5 segundos al APY del perfil).
+- [ ] El contador anima suavemente del valor anterior al nuevo (transición numérica fluida, no salto brusco).
+- [ ] Los decimales visibles son suficientes para mostrar el movimiento centavo a centavo (mínimo 2 decimales en MXN).
+- [ ] Si no hay fondos en la bóveda, el ticker permanece estático en $0.00 sin animación falsa.
+- [ ] Si la conexión se pierde o el balance on-chain no se puede leer, el ticker se pausa y muestra un indicador sutil de "actualizando…" sin generar alarma.
+- [ ] El ticker **no** hace llamadas de red cada 5 segundos — el incremento se calcula localmente con el APY conocido; la sincronización real contra la cadena ocurre cada 30 segundos o con refresh manual.
+
 ---
 
 #### US-05: Cambio de perfil de riesgo
@@ -203,17 +218,17 @@ Mexicanos de **25–55 años**, urbanos, con acceso a banca digital, que ya pien
 
 ---
 
-#### US-07: Comparativa vs Afore
+#### US-07: Composición y rendimiento del portfolio
 **Como** usuario activo,  
-**quiero** ver cuánto tendría en una Afore promedio vs cuánto tendré con Reyf,  
-**para** entender concretamente la ventaja de seguir con Reyf.
+**quiero** ver en qué protocolos y estrategias está invertido mi dinero y cuánto rinde cada uno,  
+**para** entender concretamente cómo crece mi patrimonio y confiar en la plataforma.
 
 **Criterios de Aceptación:**
-- [ ] La comparativa usa el mismo horizonte temporal y monto de aportación.
-- [ ] Afore benchmark: rendimiento promedio del sistema Afore publicado por CONSAR (actualizado mensualmente). Si no disponible, usar 5.5% APY como default con nota explicativa.
-- [ ] La diferencia se muestra como: monto adicional en MXN Y porcentaje adicional de riqueza acumulada.
-- [ ] Se muestra una frase de impacto: ej. "Con Reyf tendrás $2.3M MXN más en 30 años".
-- [ ] Hay un tooltip con la metodología del cálculo (transparencia).
+- [ ] La bóveda muestra la composición actual: protocolo/instrumento, porcentaje asignado y APY individual.
+- [ ] Los datos de rendimiento se actualizan desde las APIs de los proveedores (Blend Protocol, Aquarius, Etherfuse) con frecuencia mínima diaria.
+- [ ] El rendimiento acumulado se muestra en MXN y en % desde el primer depósito.
+- [ ] Si los datos de APY en tiempo real no están disponibles, se muestra el APY fijo del perfil con nota explicativa.
+- [ ] Hay un tooltip con la metodología del cálculo (transparencia sobre fuentes de rendimiento).
 - [ ] El módulo es prominente en el dashboard — no oculto en una pestaña secundaria.
 
 ---
@@ -322,15 +337,16 @@ Mexicanos de **25–55 años**, urbanos, con acceso a banca digital, que ya pien
 - Nav lateral (desktop) / Tab bar inferior (móvil): Inicio, Bóveda, Proyecciones, Liquidez, Configuración
 
 **Sección B1 — Resumen Hero:**
-- Saldo total en número grande centrado: "$124,500 MXN"
-- Sub-línea: "+$8,200 (7.0%) rendimiento total"
+- Saldo total en número grande centrado: "$124,500.**37** MXN" — el número incrementa visiblemente cada 5 segundos, centavo a centavo (ticker animado)
+- Sub-línea: "+$8,200.37 (7.0%) rendimiento total" — también actualizado por el ticker
 - Chip de perfil: "● Balanceado · 10.5% APY"
+- El ticker es el elemento de mayor impacto emocional de la app: el usuario ve su dinero crecer en vivo sin hacer nada
 
 **Sección B2 — Proyección (módulo más prominente):**
 - Toggle de horizonte: 10 / 20 / 30 años
 - Número proyectado grande en verde
-- Línea comparativa: "vs $X en Afore promedio · $Y más con Reyf"
-- Gráfico de línea simple mostrando crecimiento Reyf vs Afore
+- Línea secundaria: "+X% rendimiento acumulado · APY actual del perfil"
+- Gráfico de línea simple mostrando crecimiento proyectado del patrimonio
 
 **Sección B3 — Acciones Rápidas:**
 - Botón primario: "Depositar"
@@ -385,31 +401,35 @@ Mexicanos de **25–55 años**, urbanos, con acceso a banca digital, que ya pien
 #### Frontend
 | Capa | Tecnología | Justificación |
 |---|---|---|
-| Framework | Next.js 14 (App Router) | SSR para SEO, performance, routing nativo |
-| UI Library | shadcn/ui + Tailwind CSS | Velocidad de desarrollo, consistencia |
-| Gráficas | Recharts | Ligero, customizable, compatible con React |
-| Estado global | Zustand | Simple, sin boilerplate excesivo |
-| Auth UI | Auth.js (NextAuth) | Integración nativa con Next.js |
+| Framework | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 5 | SSR, performance, routing nativo; última versión estable |
+| UI Library | Tailwind v4 + componentes UI custom | Tema dark glassmorphism propio; sin dependencia de librería de componentes externa |
+| Gráficas | SVG custom (`ProjectionCard`) | Control total sobre animaciones; ligero, sin dependencia de Recharts |
+| Estado global | React Context + hooks custom | Sin boilerplate; estado de wallet, perfil y bóvedas encapsulado en contextos |
+| Auth UI | Privy (`@privy-io/react-auth`) | Login social (Email OTP) + embedded wallet + smart wallet sin seed phrase |
 | Animaciones | Framer Motion | Transiciones de onboarding y dashboard |
 
 #### Backend
 | Capa | Tecnología | Justificación |
 |---|---|---|
-| Runtime | Node.js + tRPC o REST | Type-safe si tRPC, REST si equipo prefiere simplicidad |
+| Runtime | Next.js Route Handlers (App Router) | API colocada con el frontend; sin servidor separado |
 | Base de datos | PostgreSQL (Supabase) | Relacional, RLS para seguridad, real-time opcional |
-| ORM | Prisma | Type-safe, migraciones declarativas |
-| Autenticación | Supabase Auth | Email/password nativo, extensible a OAuth |
-| Queue / Jobs | BullMQ + Redis | Procesamiento de SPEI entrante, conversión MXNB |
+| Acceso a datos | `lib/supabase/db.ts` (cliente Supabase directo) | Funciones tipadas sin ORM extra; service_role solo en server |
+| Autenticación | Privy (embedded wallets + smart wallets) | Identidad unificada con el cliente; scope por dirección de wallet |
+| Queue / Jobs | Sin implementar — flujo síncrono en route handlers | Suficiente para MVP; migrar a BullMQ + Redis si volumen lo requiere |
 | Storage | Supabase Storage | Documentos KYC si se requiere |
 
 #### Blockchain / Web3
 | Capa | Tecnología | Justificación |
 |---|---|---|
-| Red | Arbitrum One | L2 de Ethereum, bajas fees, alto throughput |
-| Smart Wallets | Pimlico + ERC-4337 | Account Abstraction, gas patrocinado sin seed phrases |
-| Stablecoin | MXNB (Bitso) | 1:1 MXN, regulado, on-chain |
-| Bóveda | ERC-4626 Vault custom | Estándar de bóvedas tokenizadas, auditable |
-| Proveedor RPC | Alchemy o Infura | Disponibilidad 99.9%, fallback automático |
+| Red principal (usuario) | Arbitrum (Sepolia testnet / One mainnet) | L2 de Ethereum; MXNB, smart wallets y contratos ReyfVaults |
+| Red de yield | Stellar + Soroban | Protocolos DeFi (Blend, Aquarius) e instrumentos soberanos tokenizados (Etherfuse) |
+| Smart Wallets | Privy + ZeroDev Kernel (ERC-4337) + Pimlico bundler | Account Abstraction: gas patrocinado, sin seed phrase, sin popups de firma |
+| Stablecoin | MXNB (Bitso Business / Juno) | 1:1 MXN, regulado, ERC-20 en Arbitrum, 6 decimales |
+| Contratos bóveda | ReyfVaults + ReyfAdvance (contratos propios) | Lógica de apertura/aportación/retiro y adelanto de liquidez |
+| Yield en Stellar | Blend Protocol + Aquarius + Etherfuse Stablebonds | Generación de rendimiento real (ver sección 5.2.4) |
+| Wallet Stellar | Pollar (headless, self-custodial) | Wallet Stellar del usuario para operar en Etherfuse/Blend |
+| Proveedor RPC Arbitrum | viem + RPC público / `NEXT_PUBLIC_ARBITRUM_RPC` | Lectura on-chain de saldos y eventos ERC-20 |
+| Proveedor RPC Stellar | Horizon API + Soroban RPC | Lectura de balances Stellar y ejecución de contratos Soroban |
 
 #### Infraestructura
 | Capa | Tecnología |
@@ -436,15 +456,42 @@ Mexicanos de **25–55 años**, urbanos, con acceso a banca digital, que ya pien
 - **API:** Bitso API para mint/burn de MXNB según flujo de fondos
 - **Requirement:** La conversión debe ser 1:1 sin fee visible al usuario (absorber en el modelo de negocio)
 
-#### 5.2.3 Instrumentos Soberanos (Bóveda)
-- **Proveedores potenciales:** Percent, Backed Finance, o protocolo propio con custodio regulado
-- **Datos de rendimiento:** API del proveedor de bóveda para APY en tiempo real
-- **Rebalanceo:** Automático según perfil, ejecutado on-chain por el smart contract de la bóveda
+#### 5.2.3 Instrumentos de Bóveda (Arbitrum + Stellar)
+- **Contratos en Arbitrum:** `ReyfVaults` y `ReyfAdvance` (contratos propios, Arbitrum Sepolia testnet / One mainnet). Manejan apertura, aportación, retiro y adelanto de liquidez.
+- **Yield real en Stellar:** los fondos de cada bóveda se conectan a protocolos DeFi en Stellar según el perfil (ver sección 5.2.4).
+- **Datos de rendimiento:** APIs públicas de cada protocolo (Blend, Aquarius, Etherfuse). APY mostrado al usuario refleja la tasa vigente del protocolo subyacente; fallback al APY fijo del perfil si la API no responde.
+- **Rebalanceo:** por perfil de riesgo. La bóveda Conservadora va a instrumentos soberanos; las demás a protocolos DeFi con mayor volatilidad de yield pero mayor retorno esperado.
 
-#### 5.2.4 Datos CONSAR (Comparativa Afore)
-- **Fuente:** Portal público CONSAR — rendimiento promedio del sistema
-- **Frecuencia de actualización:** Mensual (cron job que scrape o API si disponible)
-- **Fallback:** Si no disponible, usar constante 5.5% APY con nota al usuario
+#### 5.2.4 Yield Real en Stellar — Protocolos DeFi
+
+La generación de rendimiento real de las bóvedas se orquesta en **Stellar / Soroban** mediante los mejores protocolos DeFi disponibles:
+
+| Protocolo | Tipo | Bóvedas | APY estimado |
+|---|---|---|---|
+| **Etherfuse Stablebonds** | Bonos soberanos tokenizados | Conservadora | ~9–11% |
+| **Blend Protocol** | Lending / borrowing (pools de préstamo Soroban) | Moderada, Balanceada | ~9–12% |
+| **Aquarius** | AMM + liquidity mining (rewards AQUA + fees de swap) | Crecimiento | ~12–14% |
+
+**Flujo de fondeo (implementación pendiente de decisión de riel):**
+
+```
+MXNB en Arbitrum → [decisión de riel] → Stellar
+  ├─► Etherfuse onramp (SPEI → stablebond soberano)   [Bóveda Conservadora]
+  ├─► Blend Protocol deposit pool                      [Moderada / Balanceada]
+  └─► Aquarius liquidity provision                     [Bóveda Crecimiento]
+```
+
+**Opciones de riel evaluadas:**
+- **(A) SPEI directo a Etherfuse:** depósito de la bóveda soberana va por SPEI a la CLABE de Etherfuse; el saldo no pasa por MXNB. Opción más simple para la bóveda Conservadora.
+- **(B) Off-ramp + on-ramp:** MXNB → fiat → SPEI → Stellar. Aplica a bóvedas DeFi; más fricción y costo operativo.
+- **(C) Swap on-chain stable→bono/pool:** requiere que Blend/Etherfuse acepten stablecoin como origen en Soroban (pendiente de confirmar con los protocolos).
+
+**Fuentes de datos de rendimiento en tiempo real:**
+- Blend Protocol: API pública de pools (`blend.capital`)
+- Aquarius: API de yields y volúmenes AMM (`aqua.network`)
+- Etherfuse: rates de stablebonds vía API REST (`api.etherfuse.com/stablebonds`)
+
+**Wallet Stellar del usuario:** gestionada por **Pollar** (headless, self-custodial). El usuario crea su wallet Stellar con un OTP de email al verificar identidad (KYC). La wallet no es visible directamente en la UI — Reyf la abstrae como parte de la bóveda.
 
 #### 5.2.5 Notificaciones por Correo
 - **Proveedor:** Resend o Postmark
@@ -562,7 +609,7 @@ Este es el indicador primario de confianza real en el producto.
 | KPI | Meta |
 |---|---|
 | Tasa de completación del onboarding (inicio → primer depósito) | ≥ 55% |
-| % usuarios que abren comparativa vs Afore | ≥ 80% |
+| % usuarios que consultan composición y rendimiento de su bóveda | ≥ 80% |
 | % usuarios que exploran función de liquidez | ≥ 20% |
 | NPS (encuesta a 30 días) | ≥ 45 |
 | CSAT de onboarding (encuesta post-registro) | ≥ 4.2/5 |
@@ -594,7 +641,8 @@ first_deposit_initiated (amount: number)
 first_deposit_confirmed (amount: number)
 second_deposit_confirmed (days_since_first: number)  ← evento crítico del North Star
 dashboard_projection_viewed (horizon: 10|20|30)
-afore_comparison_viewed
+portfolio_breakdown_viewed (protocol: string)
+yield_ticker_seen (balance: number, apy: number)  ← primer tick visible con fondos reales
 liquidity_explored
 liquidity_requested (amount: number)
 profile_changed (from: string, to: string)
@@ -661,9 +709,9 @@ profile_changed (from: string, to: string)
 |---|---|
 | Gráfico de proyección interactivo (10/20/30 años) | US-06 |
 | Cálculo de proyección con parámetros del usuario | US-06 |
-| Módulo comparativa vs Afore (benchmark CONSAR) | US-07 |
+| Módulo de composición y rendimiento del portfolio (US-07) | US-07 |
 | Simulador de depósito mensual objetivo | US-06 |
-| Cron job de actualización datos CONSAR | US-07 |
+| Cron job de actualización de APY (Blend API, Aquarius API, Etherfuse rates) | US-07 |
 
 ---
 
