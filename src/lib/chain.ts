@@ -241,6 +241,20 @@ export const reyfVaultsAbi = [
     ],
     outputs: [{ name: "", type: "uint256" }],
   },
+  {
+    type: "function",
+    name: "maxUserBalance",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "userTotalBalance",
+    stateMutability: "view",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 export interface OnchainVault {
@@ -276,6 +290,40 @@ export async function readOnchainVaults(owner: Address): Promise<OnchainVault[]>
     });
   });
   return result;
+}
+
+export interface VaultLimits {
+  /** Saldo máximo total por usuario (beta cap), en MXNB. */
+  max: number;
+  /** Saldo total actual del usuario sumado en todas sus bóvedas, en MXNB. */
+  used: number;
+  /** Cuánto más puede depositar el usuario antes de topar el cap, en MXNB. */
+  available: number;
+}
+
+/** Lee el cap de depósitos REAL del contrato (ajustable por el owner) y el uso actual. */
+export async function readVaultLimits(owner: Address): Promise<VaultLimits | null> {
+  if (!SEYF_VAULTS_ADDRESS) return null;
+  try {
+    const [maxRaw, usedRaw] = await Promise.all([
+      publicClient.readContract({
+        address: SEYF_VAULTS_ADDRESS,
+        abi: reyfVaultsAbi,
+        functionName: "maxUserBalance",
+      }) as Promise<bigint>,
+      publicClient.readContract({
+        address: SEYF_VAULTS_ADDRESS,
+        abi: reyfVaultsAbi,
+        functionName: "userTotalBalance",
+        args: [owner],
+      }) as Promise<bigint>,
+    ]);
+    const max = Number(maxRaw) / 10 ** MXNB_DECIMALS;
+    const used = Number(usedRaw) / 10 ** MXNB_DECIMALS;
+    return { max, used, available: Math.max(0, max - used) };
+  } catch {
+    return null;
+  }
 }
 
 /** Espera a que una transacción se confirme on-chain. */

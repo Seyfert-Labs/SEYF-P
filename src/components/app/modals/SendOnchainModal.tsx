@@ -8,6 +8,7 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { explorerBase } from "@/lib/chain";
 import { JunoService } from "@/services/junoService";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
+import { MoneyInput } from "../MoneyInput";
 
 export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: () => void }) {
   const wallet = useWallet();
@@ -73,13 +74,11 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
             )}
 
             <span className="field-label">Monto (MXN)</span>
-            <input
+            <MoneyInput
               className="input num-input"
-              type="number"
-              inputMode="decimal"
               placeholder="0.00"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={setAmount}
             />
             <p className="modal-sub" style={{ margin: "8px 0 0" }}>
               Disponible: ${JunoService.formatMXNB(wallet.balance)} MXN

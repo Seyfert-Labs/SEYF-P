@@ -12,6 +12,7 @@ import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
 import { ClabeCard } from "../ClabeCard";
 import { FMT } from "../data";
 import { explorerBase } from "@/lib/chain";
+import { MoneyInput } from "../MoneyInput";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
@@ -141,13 +142,11 @@ export function DepositModal({
             <div className="divider" style={{ marginTop: 22 }} />
             <p className="eyebrow" style={{ marginBottom: 10 }}>Dev · Simular depósito</p>
             <div style={{ display: "flex", gap: 8 }}>
-              <input
+              <MoneyInput
                 className="input num-input"
-                type="number"
-                inputMode="decimal"
                 placeholder="500.00"
                 value={devAmt}
-                onChange={(e) => { setDevAmt(e.target.value); setDevStatus("idle"); setDevError(null); }}
+                onChange={(v) => { setDevAmt(v); setDevStatus("idle"); setDevError(null); }}
                 style={{ flex: 1, margin: 0 }}
                 disabled={devStatus === "sending"}
               />

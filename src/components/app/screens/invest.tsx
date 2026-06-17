@@ -6,6 +6,7 @@ import { Icon, Flag } from "../ui";
 import { SubHeader, AvatarButton } from "../shared";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
 import { GrowingAmount, YieldRate } from "../GrowingAmount";
+import { MoneyInput } from "../MoneyInput";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, MAX_VAULTS, type UserVault } from "@/hooks/useVaults";
@@ -143,7 +144,7 @@ function VaultRow({ v, go }: { v: UserVault; go: Go }) {
         <Icon name="chevR" size={18} color="var(--txt-dim)" />
       </div>
       <div style={{ marginTop: 14 }}>
-        <GrowingAmount base={v.bal} apy={v.apy} size={32} align="left" />
+        <GrowingAmount base={v.bal} apy={v.apy} size={32} align="left" id={`vault-${v.id}`} />
       </div>
       {v.bal > 0 && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -204,7 +205,7 @@ export function ScreenVaults({ go }: { go: Go }) {
         <div className="card glow" style={{ padding: "24px 22px" }}>
           <p className="eyebrow">Tu ahorro total</p>
           <div style={{ marginTop: 14 }}>
-            <GrowingAmount base={totalSaved} apy={weightedApy} size={44} align="left" />
+            <GrowingAmount base={totalSaved} apy={weightedApy} size={44} align="left" id="vaults-total" />
           </div>
           {totalSaved > 0 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
@@ -351,7 +352,7 @@ function CreateVaultModal({
 /* ---------------- VAULT DETAIL ---------------- */
 export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   const wallet = useWallet();
-  const { vaults, updateBalance, removeVault, busy, onchain } = useVaults(wallet.address);
+  const { vaults, updateBalance, removeVault, busy, onchain, limits } = useVaults(wallet.address);
   const ctxV = ctx as UserVault | undefined;
   const v = vaults.find((x) => x.id === ctxV?.id) ?? ctxV;
 
@@ -380,7 +381,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       <SubHeader title={v.nm} go={go} back="bovedas" />
       <div className="screen-pad" style={{ textAlign: "center" }}>
         <div style={{ marginTop: 18 }}>
-          <GrowingAmount base={v.bal} apy={v.apy} size={48} />
+          <GrowingAmount base={v.bal} apy={v.apy} size={48} id={`vault-${v.id}`} />
         </div>
         <p style={{ fontSize: 13.5, color: "var(--txt-muted)", margin: "8px 0 0" }}>MXN en bóveda</p>
         <div style={{ marginTop: 6 }}><YieldRate base={v.bal} apy={v.apy} /></div>
@@ -501,6 +502,8 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             mode={action}
             vault={v}
             locked={advanceState.locked}
+            maxDeposit={limits?.available}
+            cap={limits?.max}
             onClose={() => setAction(null)}
             onConfirm={(amt) => updateBalance(v.id, action === "abonar" ? amt : -amt)}
           />
@@ -706,11 +709,10 @@ export function ScreenConvert({ go }: { go: Go }) {
             <ConvAssetBadge flag={from.flag} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{from.name}</p>
-              <input
+              <MoneyInput
                 className="big num"
                 value={amount}
-                inputMode="decimal"
-                onChange={(e) => { setAmount(e.target.value.replace(/[^\d.]/g, "")); setStatus("idle"); }}
+                onChange={(v) => { setAmount(v); setStatus("idle"); }}
                 style={{ background: "none", border: "none", outline: "none", color: "var(--txt)", width: "100%", padding: 0, margin: "2px 0 0" }}
               />
             </div>
@@ -889,19 +891,18 @@ function friendlyVaultError(e: unknown): string {
   return "No se pudo completar la operación. Intenta de nuevo en un momento.";
 }
 
-function VaultAmountModal({ mode, vault, locked = 0, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; locked?: number; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
+function VaultAmountModal({ mode, vault, locked = 0, maxDeposit, cap, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; locked?: number; maxDeposit?: number; cap?: number; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [txHash, setTxHash] = useState("");
   const [error, setError] = useState<string | null>(null);
-  // Abonar: sin meta fija (goal=0), cualquier monto positivo es válido.
-  // Retirar: limitado por el saldo LIBRE (saldo − colateral bloqueado por un
-  // adelanto activo). El contrato revierte con "exceeds free balance" si se
-  // intenta retirar el colateral bloqueado.
-  const max = mode === "retirar" ? Math.max(0, vault.bal - locked) : Infinity;
+  // Abonar: limitado por el cupo disponible bajo el tope de la beta (cap por usuario,
+  // leído on-chain). Si no se conoce el cupo, no se restringe localmente.
+  // Retirar: limitado por el saldo LIBRE (saldo − colateral bloqueado por un adelanto).
+  const max = mode === "retirar" ? Math.max(0, vault.bal - locked) : (maxDeposit ?? Infinity);
   const n = Number(amount);
-  const valid = n > 0 && (mode === "abonar" || n <= max) && !submitting;
+  const valid = n > 0 && n <= max && !submitting;
 
   const submit = async () => {
     setSubmitting(true);
@@ -978,13 +979,11 @@ function VaultAmountModal({ mode, vault, locked = 0, onClose, onConfirm }: { mod
         )}
 
         <span className="field-label">Monto (MXN)</span>
-        <input
+        <MoneyInput
           className="input num-input"
-          type="number"
-          inputMode="decimal"
           placeholder="0.00"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={setAmount}
         />
         {mode === "retirar" && (
           <p className="modal-sub" style={{ margin: "8px 0 0" }}>
@@ -994,9 +993,17 @@ function VaultAmountModal({ mode, vault, locked = 0, onClose, onConfirm }: { mod
             )}
           </p>
         )}
-        {mode === "retirar" && n > max && (
+        {mode === "abonar" && maxDeposit != null && (
+          <p className="modal-sub" style={{ margin: "8px 0 0" }}>
+            Puedes depositar hasta ${FMT(max, 2)}
+            {cap != null && <span style={{ color: "var(--txt-dim)" }}> · tope de la beta ${FMT(cap, 0)} por usuario</span>}
+          </p>
+        )}
+        {n > max && Number.isFinite(max) && (
           <p className="modal-sub" style={{ margin: "4px 0 0", color: "var(--neg)" }}>
-            El máximo retirable es ${FMT(max, 2)}{locked > 0 ? " (tienes colateral bloqueado por un adelanto activo)" : ""}.
+            {mode === "abonar"
+              ? `Durante la beta puedes depositar como máximo $${FMT(max, 2)} más.`
+              : `El máximo retirable es $${FMT(max, 2)}${locked > 0 ? " (tienes colateral bloqueado por un adelanto activo)" : ""}.`}
           </p>
         )}
 

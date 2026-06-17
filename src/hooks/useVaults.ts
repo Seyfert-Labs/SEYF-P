@@ -18,7 +18,9 @@ import {
   MXNB_ADDRESS,
   MXNB_DECIMALS,
   readOnchainVaults,
+  readVaultLimits,
   waitForTx,
+  type VaultLimits,
 } from "@/lib/chain";
 
 export type UserVault = StoreVault;
@@ -35,6 +37,7 @@ export function useVaults(address?: string) {
   const [vaults, setVaults] = useState<UserVault[]>([]);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [limits, setLimits] = useState<VaultLimits | null>(null);
 
   const reload = useCallback(async () => {
     if (!address) {
@@ -44,7 +47,10 @@ export function useVaults(address?: string) {
     }
     if (onchain) {
       try {
-        const list = await readOnchainVaults(address as Address);
+        const [list, lim] = await Promise.all([
+          readOnchainVaults(address as Address),
+          readVaultLimits(address as Address),
+        ]);
         setVaults(
           list
             .map((v) => ({
@@ -58,6 +64,7 @@ export function useVaults(address?: string) {
             }))
             .sort((a, b) => a.createdAt - b.createdAt),
         );
+        setLimits(lim);
       } catch {
         setVaults([]);
       }
@@ -180,5 +187,5 @@ export function useVaults(address?: string) {
 
   const totalSaved = vaults.reduce((s, v) => s + v.bal, 0);
 
-  return { vaults, ready, busy, onchain, addVault, ensureVault, updateBalance, removeVault, totalSaved };
+  return { vaults, ready, busy, onchain, limits, addVault, ensureVault, updateBalance, removeVault, totalSaved };
 }

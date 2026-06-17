@@ -5,6 +5,13 @@ import React, { useEffect, useState } from "react";
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
 /**
+ * Ancla de crecimiento por `id`, a nivel de módulo: sobrevive a cambios de
+ * pantalla (el router es por estado, sin recargar) para que el contador NO se
+ * reinicie al navegar. Se reancla solo si cambia el `base` (abono/retiro).
+ */
+const growStore = new Map<string, { start: number; base: number; last: number }>();
+
+/**
  * Saldo que "crece al instante": parte de `base` y le suma el rendimiento por
  * segundo (`base * apy/100 / año`). Muestra el entero + centavos grandes y una
  * cola de micro-decimales que tiquea en vivo, para dar sensación de que tu
@@ -17,6 +24,7 @@ export function GrowingAmount({
   tail = 4,
   align = "center",
   prefix = "$",
+  id = "",
 }: {
   base: number;
   apy: number;
@@ -26,21 +34,34 @@ export function GrowingAmount({
   tail?: number;
   align?: "center" | "left";
   prefix?: string;
+  /** Clave estable para persistir el crecimiento entre navegaciones (p. ej. el id de la bóveda). */
+  id?: string;
 }) {
   const live = base > 0 && apy > 0;
-  // `grown` = rendimiento acumulado desde el último cambio de `base`. El setState
-  // solo ocurre dentro del intervalo (nunca síncrono en el effect ni en render).
-  const [grown, setGrown] = useState(0);
+  // Inicializa con lo ya acumulado (si el id coincide y el base no cambió) para no
+  // reiniciar a cero al volver a montar. El setState solo ocurre dentro del intervalo.
+  const [grown, setGrown] = useState(() => {
+    const e = growStore.get(id);
+    return e && e.base === base ? e.last : 0;
+  });
 
   useEffect(() => {
     if (!live) return;
-    const start = Date.now();
     const perSec = (base * (apy / 100)) / SECONDS_PER_YEAR;
-    const id = setInterval(() => {
-      setGrown(((Date.now() - start) / 1000) * perSec);
+    // Reusa el ancla persistida; reancla solo si cambió el base.
+    let e = growStore.get(id);
+    if (!e || e.base !== base) {
+      e = { start: Date.now(), base, last: 0 };
+      growStore.set(id, e);
+    }
+    const start = e.start;
+    const iv = setInterval(() => {
+      const g = ((Date.now() - start) / 1000) * perSec;
+      growStore.set(id, { start, base, last: g });
+      setGrown(g);
     }, 80);
-    return () => clearInterval(id);
-  }, [base, apy, live]);
+    return () => clearInterval(iv);
+  }, [base, apy, live, id]);
 
   const value = base + (live ? grown : 0);
 

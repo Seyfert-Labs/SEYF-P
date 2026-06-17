@@ -10,6 +10,7 @@ import { useUserBanks, type UserBank } from "@/hooks/useUserBanks";
 import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
 import { JunoService } from "@/services/junoService";
 import { FMT } from "../data";
+import { MoneyInput } from "../MoneyInput";
 
 export function RedeemModal({
   onClose,
@@ -168,13 +169,11 @@ export function RedeemModal({
             </button>
 
             <span className="field-label">2 · Monto a retirar (mín. $100 MXN)</span>
-            <input
+            <MoneyInput
               className="input num-input"
-              type="number"
-              inputMode="decimal"
               placeholder="100.00"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={setAmount}
             />
             <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--txt-dim)" }}>
               Disponible este mes: <b className="num" style={{ color: "var(--txt-muted)" }}>${FMT(remainingWithdraw, 2)}</b> de ${FMT(limits.limit, 0)}.

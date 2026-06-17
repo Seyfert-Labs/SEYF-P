@@ -18,6 +18,7 @@ import {
   waitForTx,
   explorerBase,
 } from "@/lib/chain";
+import { MoneyInput } from "../MoneyInput";
 
 const toUnits = (n: number) => parseUnits(n.toFixed(MXNB_DECIMALS), MXNB_DECIMALS);
 
@@ -187,13 +188,11 @@ export function RepayModal({
 
         <span className="field-label">Monto a repagar (MXN)</span>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <input
+          <MoneyInput
             className="input num-input"
-            type="number"
-            inputMode="decimal"
             placeholder="0.00"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={setAmount}
             style={{ flex: 1 }}
           />
           <button className="chip" onClick={() => setAmount(String(debt))} style={{ cursor: "pointer", flexShrink: 0 }}>

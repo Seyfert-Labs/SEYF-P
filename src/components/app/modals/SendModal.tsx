@@ -16,6 +16,7 @@ import { explorerBase } from "@/lib/chain";
 import { Portal } from "../Portal";
 import { AddBankModal } from "./AddBankModal";
 import type { UserBank } from "@/hooks/useUserBanks";
+import { MoneyInput } from "../MoneyInput";
 
 type Tab = "banco" | "erc20";
 
@@ -191,13 +192,11 @@ export function SendModal({
                 </button>
 
                 <span className="field-label">Monto (mín. $100 MXN)</span>
-                <input
+                <MoneyInput
                   className="input num-input"
-                  type="number"
-                  inputMode="decimal"
                   placeholder="100.00"
                   value={bankAmount}
-                  onChange={(e) => { setBankAmount(e.target.value); setLimitError(null); }}
+                  onChange={(v) => { setBankAmount(v); setLimitError(null); }}
                 />
                 <p style={{ margin: "8px 2px 0", fontSize: "var(--t-xs)", color: "var(--txt-dim)" }}>
                   Disponible: <b className="num" style={{ color: "var(--txt-muted)" }}>${FMT(available, 2)}</b>
@@ -236,13 +235,11 @@ export function SendModal({
             )}
 
             <span className="field-label">Monto (MXN)</span>
-            <input
+            <MoneyInput
               className="input num-input"
-              type="number"
-              inputMode="decimal"
               placeholder="0.00"
               value={erc20Amount}
-              onChange={(e) => { setErc20Amount(e.target.value); setErc20Error(null); }}
+              onChange={(v) => { setErc20Amount(v); setErc20Error(null); }}
             />
             <p style={{ margin: "8px 2px 0", fontSize: "var(--t-xs)", color: "var(--txt-dim)" }}>
               Disponible: <b className="num" style={{ color: "var(--txt-muted)" }}>${FMT(available, 2)} MXN</b>

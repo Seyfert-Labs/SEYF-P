@@ -5,6 +5,7 @@
 import React, { useRef, useState } from "react";
 import { projectSavings, FMT, loadRiskProfile, planById } from "./data";
 import { Icon } from "./ui";
+import { MoneyInput } from "./MoneyInput";
 
 /* ---- helpers ---- */
 function defaultApy(): number {
@@ -212,14 +213,12 @@ export function ProjectionCard({ current = 0, monthly: initialMonthly, apy: init
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
             <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Aportando</span>
             {editingMonthly ? (
-              <input
+              <MoneyInput
                 className="num-input"
-                type="number"
-                inputMode="decimal"
                 autoFocus
                 value={draft}
                 placeholder={String(monthly)}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={setDraft}
                 onBlur={commitMonthly}
                 onKeyDown={(e) => e.key === "Enter" && commitMonthly()}
                 style={{ width: 100, padding: "4px 10px", fontSize: 14, margin: 0, border: "1px solid var(--accent)", borderRadius: 8, background: "var(--surface-2)", color: "var(--txt)", fontWeight: 800 }}
