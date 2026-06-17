@@ -195,6 +195,7 @@ export function ScreenKyc({ go }: { go: Go }) {
       // Wallet ya validada en otra org (testnet): la verificación se da por completa,
       // saltando documentos/acuerdos que fallarían con esa wallet.
       if (j && typeof j === "object" && (j as { verifiedElsewhere?: boolean }).verifiedElsewhere) {
+        await refreshStatus();
         setStep("done");
         return;
       }

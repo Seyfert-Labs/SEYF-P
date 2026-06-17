@@ -20,6 +20,7 @@ import { AppError, toErrorResponse } from '@/lib/reyf/api-error'
 import { rateLimitResponse } from '@/lib/reyf/redis-guards'
 import { normalizeDateOfBirthToIso } from '@/lib/reyf/normalize-date-of-birth'
 import { isPublicStellarTestnet } from '@/lib/reyf/stellar-wallet-network'
+import { upsertStoredKycSnapshot } from '@/lib/reyf/kyc-state-store'
 import {
   isEtherfuseTestnetBankAutofillActive,
   getTestnetSyntheticClabe,
@@ -182,6 +183,13 @@ export async function POST(req: Request) {
          */
         if (isWalletClaimedByAnotherOrg(msg) && isPublicStellarTestnet()) {
           console.warn('[kyc/submit] wallet en otra org (testnet) — verificación soft-complete:', msg)
+          // Persistir el snapshot para que el gate de la bóveda (GET /kyc/status) lo honre,
+          // pese a que Etherfuse responda not_found para esta org.
+          await upsertStoredKycSnapshot({
+            customerId: ids.customerId,
+            walletPublicKey: publicKey,
+            status: 'proposed',
+          }).catch(() => {})
           return NextResponse.json(
             { ok: true, status: 'proposed', verifiedElsewhere: true, bankAccountId: null },
             { headers: { 'Cache-Control': 'no-store' } },

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { fetchEtherfuseKycStatus } from '@/lib/etherfuse/kyc'
 import { getEtherfuseOnboardingSession } from '@/lib/etherfuse/onboarding-session'
 import { getStoredKycSnapshot, upsertStoredKycSnapshot } from '@/lib/reyf/kyc-state-store'
+import { isPublicStellarTestnet } from '@/lib/reyf/stellar-wallet-network'
 import { toErrorResponse } from '@/lib/reyf/api-error'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +28,9 @@ export async function GET() {
           currentRejectionReason: live.data.currentRejectionReason,
         })
       } else if (live.reason === 'not_found') {
-        snapshot = null
+        // Testnet: si hay un snapshot persistido (soft-complete de una wallet validada en otra
+        // org), lo conservamos para no re-bloquear el gate. Mainnet: not_found manda → null.
+        if (!isPublicStellarTestnet()) snapshot = null
       }
     } catch {
       // keep fallback snapshot
