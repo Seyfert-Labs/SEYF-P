@@ -26,15 +26,16 @@ type FieldDef = {
   autoComplete: string;
   type?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  maxLength?: number;
 };
 
 const FIELDS: FieldDef[] = [
   { key: "firstName", label: "Nombre(s)", autoComplete: "given-name" },
   { key: "paternalLastName", label: "Apellido paterno", half: true, autoComplete: "family-name" },
   { key: "maternalLastName", label: "Apellido materno", half: true, autoComplete: "off" },
-  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA/MM/DD", autoComplete: "bday", inputMode: "numeric" },
-  { key: "curp", label: "CURP", half: true, autoComplete: "off" },
-  { key: "rfc", label: "RFC", half: true, autoComplete: "off" },
+  { key: "dateOfBirth", label: "Fecha de nacimiento", placeholder: "AAAA/MM/DD", autoComplete: "bday", inputMode: "numeric", maxLength: 10 },
+  { key: "curp", label: "CURP", half: true, autoComplete: "off", maxLength: 18 },
+  { key: "rfc", label: "RFC", half: true, autoComplete: "off", maxLength: 13 },
   { key: "phone", label: "Teléfono", half: true, autoComplete: "tel", type: "tel", inputMode: "tel" },
   { key: "occupation", label: "Ocupación", half: true, autoComplete: "off" },
   { key: "street", label: "Calle y número", autoComplete: "address-line1" },
@@ -56,6 +57,13 @@ interface IdentityForm {
   city: string;
   state: string;
   postalCode: string;
+}
+
+function autoSlashDate(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}/${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6)}`;
 }
 
 /** Extrae un mensaje legible de la respuesta de error de /api/reyf/* .
@@ -384,7 +392,13 @@ export function ScreenKyc({ go }: { go: Go }) {
                     autoComplete={f.autoComplete}
                     value={form[f.key]}
                     placeholder={f.placeholder}
-                    onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}
+                    maxLength={f.maxLength}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      if (f.key === "curp" || f.key === "rfc") val = val.toUpperCase();
+                      if (f.key === "dateOfBirth") val = autoSlashDate(val);
+                      setForm((s) => ({ ...s, [f.key]: val }));
+                    }}
                   />
                 </label>
               ))}
