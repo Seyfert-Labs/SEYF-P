@@ -192,6 +192,12 @@ export function ScreenKyc({ go }: { go: Go }) {
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(readApiError(j, r.status));
+      // Wallet ya validada en otra org (testnet): la verificación se da por completa,
+      // saltando documentos/acuerdos que fallarían con esa wallet.
+      if (j && typeof j === "object" && (j as { verifiedElsewhere?: boolean }).verifiedElsewhere) {
+        setStep("done");
+        return;
+      }
       setStep("documents");
     });
   };

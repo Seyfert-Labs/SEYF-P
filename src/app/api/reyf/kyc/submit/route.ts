@@ -19,6 +19,7 @@ import {
 import { AppError, toErrorResponse } from '@/lib/reyf/api-error'
 import { rateLimitResponse } from '@/lib/reyf/redis-guards'
 import { normalizeDateOfBirthToIso } from '@/lib/reyf/normalize-date-of-birth'
+import { isPublicStellarTestnet } from '@/lib/reyf/stellar-wallet-network'
 import {
   isEtherfuseTestnetBankAutofillActive,
   getTestnetSyntheticClabe,
@@ -74,6 +75,18 @@ const bodySchema = z.object({
       .pipe(z.array(z.object({ id: z.string().optional(), type: z.string(), value: z.string() })).min(1)),
   }),
 })
+
+/** Detecta el error de Etherfuse de wallet registrada/reclamada por otra organización. */
+function isWalletClaimedByAnotherOrg(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    m.includes('cannot claim a wallet') ||
+    m.includes('registered to another organization') ||
+    m.includes('registered to a different organization') ||
+    m.includes('claimed by another organization') ||
+    m.includes('claimed by a different organization')
+  )
+}
 
 function mapKycProviderSetupError(message: string): AppError | null {
   const m = message.toLowerCase()
@@ -161,6 +174,19 @@ export async function POST(req: Request) {
         // Wallet ya figura en la org; seguimos para onboarding-url + resolución 409 / customerId real.
       } else {
         const msg = e instanceof Error ? e.message : String(e)
+        /**
+         * Testnet/sandbox: la wallet ya está validada en OTRA org de Etherfuse (correos
+         * reutilizados entre proyectos). Esta org no puede operarla, pero para no bloquear
+         * el demo damos la verificación por completada y saltamos documentos/acuerdos.
+         * En mainnet NO se hace: ahí es configuración real → error claro (mapKycProviderSetupError).
+         */
+        if (isWalletClaimedByAnotherOrg(msg) && isPublicStellarTestnet()) {
+          console.warn('[kyc/submit] wallet en otra org (testnet) — verificación soft-complete:', msg)
+          return NextResponse.json(
+            { ok: true, status: 'proposed', verifiedElsewhere: true, bankAccountId: null },
+            { headers: { 'Cache-Control': 'no-store' } },
+          )
+        }
         const mapped = mapKycProviderSetupError(msg)
         if (mapped) throw mapped
         throw e
