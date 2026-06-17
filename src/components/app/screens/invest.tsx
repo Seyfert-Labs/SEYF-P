@@ -2,13 +2,13 @@
 
 /* Pantallas de ahorro: Bóvedas, detalle de bóveda y conversión FX */
 import React, { useState } from "react";
-import { Icon, Flag, Ring } from "../ui";
+import { Icon, Flag } from "../ui";
 import { SubHeader, AvatarButton } from "../shared";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel } from "../data";
-import { ProjectionCard } from "../ProjectionCard";
+import { GrowingAmount, YieldRate } from "../GrowingAmount";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
-import { useVaults, type UserVault } from "@/hooks/useVaults";
+import { useVaults, MAX_VAULTS, type UserVault } from "@/hooks/useVaults";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { RepayModal } from "../modals/RepayModal";
 import { Portal } from "../Portal";
@@ -25,6 +25,7 @@ const USE_SUPABASE = process.env.NEXT_PUBLIC_USE_SUPABASE === "true";
 
 /* ---------------- AHORRO (BÓVEDAS) ---------------- */
 const RISK_COLOR: Record<RiskLevel, string> = { Bajo: "var(--accent)", Medio: "#F5A623", Alto: "var(--neg)" };
+const riskIcon = (r: RiskLevel): string => (r === "Alto" ? "trend" : r === "Medio" ? "chart" : "shield");
 
 function RiskBadge({ risk }: { risk: RiskLevel }) {
   return (
@@ -34,44 +35,104 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
   );
 }
 
+/** Tile de color con la inicial de la bóveda (reemplaza el emoji). */
+function VaultTile({ name, color, size = 52 }: { name: string; color: string; size?: number }) {
+  const initial = (name.trim()[0] || "B").toUpperCase();
+  return (
+    <span
+      style={{
+        width: size, height: size, borderRadius: size * 0.3, flexShrink: 0, background: color, color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontWeight: 800, fontSize: size * 0.46, fontFamily: "var(--font-display)", letterSpacing: "-0.02em",
+      }}
+    >
+      {initial}
+    </span>
+  );
+}
+
+/** Tile con icono según el riesgo del plan (para tarjetas de estrategia). */
+function PlanTile({ risk, size = 46 }: { risk: RiskLevel; size?: number }) {
+  return (
+    <span
+      style={{
+        width: size, height: size, borderRadius: size * 0.3, flexShrink: 0,
+        background: "var(--surface-2)", border: "1px solid var(--line)", color: RISK_COLOR[risk],
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <Icon name={riskIcon(risk)} size={size * 0.46} />
+    </span>
+  );
+}
+
 function PlanCard({ plan, onPick, recommended }: { plan: VaultPlan; onPick: () => void; recommended?: boolean }) {
   return (
     <div className="card bond-card" onClick={onPick} style={{ cursor: "pointer", border: recommended ? "1px solid var(--accent)" : undefined, background: recommended ? "var(--accent-soft)" : undefined }}>
-      <span style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 23 }}>{plan.emoji}</span>
+      <PlanTile risk={plan.risk} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{plan.name}</p>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{plan.name}</p>
           {recommended && <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>}
         </div>
         <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
         <div style={{ marginTop: 6 }}><RiskBadge risk={plan.risk} /></div>
       </div>
       <div className="yield" style={{ textAlign: "right" }}>
-        <div className="num" style={{ fontWeight: 800, fontSize: 18, color: "var(--accent)" }}>{FMT(plan.apy, 1)}%</div>
+        <div className="num" style={{ fontWeight: 800, fontSize: 20, color: "var(--accent)" }}>{FMT(plan.apy, 1)}%</div>
         <div className="lb">anual</div>
       </div>
     </div>
   );
 }
 
+/** Tarjeta de una bóveda en la lista: saldo creciendo en vivo + proyección dentro. */
+function VaultRow({ v, go }: { v: UserVault; go: Go }) {
+  const plan = planByApy(v.apy);
+  const proj10 = projectSavings(v.bal, 0, v.apy, 10);
+  return (
+    <div className="card vault" onClick={() => go("boveda", v)} style={{ cursor: "pointer", marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <VaultTile name={v.nm} color={plan.color} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: 18, letterSpacing: "-0.01em" }}>{v.nm}</p>
+          <p style={{ margin: "3px 0 0", fontSize: 12.5, color: "var(--txt-muted)" }}>{plan.name} · {FMT(v.apy, 1)}% anual</p>
+        </div>
+        <Icon name="chevR" size={18} color="var(--txt-dim)" />
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <GrowingAmount base={v.bal} apy={v.apy} size={32} align="left" />
+      </div>
+      {v.bal > 0 && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: "var(--txt-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icon name="trend" size={14} color="var(--accent)" /> En 10 años
+          </span>
+          <span className="num" style={{ fontSize: 15, fontWeight: 800, color: "var(--accent)" }}>${FMT(proj10, 0)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
   const { vaults, addVault, totalSaved, busy, onchain } = useVaults(wallet.address);
   const [opening, setOpening] = useState(false);
+  const [creating, setCreating] = useState<null | { plan?: VaultPlan }>(null);
   const [recId] = useState<string | null>(() => loadRiskProfile());
   const recPlan = recId ? planById(recId) : null;
 
-  const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : 0;
-  const compareApy = totalSaved > 0 ? (weightedApy || 11.5) : (recPlan?.apy ?? 11.5);
-  const hasVault = vaults.length > 0;
+  const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : (recPlan?.apy ?? 10.5);
+  const atCap = vaults.length >= MAX_VAULTS;
 
-  const handleOpen = async (plan: VaultPlan) => {
+  const handleCreate = async (name: string, plan: VaultPlan) => {
     // La verificación de identidad NO bloquea abrir bóvedas: es un incentivo
     // (mayores depósitos / mejores rendimientos) que se invita desde Home.
     setOpening(true);
     try {
-      await addVault({ nm: plan.name, goal: 0, apy: plan.apy, color: plan.color });
+      await addVault({ nm: name.trim() || plan.name, goal: 0, apy: plan.apy, color: plan.color });
+      setCreating(null);
     } finally {
       setOpening(false);
     }
@@ -97,24 +158,21 @@ export function ScreenVaults({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* Hero */}
-        <div className="card glow" style={{ padding: 22 }}>
+        {/* Hero — ahorro total creciendo en vivo */}
+        <div className="card glow" style={{ padding: "24px 22px" }}>
           <p className="eyebrow">Tu ahorro total</p>
-          <p className="amount num" style={{ fontSize: 38, marginTop: 12 }}>
-            ${FMT(totalSaved, 2).split(".")[0]}<span style={{ opacity: 0.5 }}>.{FMT(totalSaved, 2).split(".")[1]}</span>
-          </p>
-          {totalSaved > 0 && (
-            <>
-              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                <span className="pos-pill"><Icon name="leaf" size={12} /> {FMT(weightedApy, 1)}% anual</span>
-              </div>
-              <div className="card" style={{ marginTop: 16, background: "var(--accent-soft)", border: "none", display: "flex", alignItems: "center", gap: 12 }}>
-                <Icon name="trend" size={20} color="var(--accent)" />
-                <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-                  A este ritmo, en <b style={{ color: "var(--txt)" }}>10 años</b> tendrías <b className="num" style={{ color: "var(--accent)" }}>${FMT(projectSavings(totalSaved, 0, weightedApy || 10.5, 10), 0)}</b>.
-                </p>
-              </div>
-            </>
+          <div style={{ marginTop: 14 }}>
+            <GrowingAmount base={totalSaved} apy={weightedApy} size={44} align="left" />
+          </div>
+          {totalSaved > 0 ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+              <span className="pos-pill"><Icon name="leaf" size={12} /> {FMT(weightedApy, 1)}% anual</span>
+              <YieldRate base={totalSaved} apy={weightedApy} />
+            </div>
+          ) : (
+            <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+              Abre una bóveda y mira tu dinero crecer al instante, segundo a segundo.
+            </p>
           )}
         </div>
 
@@ -127,42 +185,29 @@ export function ScreenVaults({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* Proyección */}
-        <div style={{ marginTop: 18 }}>
-          <ProjectionCard current={totalSaved} apy={compareApy} />
+        {/* Mis bóvedas */}
+        <div className="sec-head">
+          <h3>Mis bóvedas</h3>
+          <span style={{ fontSize: 12, color: "var(--txt-dim)", fontWeight: 700 }}>{vaults.length}/{MAX_VAULTS}</span>
         </div>
+        {vaults.map((v) => <VaultRow key={v.id} v={v} go={go} />)}
 
-        {/* Bóveda activa */}
-        {hasVault && (
-          <>
-            <div className="sec-head"><h3>Tu bóveda</h3></div>
-            {vaults.map((v) => {
-              const plan = planByApy(v.apy);
-              return (
-                <div key={v.id} className="vault card" onClick={() => go("boveda", v)}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <span style={{ width: 50, height: 50, borderRadius: 15, flexShrink: 0, background: plan.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
-                      {plan.emoji}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{v.nm}</p>
-                      <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
-                      <p className="num" style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 800 }}>${FMT(v.bal, 0)}</p>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div className="num" style={{ fontWeight: 800, fontSize: 18, color: "var(--accent)" }}>{FMT(v.apy, 1)}%</div>
-                      <div style={{ fontSize: 11, color: "var(--txt-muted)" }}>anual</div>
-                      <Icon name="chevR" size={16} color="var(--txt-dim)" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </>
+        {!atCap ? (
+          <button
+            className="btn btn-ghost"
+            onClick={() => setCreating({ plan: recPlan ?? undefined })}
+            style={{ width: "100%", marginTop: vaults.length > 0 ? 2 : 0, justifyContent: "center", borderStyle: "dashed" }}
+          >
+            <Icon name="plus" size={18} /> {vaults.length === 0 ? "Crear mi primera bóveda" : "Nueva bóveda"}
+          </button>
+        ) : (
+          <p style={{ margin: "6px 4px 0", fontSize: 12.5, color: "var(--txt-dim)", textAlign: "center" }}>
+            Llegaste al máximo de {MAX_VAULTS} bóvedas de ahorro.
+          </p>
         )}
 
-        {/* Estrategias — siempre visibles */}
-        <div className="sec-head">
+        {/* Estrategias — informativas; tocar una abre el creador con ese plan */}
+        <div className="sec-head" style={{ marginTop: 24 }}>
           <h3>Estrategias de ahorro</h3>
         </div>
         <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
@@ -176,18 +221,87 @@ export function ScreenVaults({ go }: { go: Go }) {
               key={p.id}
               plan={p}
               recommended={recPlan?.id === p.id}
-              onPick={hasVault ? () => {} : () => handleOpen(p)}
+              onPick={atCap ? () => {} : () => setCreating({ plan: p })}
             />
           ))}
         </div>
-        {!hasVault && opening && (
-          <p style={{ margin: "12px 4px 0", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
-            <span className="spin" style={{ display: "inline-block", marginRight: 8 }} />
-            Abriendo tu bóveda…
-          </p>
-        )}
       </div>
       <div className="scroll-bottom" />
+      {creating && (
+        <Portal>
+          <CreateVaultModal
+            preset={creating.plan}
+            recId={recId}
+            busy={opening}
+            onClose={() => setCreating(null)}
+            onCreate={handleCreate}
+          />
+        </Portal>
+      )}
+    </div>
+  );
+}
+
+/** Crear bóveda: ponerle nombre y elegir estrategia. */
+function CreateVaultModal({
+  preset, recId, busy, onClose, onCreate,
+}: {
+  preset?: VaultPlan;
+  recId: string | null;
+  busy: boolean;
+  onClose: () => void;
+  onCreate: (name: string, plan: VaultPlan) => void;
+}) {
+  const [name, setName] = useState("");
+  const [planId, setPlanId] = useState<string>(preset?.id ?? recId ?? RISK_PROFILES[0].id);
+  const plan = planById(planId);
+  return (
+    <div className="modal-overlay" onClick={busy ? undefined : onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-grab" />
+        <p className="modal-title">Nueva bóveda</p>
+        <p className="modal-sub" style={{ marginTop: 2 }}>Ponle nombre y elige su estrategia.</p>
+
+        <span className="field-label" style={{ marginTop: 14 }}>Nombre</span>
+        <input
+          className="input"
+          placeholder="Ej. Fondo de emergencia, Viaje, Enganche…"
+          value={name}
+          maxLength={32}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <span className="field-label" style={{ marginTop: 16 }}>Estrategia</span>
+        <div style={{ display: "grid", gap: 8 }}>
+          {RISK_PROFILES.map((p) => {
+            const active = p.id === planId;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPlanId(p.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 12, borderRadius: 14, cursor: "pointer",
+                  border: active ? "1px solid var(--accent)" : "1px solid var(--line)",
+                  background: active ? "var(--accent-soft)" : "var(--surface-2)",
+                }}
+              >
+                <PlanTile risk={p.risk} size={40} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14.5 }}>{p.name}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--txt-muted)" }}>Riesgo {p.risk.toLowerCase()} · {p.horizon}</p>
+                </div>
+                <span className="num" style={{ fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>{FMT(p.apy, 1)}%</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={busy} onClick={() => onCreate(name, plan)}>
+          {busy ? <span className="spin" /> : <><Icon name="plus" size={18} /> Crear bóveda</>}
+        </button>
+        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose} disabled={busy}>Cancelar</button>
+      </div>
     </div>
   );
 }
@@ -223,22 +337,24 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       <div className="safe-top" />
       <SubHeader title={v.nm} go={go} back="bovedas" />
       <div className="screen-pad" style={{ textAlign: "center" }}>
-        <p className="num" style={{ fontSize: 46, fontWeight: 800, margin: "18px 0 0" }}>${FMT(v.bal, 2)}</p>
-        <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: "4px 0 0" }}>MXN en bóveda</p>
+        <div style={{ marginTop: 18 }}>
+          <GrowingAmount base={v.bal} apy={v.apy} size={48} />
+        </div>
+        <p style={{ fontSize: 13.5, color: "var(--txt-muted)", margin: "8px 0 0" }}>MXN en bóveda</p>
+        <div style={{ marginTop: 6 }}><YieldRate base={v.bal} apy={v.apy} /></div>
         <div className="stat-grid" style={{ marginTop: 22, textAlign: "left" }}>
           <div className="tile"><div className="k">Rendimiento</div><div className="v" style={{ color: "var(--accent)", fontSize: 20 }}>{FMT(v.apy, 1)}%</div></div>
-          <div className="tile"><div className="k">Proyección 10 años</div><div className="v num" style={{ fontSize: 16 }}>${FMT(projectSavings(v.bal, 0, v.apy, 10), 0)}</div></div>
+          <div className="tile"><div className="k">En 10 años</div><div className="v num" style={{ fontSize: 16 }}>${FMT(projectSavings(v.bal, 0, v.apy, 10), 0)}</div></div>
         </div>
 
         {/* Perfil del plan */}
         {(() => {
           const plan = planByApy(v.apy);
-          const projection = projectSavings(v.bal, 0, v.apy, 10);
           return (
             <>
               <div className="card" style={{ marginTop: 16, textAlign: "left" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0 }}>{plan.emoji}</span>
+                  <PlanTile risk={plan.risk} size={42} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{plan.name}</p>
                     <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
@@ -249,14 +365,22 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
                 <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>{plan.structured}</p>
                 <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--txt-dim)" }}>Horizonte: {plan.horizon}</p>
               </div>
+              {/* Proyección de retiro — dentro de la bóveda, varios horizontes */}
               {v.bal > 0 && (
                 <div className="card" style={{ marginTop: 14, textAlign: "left", background: "var(--accent-soft)", border: "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <Icon name="trend" size={18} color="var(--accent)" />
-                    <p className="eyebrow" style={{ color: "var(--accent)", margin: 0 }}>Proyección a 10 años</p>
+                    <p className="eyebrow" style={{ color: "var(--accent)", margin: 0 }}>Proyección de tu retiro</p>
                   </div>
-                  <p className="num" style={{ fontSize: 30, fontWeight: 700, color: "var(--accent)", margin: "10px 0 0" }}>${FMT(projection, 0)}</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>si mantienes tu saldo actual a {FMT(v.apy, 1)}% anual</p>
+                  <p style={{ margin: "8px 0 6px", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
+                    Manteniendo tu saldo a {FMT(v.apy, 1)}% anual, podrías retirar:
+                  </p>
+                  {[1, 5, 10, 20].map((yrs, i) => (
+                    <div key={yrs} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: i === 0 ? "none" : "1px solid var(--line)" }}>
+                      <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>En {yrs} {yrs === 1 ? "año" : "años"}</span>
+                      <span className="num" style={{ fontSize: 16, fontWeight: 800, color: "var(--accent)" }}>${FMT(projectSavings(v.bal, 0, v.apy, yrs), 0)}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </>

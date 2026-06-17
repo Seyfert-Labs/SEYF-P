@@ -23,6 +23,9 @@ import {
 
 export type UserVault = StoreVault;
 
+/** Máximo de bóvedas de ahorro por usuario. */
+export const MAX_VAULTS = 5;
+
 const toUnits = (n: number) => parseUnits(n.toFixed(MXNB_DECIMALS), MXNB_DECIMALS);
 
 export function useVaults(address?: string) {
@@ -75,8 +78,8 @@ export function useVaults(address?: string) {
   const addVault = useCallback(
     async (v: { nm: string; goal: number; apy: number; color: string }): Promise<UserVault | undefined> => {
       if (!address) return;
-      // Un usuario, una bóveda (la de su perfil de riesgo).
-      if (vaults.length >= 1) return vaults[0];
+      // Hasta 5 bóvedas de ahorro por usuario (cada una con su nombre y plan).
+      if (vaults.length >= MAX_VAULTS) return undefined;
       if (onchain) {
         setBusy(true);
         try {
