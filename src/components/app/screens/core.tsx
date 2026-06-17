@@ -12,6 +12,7 @@ import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useConversions, type Conversion } from "@/hooks/useConversions";
 import { assetByCode } from "@/lib/bitso/assets";
 import { useVaults } from "@/hooks/useVaults";
+import { useKycStatus } from "@/hooks/useKycStatus";
 import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
 import { SendModal } from "../modals/SendModal";
@@ -65,6 +66,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
   const { vaults, totalSaved, onchain } = useVaults(wallet.address);
+  const kyc = useKycStatus();
   const refreshBal = wallet.refreshBalance;
 
   // Rendimiento promedio ponderado del ahorro (para el adelanto de liquidez).
@@ -132,6 +134,26 @@ export function ScreenHome({ go }: { go: Go }) {
             <button className="quick" onClick={() => setModal("more")}><span className="ic" style={{ fontSize: 20, letterSpacing: 2, fontWeight: 800, lineHeight: 1 }}>···</span><span className="tx">Más</span></button>
           </div>
         </div>
+
+        {/* ── 1a. NUDGE de verificación (no bloquea nada; solo invita) ── */}
+        {kyc.enabled && !kyc.loading && !kyc.verified && (
+          <div
+            className="card"
+            onClick={() => go("kyc")}
+            style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: "var(--accent-soft)", border: "none" }}
+          >
+            <span style={{ width: 34, height: 34, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="shield" size={18} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--txt)" }}>Verifica tu cuenta</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                Desbloquea mayores depósitos y mejores bóvedas de rendimiento.
+              </p>
+            </div>
+            <Icon name="chevR" size={16} color="var(--txt-dim)" />
+          </div>
+        )}
 
         {/* ── 1b. DIVISAS (saldo en Bitso, derivado de tus conversiones) ── */}
         {realData && Object.keys(conv.balances).length > 0 && (

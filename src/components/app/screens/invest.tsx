@@ -9,7 +9,6 @@ import { ProjectionCard } from "../ProjectionCard";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaults, type UserVault } from "@/hooks/useVaults";
-import { useKycStatus } from "@/hooks/useKycStatus";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { RepayModal } from "../modals/RepayModal";
 import { Portal } from "../Portal";
@@ -59,7 +58,6 @@ function PlanCard({ plan, onPick, recommended }: { plan: VaultPlan; onPick: () =
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
   const { vaults, addVault, totalSaved, busy, onchain } = useVaults(wallet.address);
-  const kyc = useKycStatus();
   const [opening, setOpening] = useState(false);
   const [recId] = useState<string | null>(() => loadRiskProfile());
   const recPlan = recId ? planById(recId) : null;
@@ -69,12 +67,8 @@ export function ScreenVaults({ go }: { go: Go }) {
   const hasVault = vaults.length > 0;
 
   const handleOpen = async (plan: VaultPlan) => {
-    // Las bóvedas soberanas (riel Etherfuse) exigen identidad verificada.
-    // El usuario solo ve "verifica tu identidad"; el riel queda por detrás.
-    if (plan.kycGated && !kyc.verified) {
-      go("kyc");
-      return;
-    }
+    // La verificación de identidad NO bloquea abrir bóvedas: es un incentivo
+    // (mayores depósitos / mejores rendimientos) que se invita desde Home.
     setOpening(true);
     try {
       await addVault({ nm: plan.name, goal: 0, apy: plan.apy, color: plan.color });
