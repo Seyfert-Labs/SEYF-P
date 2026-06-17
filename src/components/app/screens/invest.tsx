@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { Icon, Flag } from "../ui";
 import { SubHeader, AvatarButton } from "../shared";
-import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel } from "../data";
+import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
 import { GrowingAmount, YieldRate } from "../GrowingAmount";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -22,6 +22,48 @@ import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN, explorerBase } fro
 // Con Supabase, el ledger de conversiones lo escribe /api/convert (servidor);
 // sin él, el cliente lo persiste localmente con la capa `store`.
 const USE_SUPABASE = process.env.NEXT_PUBLIC_USE_SUPABASE === "true";
+
+/* ---------------- DONUT CHART ---------------- */
+const DONUT_R = 68;
+const DONUT_CIRC = 2 * Math.PI * DONUT_R;
+const DONUT_GAP = 3;
+
+function DonutChart({ slices }: { slices: AllocationSlice[] }) {
+  let offset = 0;
+  const segments = slices.map((s) => {
+    const dash = Math.max(0, (s.pct / 100) * DONUT_CIRC - DONUT_GAP);
+    const seg = { ...s, dash, offset };
+    offset += (s.pct / 100) * DONUT_CIRC;
+    return seg;
+  });
+
+  return (
+    <svg viewBox="0 0 160 160" width={160} height={160} style={{ display: "block", margin: "0 auto", overflow: "visible" }}>
+      <circle cx={80} cy={80} r={DONUT_R} fill="none" stroke="var(--surface-2)" strokeWidth={24} />
+      {segments.map((seg, i) => (
+        <circle
+          key={i}
+          cx={80}
+          cy={80}
+          r={DONUT_R}
+          fill="none"
+          stroke={seg.color}
+          strokeWidth={24}
+          strokeDasharray={`${seg.dash} ${DONUT_CIRC}`}
+          strokeDashoffset={-seg.offset}
+          strokeLinecap="butt"
+          style={{ transform: "rotate(-90deg)", transformOrigin: "80px 80px" }}
+        />
+      ))}
+      <text x={80} y={75} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: "var(--txt-muted)", fontFamily: "inherit" }}>
+        composición
+      </text>
+      <text x={80} y={92} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 13, fill: "var(--txt)", fontWeight: 800, fontFamily: "inherit" }}>
+        {slices.length} activos
+      </text>
+    </svg>
+  );
+}
 
 /* ---------------- AHORRO (BÓVEDAS) ---------------- */
 const RISK_COLOR: Record<RiskLevel, string> = { Bajo: "var(--accent)", Medio: "#F5A623", Alto: "var(--neg)" };
@@ -384,6 +426,28 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
                 </div>
               )}
             </>
+          );
+        })()}
+
+        {/* B4 — Composición de bóveda */}
+        {(() => {
+          const plan = planByApy(v.apy);
+          if (!plan.allocation?.length) return null;
+          return (
+            <div className="card" style={{ marginTop: 16, textAlign: "left" }}>
+              <p className="eyebrow" style={{ marginBottom: 14 }}>Composición</p>
+              <DonutChart slices={plan.allocation} />
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {plan.allocation.map((s) => (
+                  <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 13, color: "var(--txt)" }}>{s.label}</span>
+                    <span className="num" style={{ fontSize: 13, fontWeight: 700, color: "var(--txt-muted)", minWidth: 36, textAlign: "right" }}>{s.pct}%</span>
+                    <span className="num" style={{ fontSize: 12, color: "var(--accent)", minWidth: 52, textAlign: "right" }}>{FMT(s.apy, 1)}% est.</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           );
         })()}
 
