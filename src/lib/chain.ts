@@ -1,4 +1,4 @@
-import { createPublicClient, http, parseAbiItem, type Address } from "viem";
+import { createPublicClient, http, parseAbiItem, encodeFunctionData, type Address } from "viem";
 import { arbitrum, arbitrumSepolia } from "viem/chains";
 
 // ============================================================
@@ -108,6 +108,204 @@ export const VAULTS_ONCHAIN = Boolean(SEYF_VAULTS_ADDRESS);
 
 export const SEYF_ADVANCE_ADDRESS = (process.env.NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS || "") as Address | "";
 export const ADVANCE_ONCHAIN = Boolean(SEYF_ADVANCE_ADDRESS) && VAULTS_ONCHAIN;
+
+const fromTokenUnits = (raw: bigint) => Number(raw) / 10 ** MXNB_DECIMALS;
+const toTokenUnits = (n: number) => BigInt(Math.round(n * 10 ** MXNB_DECIMALS));
+
+export type AdvanceContractMode = "years" | "amount";
+
+export type AdvanceQuoteResult = {
+  /** `years` = contrato nuevo; `amount` = contrato legacy (2.º arg = MXNB en unidades). */
+  mode: AdvanceContractMode;
+  freeBalance: number;
+  /** Monto que se enviará on-chain (ya acotado al tope del contrato). */
+  quote: number;
+  maxYears: number;
+  /** Segundo argumento exacto de `requestAdvance`. */
+  requestArg: bigint;
+  /** En legacy: el usuario pidió más años de los que el contrato permite en una tx. */
+  capped?: boolean;
+};
+
+async function readVaultFreeBalance(user: Address, vaultId: number): Promise<number> {
+  const [vaults, locked] = await Promise.all([
+    publicClient.readContract({
+      address: SEYF_VAULTS_ADDRESS as Address,
+      abi: reyfVaultsAbi,
+      functionName: "getVaults",
+      args: [user],
+    }) as Promise<
+      readonly {
+        name: string;
+        goal: bigint;
+        balance: bigint;
+        apyBps: number;
+        createdAt: bigint;
+        exists: boolean;
+      }[]
+    >,
+    publicClient.readContract({
+      address: SEYF_VAULTS_ADDRESS as Address,
+      abi: reyfVaultsAbi,
+      functionName: "lockedAmount",
+      args: [user, BigInt(vaultId)],
+    }) as Promise<bigint>,
+  ]);
+  const v = vaults[vaultId];
+  if (!v?.exists) return 0;
+  const free = v.balance > locked ? v.balance - locked : 0n;
+  return fromTokenUnits(free);
+}
+
+async function readVaultApyBps(user: Address, vaultId: number): Promise<number> {
+  const vaults = (await publicClient.readContract({
+    address: SEYF_VAULTS_ADDRESS as Address,
+    abi: reyfVaultsAbi,
+    functionName: "getVaults",
+    args: [user],
+  })) as readonly { apyBps: number; exists: boolean }[];
+  const v = vaults[vaultId];
+  return v?.exists ? v.apyBps : 0;
+}
+
+/** Cotización on-chain del adelanto (detecta contrato legacy vs modelo por años). */
+export async function readAdvanceQuote(
+  user: Address,
+  vaultId: number,
+  years: number,
+): Promise<AdvanceQuoteResult | null> {
+  if (!ADVANCE_ONCHAIN || years < 1) return null;
+
+  // Modelo B (desplegado tras RedeployAdvance): requestAdvance(vaultId, años).
+  try {
+    const [freeRaw, quoteRaw, maxYearsRaw] = await Promise.all([
+      publicClient.readContract({
+        address: SEYF_ADVANCE_ADDRESS as Address,
+        abi: reyfAdvanceAbi,
+        functionName: "freeBalance",
+        args: [user, BigInt(vaultId)],
+      }) as Promise<bigint>,
+      publicClient.readContract({
+        address: SEYF_ADVANCE_ADDRESS as Address,
+        abi: reyfAdvanceAbi,
+        functionName: "quoteAdvance",
+        args: [user, BigInt(vaultId), BigInt(years)],
+      }) as Promise<bigint>,
+      publicClient.readContract({
+        address: SEYF_ADVANCE_ADDRESS as Address,
+        abi: reyfAdvanceAbi,
+        functionName: "maxYears",
+        args: [user, BigInt(vaultId)],
+      }) as Promise<bigint>,
+    ]);
+    return {
+      mode: "years",
+      freeBalance: fromTokenUnits(freeRaw),
+      quote: fromTokenUnits(quoteRaw),
+      maxYears: Number(maxYearsRaw),
+      requestArg: BigInt(years),
+    };
+  } catch {
+    /* Contrato legacy en Sepolia — sigue abajo. */
+  }
+
+  // Legacy: requestAdvance(vaultId, montoEnUnidades). El usuario elige años en la UI;
+  // traducimos a monto = años × rendimiento anual, acotado por maxAdvance on-chain.
+  try {
+    const [freeBalance, maxRaw, apyBps] = await Promise.all([
+      readVaultFreeBalance(user, vaultId),
+      publicClient.readContract({
+        address: SEYF_ADVANCE_ADDRESS as Address,
+        abi: reyfAdvanceLegacyAbi,
+        functionName: "maxAdvance",
+        args: [user, BigInt(vaultId)],
+      }) as Promise<bigint>,
+      readVaultApyBps(user, vaultId),
+    ]);
+    const maxQuote = fromTokenUnits(maxRaw);
+    if (maxQuote <= 0 || freeBalance <= 0 || apyBps <= 0) {
+      return {
+        mode: "amount",
+        freeBalance,
+        quote: 0,
+        maxYears: 0,
+        requestArg: 0n,
+      };
+    }
+    const annualYield = (freeBalance * apyBps) / 10000;
+    const requested = annualYield * years;
+    const requestArg = (() => {
+      const want = toTokenUnits(requested);
+      return want > maxRaw ? maxRaw : want;
+    })();
+    const quote = fromTokenUnits(requestArg);
+    const maxYears =
+      annualYield > 0 ? Math.max(1, Math.min(9, Math.floor(maxQuote / annualYield + 1e-9))) : 0;
+    return {
+      mode: "amount",
+      freeBalance,
+      quote,
+      maxYears,
+      requestArg,
+      capped: requested > maxQuote + 1e-6,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Codifica `requestAdvance` según la versión del contrato desplegado. */
+export function encodeRequestAdvance(vaultId: number, quote: AdvanceQuoteResult) {
+  const abi = quote.mode === "years" ? reyfAdvanceAbi : reyfAdvanceLegacyAbi;
+  return encodeFunctionData({
+    abi,
+    functionName: "requestAdvance",
+    args: [BigInt(vaultId), quote.requestArg],
+  });
+}
+
+export const reyfAdvanceLegacyAbi = [
+  {
+    type: "function",
+    name: "maxAdvance",
+    stateMutability: "view",
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "vaultId", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "requestAdvance",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "vaultId", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "repay",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "vaultId", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "debt",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "address" },
+      { name: "", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
 
 export const reyfAdvanceAbi = [
   {

@@ -104,8 +104,30 @@ cast send $ADVANCE "fundTreasury(uint256)" 10000000000 \
 | Contrato | Dirección |
 |----------|-----------|
 | `ReyfVaults` | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` |
-| `ReyfAdvance` | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` |
+| `ReyfAdvance` (legacy v1 · monto, no años) | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` |
 | Tesorería (conversión FX) | `0xae0AEAd08f5984E6CD00aB4Fd4e9c569D11b2eaF` |
+
+### Redesplegar adelanto (modelo 9 años · LTV 90%)
+
+El repo usa `requestAdvance(vaultId, años)`. La dirección legacy de Sepolia usa
+`requestAdvance(vaultId, monto)` — incompatible. **No toques ReyfVaults**; solo
+redespliega `ReyfAdvance` y actualiza la env:
+
+```bash
+cd contracts
+export PRIVATE_KEY=0x...          # owner de ReyfVaults (Sepolia: 0xBC3B5d04…)
+export FUND_TREASURY_MXNB=50000   # MXNB para tesorería del adelanto
+./scripts/redeploy-advance-sepolia.sh
+```
+
+Copia `NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS=` del log → `.env` + Vercel → reinicia app.
+
+Verificación rápida (reemplaza USER y VAULT_ID):
+
+```bash
+cast call $ADVANCE "quoteAdvance(address,uint256,uint256)(uint256)" $USER 0 9 --rpc-url $RPC_URL
+# Con $7k a 9.5% APY × 9 años ≈ 5985000000 (5985 MXNB en unidades 6 dec)
+```
 
 ## Conectar al frontend
 En `.env.local`:

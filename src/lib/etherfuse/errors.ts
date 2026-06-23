@@ -58,6 +58,24 @@ export function mapEtherfuseHttpError(
   // 4xx (excluding 429, handled above) — client error, not retryable
   if (status >= 400 && status <= 499) {
     const low = providerMessage.toLowerCase();
+    // 401/403 o "invalid organization id" / "invalid api key": problema de
+    // credencial/configuración del proveedor (no es culpa del usuario). No filtrar
+    // el detalle crudo; mostrar mensaje claro y registrar el técnico en el server.
+    if (
+      status === 401 ||
+      status === 403 ||
+      low.includes("organization id") ||
+      low.includes("invalid api key") ||
+      low.includes("unauthorized")
+    ) {
+      return new AppError("provider_unavailable", {
+        statusCode: 503,
+        retryable: false,
+        message: providerMessage,
+        messageEs:
+          "El servicio de verificación de identidad no está disponible en este momento. Inténtalo de nuevo más tarde.",
+      });
+    }
     const messageEs = low.includes("proxy account")
       ? "Etherfuse no localizó la cuenta proxy Stellar de tu wallet. Ve a /anadir y activa la cuenta CLABE, asegúrate de que el KYC esté listo y que en Etherfuse la wallet y la cuenta bancaria estén activas; luego reintenta el bono."
       : low.includes("expired") ||

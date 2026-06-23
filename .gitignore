@@ -62,6 +62,9 @@ docs/sesion-*.md
 # marketing (plan local, no se versiona)
 /marketing/
 
+# funding (aplicaciones a financiamiento, privadas — no se versionan)
+/funding/
+
 # artefactos del pitch (binarios pesados / entorno local, no se versionan)
 docs/.venv/
 docs/.export-slides/

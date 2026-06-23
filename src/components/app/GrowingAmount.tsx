@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { animate, useReducedMotion } from "motion/react";
 
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
@@ -25,6 +26,7 @@ export function GrowingAmount({
   align = "center",
   prefix = "$",
   id = "",
+  countUpOnMount = false,
 }: {
   base: number;
   apy: number;
@@ -36,8 +38,32 @@ export function GrowingAmount({
   prefix?: string;
   /** Clave estable para persistir el crecimiento entre navegaciones (p. ej. el id de la bóveda). */
   id?: string;
+  /** Si true, al montar hace count-up desde 0 hasta `base` (sorpresa al abrir). */
+  countUpOnMount?: boolean;
 }) {
   const live = base > 0 && apy > 0;
+  const reduced = useReducedMotion();
+
+  // Count-up: `base` se anima (roll-up) cuando cambia por un abono/retiro, y
+  // opcionalmente desde 0 al montar. El tick en vivo (`grown`) se suma encima.
+  const [baseAnim, setBaseAnim] = useState(() => (countUpOnMount && !reduced ? 0 : base));
+  const prevBase = useRef<number>(countUpOnMount ? 0 : base);
+  useEffect(() => {
+    const from = prevBase.current;
+    prevBase.current = base;
+    if (reduced || from === base) {
+      setBaseAnim(base);
+      return;
+    }
+    // Duración proporcional al salto relativo, acotada para que se sienta ágil.
+    const jump = Math.abs(base - from) / Math.max(base, from, 1);
+    const controls = animate(from, base, {
+      duration: Math.min(1.2, 0.45 + jump * 0.9),
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setBaseAnim(v),
+    });
+    return () => controls.stop();
+  }, [base, reduced]);
   // Inicializa con lo ya acumulado (si el id coincide y el base no cambió) para no
   // reiniciar a cero al volver a montar. El setState solo ocurre dentro del intervalo.
   const [grown, setGrown] = useState(() => {
@@ -63,7 +89,7 @@ export function GrowingAmount({
     return () => clearInterval(iv);
   }, [base, apy, live, id]);
 
-  const value = base + (live ? grown : 0);
+  const value = baseAnim + (live ? grown : 0);
 
   // Derivar entero/centavos/micro de un solo string para evitar desfases de redondeo.
   const full = Math.max(0, value).toFixed(2 + tail);

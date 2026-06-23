@@ -3,7 +3,8 @@
 /* Verificación de identidad (KYC). El usuario solo ve "verificar mi identidad":
    la wallet Stellar y el proveedor (Etherfuse/Pollar) son detalle interno y
    nunca se nombran en la UI. */
-import React, { FormEvent, useCallback, useEffect, useState } from "react";
+import React, { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { Icon } from "../ui";
 import { SubHeader } from "../shared";
 import type { Go } from "../nav";
@@ -11,8 +12,9 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
 import { useEnsureCetesTrustline } from "@/lib/reyf/use-ensure-cetes-trustline";
 import type { EtherfuseKycSnapshot } from "@/lib/etherfuse/kyc";
+import { notifyKycStatusUpdated } from "@/hooks/useKycStatus";
 
-type Step = "connect" | "identity" | "documents" | "agreements" | "done";
+type Step = "connect" | "verified" | "identity" | "documents" | "agreements" | "done";
 
 // Etiquetas en español para el formulario de identidad (sin claves crudas).
 // `autoComplete` semántico evita que el navegador sugiera tarjetas de pago:
@@ -67,18 +69,22 @@ function autoSlashDate(raw: string): string {
 }
 
 /** Extrae un mensaje legible de la respuesta de error de /api/reyf/* .
-   La API puede devolver `error` como objeto estructurado + `debug_message`. */
+   Prioriza el mensaje estructurado para el usuario (`error.message_es`); el
+   `debug_message` (texto técnico crudo del proveedor) solo se loguea, nunca se muestra. */
 function readApiError(j: unknown, status: number): string {
   if (j && typeof j === "object") {
     const o = j as Record<string, unknown>;
-    if (typeof o.debug_message === "string" && o.debug_message.trim()) return o.debug_message;
+    if (typeof o.debug_message === "string" && o.debug_message.trim()) {
+      // Detalle técnico para devs (consola), no para la UI.
+      console.warn("[kyc] debug:", o.debug_message);
+    }
     const e = o.error;
-    if (typeof e === "string" && e.trim()) return e;
     if (e && typeof e === "object") {
       const eo = e as Record<string, unknown>;
       const m = eo.message_es ?? eo.message;
       if (typeof m === "string" && m.trim()) return m;
     }
+    if (typeof e === "string" && e.trim()) return e;
   }
   return `No se pudo procesar (HTTP ${status}).`;
 }
@@ -104,6 +110,9 @@ export function ScreenKyc({ go }: { go: Go }) {
   const [err, setErr] = useState<string | null>(null);
   const [kyc, setKyc] = useState<EtherfuseKycSnapshot | null>(null);
   const [resent, setResent] = useState(false);
+  // Distingue al usuario que ACABA de verificar su código (mostrarle la pantalla
+  // intermedia "Código confirmado") del que regresa ya autenticado (va directo a datos).
+  const justVerifiedRef = useRef(false);
 
   const [form, setForm] = useState<IdentityForm>({
     firstName: "", paternalLastName: "", maternalLastName: "", dateOfBirth: "",
@@ -122,17 +131,28 @@ export function ScreenKyc({ go }: { go: Go }) {
     if (r.ok && snap?.status) {
       setKyc(snap as EtherfuseKycSnapshot);
       const done = snap.status === "approved" || snap.status === "approved_chain_deploying" || snap.status === "proposed";
-      if (done) setStep("done");
+      if (done) {
+        notifyKycStatusUpdated();
+        setStep("done");
+      }
     }
   }, [stellar.publicKey]);
 
-  // Cuando la cuenta segura queda lista, avanza a datos personales.
+  // Cuando la cuenta segura queda lista, avanza. Si el usuario acaba de verificar
+  // su código, pasa por la pantalla intermedia "Código confirmado"; si regresa ya
+  // autenticado, va directo a datos personales.
   useEffect(() => {
-    if (stellar.authenticated && stellar.publicKey) {
-      void refreshStatus();
-      if (step === "connect") setStep("identity");
-    }
-  }, [stellar.authenticated, stellar.publicKey, refreshStatus, step]);
+    if (!stellar.authenticated || !stellar.publicKey) return;
+    let cancelled = false;
+    void (async () => {
+      await refreshStatus();
+      if (cancelled) return;
+      setStep((s) => (s === "connect" ? (justVerifiedRef.current ? "verified" : "identity") : s));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [stellar.authenticated, stellar.publicKey, refreshStatus]);
 
   // En "done", asegura el riel de acreditación en segundo plano (sin UI).
   useEffect(() => {
@@ -171,6 +191,8 @@ export function ScreenKyc({ go }: { go: Go }) {
   const verifyCode = () =>
     run(async () => {
       if (code.trim().length < 4) throw new Error("Ingresa el código completo.");
+      // Marca antes de autenticar: el efecto enrutará a la pantalla "Código confirmado".
+      justVerifiedRef.current = true;
       await stellar.verifyCode(code.trim());
     });
 
@@ -266,7 +288,8 @@ export function ScreenKyc({ go }: { go: Go }) {
     kyc?.status === "proposed";
 
   const STEPS: Step[] = ["connect", "identity", "documents", "agreements"];
-  const stepIdx = Math.max(0, STEPS.indexOf(step));
+  // "verified" es transición connect→identity: muestra el progreso del paso de datos.
+  const stepIdx = Math.max(0, STEPS.indexOf(step === "verified" ? "identity" : step));
 
   return (
     <div className="screen screen-enter">
@@ -366,17 +389,30 @@ export function ScreenKyc({ go }: { go: Go }) {
           </div>
         )}
 
+        {/* 1.5 · Código confirmado (pantalla intermedia tras verificar el OTP) */}
+        {step === "verified" && (
+          <div className="card" style={{ textAlign: "center", padding: 24 }}>
+            <motion.span
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 16 }}
+              style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <Icon name="check" size={32} />
+            </motion.span>
+            <p style={{ margin: "16px 0 6px", fontWeight: 800, fontSize: 18 }}>Código confirmado</p>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.55 }}>
+              Confirmamos que eres tú. Ahora completa tus datos para terminar tu verificación.
+            </p>
+            <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setStep("identity")}>
+              Continuar
+            </button>
+          </div>
+        )}
+
         {/* 2 · Datos personales */}
         {step === "identity" && (
           <>
-            <div className="card" style={{ marginBottom: 14, background: "var(--accent-soft)", border: "none", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ width: 34, height: 34, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Icon name="check" size={18} />
-              </span>
-              <p style={{ margin: 0, fontSize: 13, color: "var(--txt)", lineHeight: 1.4 }}>
-                <b>Código verificado.</b> Ahora completa tus datos.
-              </p>
-            </div>
           <form onSubmit={submitIdentity} className="card" style={{ display: "grid", gap: 12 }}>
             <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Tus datos</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

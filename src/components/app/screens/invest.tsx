@@ -2,16 +2,17 @@
 
 /* Pantallas de ahorro: Bóvedas, detalle de bóveda y conversión FX */
 import React, { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { Icon, Flag } from "../ui";
+import { Celebration } from "../Celebration";
 import { SubHeader, AvatarButton } from "../shared";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
 import { GrowingAmount, YieldRate } from "../GrowingAmount";
 import { MoneyInput } from "../MoneyInput";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
-import { useVaults, MAX_VAULTS, type UserVault } from "@/hooks/useVaults";
+import { useVaultsRail, MAX_VAULTS, STELLAR_RAIL, type UserVault } from "@/hooks/useVaultsRail";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
-import { RepayModal } from "../modals/RepayModal";
 import { Portal } from "../Portal";
 import { useAdvance } from "@/hooks/useAdvance";
 import { useBitsoRates, useBitsoBalances } from "@/hooks/useBitsoRates";
@@ -30,19 +31,19 @@ const DONUT_CIRC = 2 * Math.PI * DONUT_R;
 const DONUT_GAP = 3;
 
 function DonutChart({ slices }: { slices: AllocationSlice[] }) {
-  let offset = 0;
-  const segments = slices.map((s) => {
+  const reduced = useReducedMotion();
+  // Offset acumulado sin reasignar variables en render (regla react-hooks).
+  const segments = slices.map((s, i) => {
     const dash = Math.max(0, (s.pct / 100) * DONUT_CIRC - DONUT_GAP);
-    const seg = { ...s, dash, offset };
-    offset += (s.pct / 100) * DONUT_CIRC;
-    return seg;
+    const offset = slices.slice(0, i).reduce((acc, x) => acc + (x.pct / 100) * DONUT_CIRC, 0);
+    return { ...s, dash, offset };
   });
 
   return (
     <svg viewBox="0 0 160 160" width={160} height={160} style={{ display: "block", margin: "0 auto", overflow: "visible" }}>
       <circle cx={80} cy={80} r={DONUT_R} fill="none" stroke="var(--surface-2)" strokeWidth={24} />
       {segments.map((seg, i) => (
-        <circle
+        <motion.circle
           key={i}
           cx={80}
           cy={80}
@@ -50,9 +51,12 @@ function DonutChart({ slices }: { slices: AllocationSlice[] }) {
           fill="none"
           stroke={seg.color}
           strokeWidth={24}
-          strokeDasharray={`${seg.dash} ${DONUT_CIRC}`}
           strokeDashoffset={-seg.offset}
           strokeLinecap="butt"
+          // Draw-in escalonado: cada segmento se "dibuja" de 0 a su longitud.
+          initial={reduced ? false : { strokeDasharray: `0 ${DONUT_CIRC}` }}
+          animate={{ strokeDasharray: `${seg.dash} ${DONUT_CIRC}` }}
+          transition={{ duration: 0.7, delay: 0.1 + i * 0.13, ease: [0.22, 1, 0.36, 1] }}
           style={{ transform: "rotate(-90deg)", transformOrigin: "80px 80px" }}
         />
       ))}
@@ -130,11 +134,19 @@ function PlanCard({ plan, onPick, recommended }: { plan: VaultPlan; onPick: () =
 }
 
 /** Tarjeta de una bóveda en la lista: saldo creciendo en vivo + proyección dentro. */
-function VaultRow({ v, go }: { v: UserVault; go: Go }) {
+function VaultRow({ v, go, index = 0 }: { v: UserVault; go: Go; index?: number }) {
   const plan = planByApy(v.apy);
   const proj10 = projectSavings(v.bal, 0, v.apy, 10);
   return (
-    <div className="card vault" onClick={() => go("boveda", v)} style={{ cursor: "pointer", marginBottom: 12 }}>
+    <motion.div
+      className="card vault"
+      onClick={() => go("boveda", v)}
+      style={{ cursor: "pointer", marginBottom: 12 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
+      whileTap={{ scale: 0.985 }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <VaultTile name={v.nm} color={plan.color} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -154,13 +166,13 @@ function VaultRow({ v, go }: { v: UserVault; go: Go }) {
           <span className="num" style={{ fontSize: 15, fontWeight: 800, color: "var(--accent)" }}>${FMT(proj10, 0)}</span>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
-  const { vaults, addVault, totalSaved, busy, onchain } = useVaults(wallet.address);
+  const { vaults, addVault, totalSaved, busy, onchain } = useVaultsRail(wallet.address);
   const [opening, setOpening] = useState(false);
   const [creating, setCreating] = useState<null | { plan?: VaultPlan }>(null);
   const [recId] = useState<string | null>(() => loadRiskProfile());
@@ -233,7 +245,7 @@ export function ScreenVaults({ go }: { go: Go }) {
           <h3>Mis bóvedas</h3>
           <span style={{ fontSize: 12, color: "var(--txt-dim)", fontWeight: 700 }}>{vaults.length}/{MAX_VAULTS}</span>
         </div>
-        {vaults.map((v) => <VaultRow key={v.id} v={v} go={go} />)}
+        {vaults.map((v, i) => <VaultRow key={v.id} v={v} go={go} index={i} />)}
 
         {!atCap ? (
           <button
@@ -352,7 +364,7 @@ function CreateVaultModal({
 /* ---------------- VAULT DETAIL ---------------- */
 export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   const wallet = useWallet();
-  const { vaults, updateBalance, removeVault, busy, onchain, limits } = useVaults(wallet.address);
+  const { vaults, updateBalance, removeVault, busy, onchain, limits } = useVaultsRail(wallet.address);
   const ctxV = ctx as UserVault | undefined;
   const v = vaults.find((x) => x.id === ctxV?.id) ?? ctxV;
 
@@ -363,7 +375,6 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
 
   const [action, setAction] = useState<null | "abonar" | "retirar">(null);
   const [advance, setAdvance] = useState(false);
-  const [repay, setRepay] = useState(false);
 
   if (!v) {
     return (
@@ -381,7 +392,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       <SubHeader title={v.nm} go={go} back="bovedas" />
       <div className="screen-pad" style={{ textAlign: "center" }}>
         <div style={{ marginTop: 18 }}>
-          <GrowingAmount base={v.bal} apy={v.apy} size={48} id={`vault-${v.id}`} />
+          <GrowingAmount base={v.bal} apy={v.apy} size={48} id={`vault-${v.id}`} countUpOnMount />
         </div>
         <p style={{ fontSize: 13.5, color: "var(--txt-muted)", margin: "8px 0 0" }}>MXN en bóveda</p>
         <div style={{ marginTop: 6 }}><YieldRate base={v.bal} apy={v.apy} /></div>
@@ -467,31 +478,27 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             Abonar y retirar se activan al conectar el contrato on-chain.
           </p>
         )}
-        {/* Advance activo — card prominente cuando hay deuda */}
-        {advanceState.debt > 0 && (
-          <div className="card" style={{ marginTop: 16, textAlign: "left", background: "var(--accent-2-soft, #fff8ec)", border: "1px solid var(--warning, #E8A838)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Icon name="bolt" size={18} color="var(--warning, #E8A838)" />
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>Adelanto activo</p>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Pendiente</span>
-              <span className="num" style={{ fontWeight: 800, fontSize: 16 }}>${FMT(advanceState.debt, 2)} MXN</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Colateral bloqueado</span>
-              <span className="num" style={{ fontWeight: 700, fontSize: 14 }}>${FMT(advanceState.locked, 2)} MXN</span>
-            </div>
-            <button className="btn btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={() => setRepay(true)} disabled={busy}>
-              Repagar adelanto
+        {/* Adelanto — acción de liquidez sobre esta bóveda. Solicitar y repagar
+            viven en su propia pantalla (LiquidityAdvanceModal); aquí solo el acceso.
+            Solo en el riel EVM: en Stellar (DeFindex) el adelanto se hará con Blend. */}
+        {!STELLAR_RAIL && v.bal > 0 && (
+          advanceState.debt > 0 ? (
+            <button
+              className="btn btn-ghost"
+              style={{ marginTop: 12, justifyContent: "space-between" }}
+              onClick={() => setAdvance(true)}
+              disabled={busy}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Icon name="bolt" size={18} color="var(--warning, #E8A838)" /> Adelanto activo · ${FMT(advanceState.debt, 2)} pendiente
+              </span>
+              <Icon name="chevR" size={16} color="var(--txt-dim)" />
             </button>
-          </div>
-        )}
-
-        {v.bal > 0 && advanceState.debt === 0 && (
-          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setAdvance(true)} disabled={busy}>
-            <Icon name="bolt" size={18} /> Adelantar rendimiento
-          </button>
+          ) : (
+            <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => setAdvance(true)} disabled={busy}>
+              <Icon name="bolt" size={18} /> Adelantar rendimiento
+            </button>
+          )
         )}
         <button disabled={busy || advanceState.locked > 0} title={advanceState.locked > 0 ? "Repaga tu adelanto para liberar el colateral antes de eliminar la bóveda" : undefined} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy || advanceState.locked > 0 ? "default" : "pointer", opacity: busy || advanceState.locked > 0 ? 0.5 : 1 }}>Eliminar bóveda</button>
       </div>
@@ -509,17 +516,13 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           />
         </Portal>
       )}
-      {advance && <Portal><LiquidityAdvanceModal saved={v.bal} apy={v.apy} vaultId={numVaultId} onClose={() => setAdvance(false)} /></Portal>}
-      {repay && numVaultId !== undefined && (
+      {advance && (
         <Portal>
-          <RepayModal
-            vaultId={numVaultId}
-            debt={advanceState.debt}
+          <LiquidityAdvanceModal
+            saved={v.bal}
             apy={v.apy}
-            balance={v.bal}
-            locked={advanceState.locked}
-            onClose={() => setRepay(false)}
-            onDone={() => { void advanceState.reload(); }}
+            vaultId={numVaultId}
+            onClose={() => { setAdvance(false); void advanceState.reload(); }}
           />
         </Portal>
       )}
@@ -923,18 +926,30 @@ function VaultAmountModal({ mode, vault, locked = 0, maxDeposit, cap, onClose, o
     const isAbono = mode === "abonar";
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ position: "relative" }}>
           <div className="modal-grab" />
+          {isAbono && <Celebration originY="22%" />}
           <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-            <span style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            <motion.span
+              initial={{ scale: 0, rotate: -25 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.05 }}
+              style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            >
               <Icon name="check" size={32} />
-            </span>
+            </motion.span>
             <p className="modal-title" style={{ marginTop: 16, textAlign: "center" }}>
               {isAbono ? "¡Guardado en tu bóveda!" : "Retiro listo"}
             </p>
-            <p className="num" style={{ margin: "6px 0 0", fontSize: 30, fontWeight: 700, color: "var(--accent)" }}>
+            <motion.p
+              className="num"
+              initial={{ opacity: 0, y: 8, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: 0.18, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              style={{ margin: "6px 0 0", fontSize: 30, fontWeight: 700, color: "var(--accent)" }}
+            >
               ${FMT(n, 2)} MXN
-            </p>
+            </motion.p>
             <p className="modal-sub" style={{ textAlign: "center", marginTop: 8 }}>
               {isAbono ? (
                 <>Tu dinero quedó guardado en <b style={{ color: "var(--txt)" }}>{vault.nm}</b> y ya está rindiendo on-chain.</>

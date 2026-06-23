@@ -21,6 +21,7 @@ import {
 import { MoneyInput } from "../MoneyInput";
 
 const toUnits = (n: number) => parseUnits(n.toFixed(MXNB_DECIMALS), MXNB_DECIMALS);
+const fmtDebt = (n: number) => (n > 0 && n < 0.01 ? FMT(n, 6) : FMT(n, 2));
 
 export function RepayModal({
   vaultId,
@@ -101,7 +102,7 @@ export function RepayModal({
             <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
               {debt - n <= 0
                 ? "Tu bóveda quedó completamente desbloqueada. El saldo ya es retirable."
-                : `Deuda restante: $${FMT(debt - n, 2)} MXN.`}
+                : `Deuda restante: $${fmtDebt(debt - n)} MXN.`}
             </p>
             {txHash && (
               <a href={`${explorerBase}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
@@ -174,7 +175,7 @@ export function RepayModal({
         <div className="card" style={{ marginTop: 14, background: "var(--surface-2)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Adelanto pendiente</span>
-            <span className="num" style={{ fontWeight: 800, fontSize: 18 }}>${FMT(debt, 2)} MXN</span>
+            <span className="num" style={{ fontWeight: 800, fontSize: 18 }}>${fmtDebt(debt)} MXN</span>
           </div>
           {monthlyYield > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
@@ -201,7 +202,7 @@ export function RepayModal({
         </div>
         {n > debt && (
           <p className="modal-sub" style={{ margin: "8px 0 0", color: "var(--neg)" }}>
-            El máximo es ${FMT(debt, 2)} MXN.
+            El máximo es ${fmtDebt(debt)} MXN.
           </p>
         )}
 

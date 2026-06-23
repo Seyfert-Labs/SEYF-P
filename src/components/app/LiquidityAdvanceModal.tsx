@@ -7,15 +7,16 @@
    lo que limita los años a piso(0.90 / APY).
    El capital sigue generando rendimiento; el advance se cubre con él.
    Requiere NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS y NEXT_PUBLIC_SEYF_VAULTS_ADDRESS. */
-import React, { useState } from "react";
-import { encodeFunctionData } from "viem";
+import React, { useEffect, useState } from "react";
 import { Icon } from "./ui";
 import { FMT, AFORE_LOAN_RATE } from "./data";
 import { useWallet } from "@/components/wallet/WalletContext";
+import { useAdvance, useAdvanceQuote } from "@/hooks/useAdvance";
+import { RepayModal } from "./modals/RepayModal";
 import {
   ADVANCE_ONCHAIN,
   SEYF_ADVANCE_ADDRESS,
-  reyfAdvanceAbi,
+  encodeRequestAdvance,
   waitForTx,
   explorerBase,
 } from "@/lib/chain";
@@ -35,24 +36,107 @@ export function LiquidityAdvanceModal({
   onConfirm?: (amt: number) => void;
 }) {
   const wallet = useWallet();
-
-  // Coherente con el contrato: apyBps = apy×100, maxYears = piso(9000 / apyBps),
-  // rendimiento anual = saved × apyBps / 10000.
-  const apyBps = Math.round(apy * 100);
-  const maxYears = apyBps > 0 ? Math.floor(9000 / apyBps) : 0;
-  const annualYield = (saved * apyBps) / 10000;
+  // Estado del adelanto activo de esta bóveda (deuda + colateral). Esta pantalla
+  // es ahora el único hogar del adelanto: solicitarlo Y repagarlo (antes el repago
+  // vivía como tarjeta dentro de la bóveda).
+  const { debt, locked, reload } = useAdvance(wallet.address, vaultId);
 
   const [years, setYears] = useState(1);
   const [step, setStep] = useState<"select" | "confirm" | "sending" | "done">("select");
+  const [repaying, setRepaying] = useState(false);
   const [err, setErr] = useState("");
   const [txHash, setTxHash] = useState("");
+  const [receivedAmount, setReceivedAmount] = useState(0);
 
-  const amount = annualYield * years;          // monto a recibir
-  const ltv = saved > 0 ? (amount / saved) * 100 : 0; // % del colateral
   const canAdvance = ADVANCE_ONCHAIN && vaultId !== undefined;
+  const onchain = useAdvanceQuote(wallet.address, vaultId, years);
 
-  // Sin ahorro suficiente
-  if (saved <= 0 || maxYears < 1) {
+  const isLegacy = onchain.mode === "amount";
+  const amount = onchain.quote;
+  const collateral = isLegacy ? amount : onchain.freeBalance;
+  const maxYears = onchain.maxYears;
+  const ltv = onchain.freeBalance > 0 ? (amount / onchain.freeBalance) * 100 : 0;
+
+  useEffect(() => {
+    if (onchain.ready && onchain.mode === "amount") setYears(1);
+  }, [onchain.ready, onchain.mode]);
+
+  useEffect(() => {
+    if (onchain.ready && maxYears >= 1 && years > maxYears) setYears(maxYears);
+  }, [onchain.ready, maxYears, years]);
+  const balanceMismatch =
+    canAdvance &&
+    onchain.ready &&
+    !onchain.loading &&
+    saved > 0.01 &&
+    collateral > 0 &&
+    Math.abs(saved - collateral) / saved > 0.05;
+
+  // Repago: la pantalla de adelanto monta el RepayModal encima.
+  if (repaying && vaultId !== undefined) {
+    return (
+      <RepayModal
+        vaultId={vaultId}
+        debt={debt}
+        apy={apy}
+        balance={saved}
+        locked={locked}
+        onClose={() => setRepaying(false)}
+        onDone={() => reload()}
+      />
+    );
+  }
+
+  // Adelanto activo: vista de gestión + repago (en vez del flujo de solicitud).
+  // Solo si NO acabamos de tomar uno fresco (ese caso muestra la pantalla "done").
+  if (debt > 0 && step !== "done") {
+    const monthlyYield = (saved * (apy / 100)) / 12;
+    const monthsLeft = monthlyYield > 0 ? Math.ceil(debt / monthlyYield) : null;
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-grab" />
+          <p className="modal-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="bolt" size={22} color="var(--accent)" /> Tu adelanto activo
+          </p>
+          <p className="modal-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>
+            Recibiste tu rendimiento por adelantado. Tu capital queda comprometido hasta que repagues.
+          </p>
+
+          <div className="card" style={{ marginTop: 14, background: "var(--accent-soft)", border: "none" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Pendiente por repagar</span>
+              <span className="num" style={{ fontWeight: 800, fontSize: 22, color: "var(--accent)" }}>${FMT(debt, 2)} MXN</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+              <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Colateral bloqueado</span>
+              <span className="num" style={{ fontWeight: 700, fontSize: 14 }}>${FMT(locked, 2)} MXN</span>
+            </div>
+            {monthsLeft !== null && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Se libera en (estimado)</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: "var(--accent)" }}>
+                  ~{monthsLeft} {monthsLeft === 1 ? "mes" : "meses"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <p style={{ margin: "12px 2px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5 }}>
+            Estimación según el rendimiento de tu bóveda. Puedes repagar cuando quieras para liberar tu capital antes.
+          </p>
+
+          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setRepaying(true)}>
+            <Icon name="bolt" size={18} /> Repagar adelanto
+          </button>
+          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Sin ahorro suficiente (saldo libre on-chain)
+  if (onchain.ready && !onchain.loading && (collateral <= 0 || maxYears < 1 || amount <= 0)) {
     return (
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
@@ -61,7 +145,9 @@ export function LiquidityAdvanceModal({
             <Icon name="bolt" size={22} color="var(--accent)" /> Adelanto de liquidez
           </p>
           <p className="modal-sub" style={{ marginTop: 6, lineHeight: 1.55 }}>
-            Aún no tienes ahorro invertido. Empieza a ahorrar en una bóveda y podrás adelantar tus rendimientos futuros sin vender tus posiciones.
+            {balanceMismatch
+              ? `Tu bóveda muestra $${FMT(saved, 2)} en la app, pero el saldo disponible on-chain es $${FMT(onchain.freeBalance, 2)}. Abona de nuevo o espera a que se confirme tu depósito antes de adelantar.`
+              : "Aún no tienes ahorro invertido on-chain en esta bóveda. Abona fondos y podrás adelantar tus rendimientos futuros sin vender tus posiciones."}
           </p>
           <button className="btn btn-ghost" style={{ marginTop: 18 }} onClick={onClose}>Entendido</button>
         </div>
@@ -81,10 +167,12 @@ export function LiquidityAdvanceModal({
             </span>
             <p style={{ margin: "16px 0 0", fontWeight: 800, fontSize: 20 }}>¡Adelanto recibido!</p>
             <p className="num" style={{ margin: "8px 0 0", fontSize: 30, fontWeight: 700, color: "var(--accent)" }}>
-              ${FMT(amount, 2)} MXN
+              ${FMT(receivedAmount > 0 ? receivedAmount : amount, 2)} MXN
             </p>
             <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-              {years} {years === 1 ? "año" : "años"} de rendimiento por adelantado. Tu capital (${FMT(saved, 2)}) queda comprometido generándolo.
+              {isLegacy || years === 1
+                ? `1 año de rendimiento por adelantado. Recibiste ${FMT(receivedAmount > 0 ? receivedAmount : amount, 2)} MXN.`
+                : `${years} años de rendimiento por adelantado. Tu capital (${FMT(collateral, 2)}) queda comprometido generándolo.`}
             </p>
             {txHash && (
               <a
@@ -105,19 +193,19 @@ export function LiquidityAdvanceModal({
 
   // Confirmación + envío
   const doAdvance = async () => {
-    if (!canAdvance) return;
+    if (!canAdvance || amount <= 0 || !onchain.quoteResult) return;
     setErr("");
     setStep("sending");
+    const quoted = amount;
     try {
-      const data = encodeFunctionData({
-        abi: reyfAdvanceAbi,
-        functionName: "requestAdvance",
-        args: [BigInt(vaultId!), BigInt(years)],
-      });
+      const data = encodeRequestAdvance(vaultId!, onchain.quoteResult);
       const hash = await wallet.sendTx(SEYF_ADVANCE_ADDRESS as string, data);
       await waitForTx(hash as `0x${string}`);
       setTxHash(hash as string);
-      onConfirm?.(amount);
+      setReceivedAmount(quoted);
+      onConfirm?.(quoted);
+      void reload();
+      void onchain.reload();
       setStep("done");
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Error al procesar el adelanto.");
@@ -141,17 +229,33 @@ export function LiquidityAdvanceModal({
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Adelantas</span>
-              <span style={{ fontWeight: 700, fontSize: 14 }}>{years} {years === 1 ? "año" : "años"} de rendimiento</span>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>
+                {isLegacy ? "1 año de rendimiento" : `${years} ${years === 1 ? "año" : "años"} de rendimiento`}
+              </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Colateral bloqueado</span>
-              <span className="num" style={{ fontWeight: 700, fontSize: 14 }}>${FMT(saved, 2)} <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}>({FMT(ltv, 0)}% LTV)</span></span>
+              <span className="num" style={{ fontWeight: 700, fontSize: 14 }}>
+                ${FMT(collateral, 2)}
+                {!isLegacy && (
+                  <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}> ({FMT(ltv, 0)}% LTV)</span>
+                )}
+              </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Interés</span>
               <span style={{ fontWeight: 700, fontSize: 14, color: "var(--accent)" }}>0% — es tu rendimiento</span>
             </div>
           </div>
+
+          {balanceMismatch && (
+            <div className="card" style={{ marginTop: 12, borderColor: "var(--warning, #E8A838)", display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <Icon name="info" size={18} color="var(--warning, #E8A838)" />
+              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+                El saldo en la app (${FMT(saved, 2)}) no coincide con el on-chain (${FMT(onchain.freeBalance, 2)}). Confirmas recibir <b>${FMT(amount, 2)}</b>, no ${FMT((saved * apy * years) / 100, 2)}.
+              </p>
+            </div>
+          )}
 
           <p style={{ margin: "12px 2px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5 }}>
             Tu capital queda comprometido como colateral pero sigue generando rendimiento. Repaga para liberarlo. Sin venta de posiciones.
@@ -162,7 +266,7 @@ export function LiquidityAdvanceModal({
           <button
             className="btn btn-primary"
             style={{ marginTop: 20 }}
-            disabled={step === "sending"}
+            disabled={step === "sending" || amount <= 0}
             onClick={doAdvance}
           >
             {step === "sending" ? <span className="spin" /> : <><Icon name="bolt" size={18} /> Confirmar adelanto</>}
@@ -184,8 +288,34 @@ export function LiquidityAdvanceModal({
           <Icon name="bolt" size={22} color="var(--accent)" /> Adelanto de liquidez
         </p>
         <p className="modal-sub" style={{ marginTop: 6, lineHeight: 1.5 }}>
-          Recibe hoy varios años de tu rendimiento futuro sin vender tu ahorro. Tu capital queda comprometido generándolo.
+          {isLegacy && onchain.ready
+            ? "Recibe hoy un año de tu rendimiento futuro sin vender tu ahorro. Por ahora solo puedes adelantar hasta 1 año por bóveda."
+            : "Recibe hoy varios años de tu rendimiento futuro sin vender tu ahorro. Tu capital queda comprometido generándolo."}
         </p>
+
+        {isLegacy && onchain.ready && amount > 0 && (
+          <div
+            className="card"
+            style={{
+              marginTop: 14,
+              padding: "12px 14px",
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-start",
+              background: "var(--surface-2)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            <span style={{ flexShrink: 0, marginTop: 1, display: "inline-flex" }}><Icon name="info" size={20} color="var(--accent)" /></span>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>Límite actual: 1 año de rendimiento</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+                Con tu saldo en bóveda puedes adelantar como máximo <b className="num">${FMT(amount, 2)} MXN</b>
+                {" "}(≈{FMT(apy, 1)}% anual × 1 año). Para adelantar más años a la vez habrá una actualización del contrato.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="card" style={{ marginTop: 14, padding: 14 }}>
           <p className="eyebrow">No es un préstamo</p>
@@ -207,26 +337,52 @@ export function LiquidityAdvanceModal({
           </div>
         </div>
 
-        <span className="field-label" style={{ marginTop: 16 }}>¿Cuántos años de rendimiento quieres adelantar?</span>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-          {Array.from({ length: maxYears }, (_, i) => i + 1).map((y) => (
-            <button
-              key={y}
-              onClick={() => setYears(y)}
+        {isLegacy && onchain.ready ? (
+          <div style={{ marginTop: 16 }}>
+            <span className="field-label">Adelanto disponible</span>
+            <div
               className="chip"
               style={{
-                cursor: "pointer",
+                marginTop: 8,
+                display: "inline-flex",
                 padding: "10px 14px",
                 fontWeight: 800,
-                background: y === years ? "var(--accent)" : "var(--surface-2)",
-                color: y === years ? "var(--on-accent)" : "var(--txt)",
-                border: `1px solid ${y === years ? "var(--accent)" : "var(--line)"}`,
+                background: "var(--accent)",
+                color: "var(--on-accent)",
+                border: "1px solid var(--accent)",
               }}
             >
-              {y} {y === 1 ? "año" : "años"}
-            </button>
-          ))}
-        </div>
+              1 año de rendimiento
+            </div>
+          </div>
+        ) : (
+          <>
+            <span className="field-label" style={{ marginTop: 16 }}>¿Cuántos años de rendimiento quieres adelantar?</span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              {onchain.loading || !onchain.ready ? (
+                <span style={{ fontSize: 13, color: "var(--txt-muted)", padding: "8px 0" }}>Calculando tope…</span>
+              ) : (
+                Array.from({ length: maxYears }, (_, i) => i + 1).map((y) => (
+                  <button
+                    key={y}
+                    onClick={() => setYears(y)}
+                    className="chip"
+                    style={{
+                      cursor: "pointer",
+                      padding: "10px 14px",
+                      fontWeight: 800,
+                      background: y === years ? "var(--accent)" : "var(--surface-2)",
+                      color: y === years ? "var(--on-accent)" : "var(--txt)",
+                      border: `1px solid ${y === years ? "var(--accent)" : "var(--line)"}`,
+                    }}
+                  >
+                    {y} {y === 1 ? "año" : "años"}
+                  </button>
+                ))
+              )}
+            </div>
+          </>
+        )}
 
         <div className="card" style={{ marginTop: 14, background: "var(--accent-soft)", border: "none" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -235,10 +391,22 @@ export function LiquidityAdvanceModal({
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
             <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>Colateral comprometido</span>
-            <span className="num" style={{ fontWeight: 700, fontSize: 14 }}>${FMT(saved, 2)} <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}>({FMT(ltv, 0)}% LTV)</span></span>
+            <span className="num" style={{ fontWeight: 700, fontSize: 14 }}>
+              ${FMT(collateral, 2)}
+              {!isLegacy && (
+                <span style={{ color: "var(--txt-dim)", fontWeight: 600 }}> ({FMT(ltv, 0)}% LTV)</span>
+              )}
+            </span>
           </div>
+          {balanceMismatch && (
+            <p style={{ margin: "8px 0 0", fontSize: 11, color: "var(--warning, #E8A838)", lineHeight: 1.45 }}>
+              Saldo en app ${FMT(saved, 2)} · on-chain ${FMT(onchain.freeBalance, 2)}
+            </p>
+          )}
           <p style={{ margin: "8px 0 0", fontSize: 11, color: "var(--txt-dim)", lineHeight: 1.45 }}>
-            Máximo {maxYears} {maxYears === 1 ? "año" : "años"} (el adelanto no excede el 90% de tu colateral).
+            {isLegacy
+              ? "Equivale a 1 año de rendimiento sobre tu saldo en bóveda."
+              : `Máximo ${maxYears} ${maxYears === 1 ? "año" : "años"} (el adelanto no excede el 90% de tu colateral).`}
           </p>
         </div>
 
@@ -251,7 +419,7 @@ export function LiquidityAdvanceModal({
         <button
           className="btn btn-primary"
           style={{ marginTop: 18 }}
-          disabled={!(years >= 1 && years <= maxYears && canAdvance)}
+          disabled={!(canAdvance && amount > 0 && maxYears >= 1 && onchain.ready && !onchain.loading)}
           onClick={() => setStep("confirm")}
         >
           <Icon name="bolt" size={18} /> Continuar

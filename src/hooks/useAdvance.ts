@@ -10,6 +10,9 @@ import {
   SEYF_ADVANCE_ADDRESS,
   SEYF_VAULTS_ADDRESS,
   ADVANCE_ONCHAIN,
+  readAdvanceQuote,
+  type AdvanceContractMode,
+  type AdvanceQuoteResult,
   reyfAdvanceAbi,
   reyfVaultsAbi,
   MXNB_DECIMALS,
@@ -59,4 +62,56 @@ export function useAdvance(address?: string, vaultId?: number): AdvanceState & {
   }, [reload]);
 
   return { debt, locked, loading, reload };
+}
+
+export interface AdvanceQuote {
+  mode: AdvanceContractMode;
+  freeBalance: number;
+  quote: number;
+  maxYears: number;
+  requestArg: bigint;
+  capped?: boolean;
+  loading: boolean;
+  ready: boolean;
+}
+
+/** Cotización on-chain para el adelanto (mismo cálculo que `requestAdvance`). */
+export function useAdvanceQuote(
+  address?: string,
+  vaultId?: number,
+  years = 1,
+): AdvanceQuote & { reload: () => void; quoteResult: AdvanceQuoteResult | null } {
+  const [quoteResult, setQuoteResult] = useState<AdvanceQuoteResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const reload = useCallback(async () => {
+    if (!address || vaultId === undefined || !ADVANCE_ONCHAIN) {
+      setQuoteResult(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const q = await readAdvanceQuote(address as Address, vaultId, years);
+      setQuoteResult(q);
+    } finally {
+      setLoading(false);
+    }
+  }, [address, vaultId, years]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return {
+    mode: quoteResult?.mode ?? "years",
+    freeBalance: quoteResult?.freeBalance ?? 0,
+    quote: quoteResult?.quote ?? 0,
+    maxYears: quoteResult?.maxYears ?? 0,
+    requestArg: quoteResult?.requestArg ?? 0n,
+    capped: quoteResult?.capped,
+    loading,
+    ready: quoteResult !== null,
+    quoteResult,
+    reload,
+  };
 }

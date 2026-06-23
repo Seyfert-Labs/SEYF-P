@@ -88,7 +88,18 @@ export function ScreenHome({ go }: { go: Go }) {
   // Spot: saldo MXNB on-chain. Las bóvedas se muestran en la pantalla de Ahorro.
   const pesos = realData ? wallet.balance : 48250.4;
   // vaultId numérico para el adelanto (solo válido en modo on-chain).
-  const firstVaultId = onchain && vaults.length > 0 ? parseInt(vaults[0].id) : undefined;
+  // Adelanto: es POR bóveda. Desde Home el usuario no está posicionado en ninguna,
+  // así que solo adelantamos directo si hay UNA sola bóveda (no ambiguo). Con varias,
+  // lo mandamos a Ahorro a elegir/posicionarse en una y adelantar desde su detalle.
+  const advanceVault = onchain && vaults.length === 1 ? vaults[0] : undefined;
+  const advanceVaultId = advanceVault ? parseInt(advanceVault.id) : undefined;
+  const onAdvance = () => {
+    if (onchain && vaults.length > 1) {
+      go("bovedas"); // varias bóvedas → elige en cuál posicionarte
+    } else {
+      setModal("advance"); // 0 o 1 bóveda → modal directo (maneja el caso sin ahorro)
+    }
+  };
 
   return (
     <div className="screen screen-enter">
@@ -130,7 +141,7 @@ export function ScreenHome({ go }: { go: Go }) {
           <div className="quick-row" style={{ marginTop: 18, gap: 6 }}>
             <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
             <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
-            <button className="quick" onClick={() => setModal("advance")}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
+            <button className="quick" onClick={onAdvance}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
             <button className="quick" onClick={() => setModal("more")}><span className="ic" style={{ fontSize: 20, letterSpacing: 2, fontWeight: 800, lineHeight: 1 }}>···</span><span className="tx">Más</span></button>
           </div>
         </div>
@@ -225,7 +236,16 @@ export function ScreenHome({ go }: { go: Go }) {
 
       {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
       {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
-      {modal === "advance" && <Portal><LiquidityAdvanceModal saved={totalSaved} apy={weightedApy} vaultId={firstVaultId} onClose={() => setModal(null)} /></Portal>}
+      {modal === "advance" && (
+        <Portal>
+          <LiquidityAdvanceModal
+            saved={advanceVault?.bal ?? 0}
+            apy={advanceVault?.apy ?? weightedApy}
+            vaultId={advanceVaultId}
+            onClose={() => setModal(null)}
+          />
+        </Portal>
+      )}
       {modal === "more" && <Portal><MoreSheet onClose={() => setModal(null)} /></Portal>}
     </div>
   );

@@ -12,6 +12,7 @@ import { ClabeCard } from "../ClabeCard";
 import { useUserBanks } from "@/hooks/useUserBanks";
 import { AddBankModal } from "../modals/AddBankModal";
 import { Portal } from "../Portal";
+import { useKycStatus } from "@/hooks/useKycStatus";
 
 function shortAddr(a?: string) {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
@@ -159,6 +160,7 @@ function maskClabe(clabe: string) {
 
 export function ScreenProfile({ go }: { go: Go }) {
   const wallet = useWallet();
+  const kyc = useKycStatus();
   const email = wallet.email || "diego@correo.com";
   const { list: banks, remove: removeBank, reload: reloadBanks } = useUserBanks(wallet.address);
   const [showAddBank, setShowAddBank] = useState(false);
@@ -177,26 +179,47 @@ export function ScreenProfile({ go }: { go: Go }) {
             <p style={{ margin: 0, fontWeight: 800, fontSize: 18 }}>{wallet.authenticated ? "Mi cuenta" : "Diego Robles"}</p>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--txt-muted)", overflow: "hidden", textOverflow: "ellipsis" }}>{email}</p>
           </div>
-          <span className="pos-pill"><Icon name="check" size={12} /> Verificado</span>
+          {kyc.enabled && !kyc.loading && kyc.verified && (
+            <span className="pos-pill"><Icon name="check" size={12} /> Cuenta verificada</span>
+          )}
         </div>
 
-        {/* Verificación de identidad (KYC) — habilita todas las bóvedas */}
-        <button
-          onClick={() => go("kyc")}
-          className="card"
-          style={{ marginTop: 14, width: "100%", display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", border: "1px solid var(--accent-soft)", background: "var(--accent-soft)" }}
-        >
-          <span style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon name="shield" size={22} />
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Verifica tu identidad</p>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-              Un solo paso para habilitar todas tus bóvedas de ahorro.
-            </p>
+        {kyc.enabled && !kyc.loading && !kyc.verified && (
+          <button
+            onClick={() => go("kyc")}
+            className="card"
+            style={{ marginTop: 14, width: "100%", display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", border: "1px solid var(--accent-soft)", background: "var(--accent-soft)" }}
+          >
+            <span style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="shield" size={22} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Verifica tu identidad</p>
+              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                Un solo paso para habilitar todas tus bóvedas de ahorro.
+              </p>
+            </div>
+            <Icon name="chevR" size={18} color="var(--txt-dim)" />
+          </button>
+        )}
+
+        {kyc.enabled && !kyc.loading && kyc.verified && (
+          <div
+            className="card"
+            style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--accent-soft)", background: "var(--surface)" }}
+          >
+            <span style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="shield" size={22} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Identidad verificada</p>
+              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                Tu cuenta cumple los requisitos para todas las bóvedas de ahorro.
+              </p>
+            </div>
+            <Icon name="check" size={20} color="var(--accent)" />
           </div>
-          <Icon name="chevR" size={18} color="var(--txt-dim)" />
-        </button>
+        )}
 
         {wallet.enabled && wallet.authenticated && wallet.address && (
           <div className="card" style={{ marginTop: 14 }}>
