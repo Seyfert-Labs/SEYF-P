@@ -19,10 +19,11 @@ export async function GET(req: Request) {
     }
     const sdk = getDefindexSDK()
     const balance = await sdk.getVaultBalance(DEFINDEX_VAULT_ADDRESS, publicKey, defindexNetwork())
-    // underlyingBalance es un arreglo (vault multi-asset); el MVP usa la 1.ª posición.
-    const underlyingRaw = balance.underlyingBalance?.[0] ?? 0
+    // La API devuelve los montos como string; forzamos número. underlyingBalance
+    // es un arreglo (vault multi-asset); el MVP usa la 1.ª posición.
+    const underlyingRaw = Number(balance.underlyingBalance?.[0] ?? 0)
     return NextResponse.json({
-      dfTokens: balance.dfTokens,
+      dfTokens: Number(balance.dfTokens),
       underlyingBalance: fromUnits(underlyingRaw),
       underlyingRaw,
     })
