@@ -37,8 +37,13 @@ async function postJson(url: string, body: unknown): Promise<{ xdr?: string; err
   return res.json().catch(() => ({}));
 }
 
-export function useStellarVaults(_address?: string) {
+export function useStellarVaults(address?: string) {
   const { isAuthenticated, walletAddress, getClient, refreshBalance } = usePollar();
+  // Identidad para la metadata = wallet de la app (Privy). La wallet Stellar
+  // (Pollar) solo se necesita para LEER el saldo on-chain y para FIRMAR
+  // depósitos/retiros — no para crear la bóveda. Así "Crear bóveda" funciona
+  // aunque el usuario aún no haya enrolado Pollar (se le pedirá al abonar).
+  const metaKey = address;
   const publicKey = isAuthenticated ? walletAddress : undefined;
   const onchain = STELLAR_VAULTS_ONCHAIN && Boolean(publicKey);
 
@@ -48,12 +53,12 @@ export function useStellarVaults(_address?: string) {
   const limits: VaultLimits | null = null; // sin beta cap en el riel Stellar (MVP)
 
   const reload = useCallback(async () => {
-    if (!publicKey) {
+    if (!metaKey) {
       setVaults([]);
       setReady(true);
       return;
     }
-    const meta = (await store.listVaults(publicKey)).sort((a, b) => a.createdAt - b.createdAt);
+    const meta = (await store.listVaults(metaKey)).sort((a, b) => a.createdAt - b.createdAt);
 
     if (!onchain) {
       setVaults(meta.map((v) => ({ ...v, bal: 0 })));
@@ -84,7 +89,7 @@ export function useStellarVaults(_address?: string) {
       })),
     );
     setReady(true);
-  }, [publicKey, onchain]);
+  }, [metaKey, publicKey, onchain]);
 
   useEffect(() => {
     void reload();
@@ -106,7 +111,7 @@ export function useStellarVaults(_address?: string) {
 
   const addVault = useCallback(
     async (v: { nm: string; goal: number; apy: number; color: string }): Promise<UserVault | undefined> => {
-      if (!publicKey) return;
+      if (!metaKey) return;
       if (vaults.length >= MAX_VAULTS) return undefined;
       const nuevo: UserVault = {
         id: `v_${Date.now()}`,
@@ -118,15 +123,18 @@ export function useStellarVaults(_address?: string) {
         createdAt: Date.now(),
       };
       setVaults((prev) => [...prev, nuevo]);
-      await store.upsertVault(publicKey, nuevo);
+      await store.upsertVault(metaKey, nuevo);
       return nuevo;
     },
-    [publicKey, vaults.length],
+    [metaKey, vaults.length],
   );
 
   const updateBalance = useCallback(
     async (_id: string, delta: number): Promise<string | undefined> => {
-      if (!publicKey || delta === 0 || !onchain) return;
+      if (delta === 0) return;
+      // Depositar/retirar SÍ requiere la wallet Stellar (Pollar) para firmar.
+      if (!publicKey) throw new Error("Conecta tu wallet Stellar (Pollar) para abonar o retirar");
+      if (!onchain) return;
       setBusy(true);
       try {
         const url = delta > 0 ? "/api/defindex/deposit" : "/api/defindex/withdraw";
@@ -145,11 +153,11 @@ export function useStellarVaults(_address?: string) {
 
   const removeVault = useCallback(
     async (id: string) => {
-      if (!publicKey) return;
+      if (!metaKey) return;
       setVaults((prev) => prev.filter((v) => v.id !== id));
-      await store.deleteVault(publicKey, id);
+      await store.deleteVault(metaKey, id);
     },
-    [publicKey],
+    [metaKey],
   );
 
   const ensureVault = useCallback(

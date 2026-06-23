@@ -33,12 +33,27 @@ export const DEFINDEX_ASSET_SYMBOL = (
 export const STELLAR_VAULTS_ONCHAIN =
   STELLAR_VAULTS_ENABLED && Boolean(DEFINDEX_VAULT_ADDRESS)
 
-/**
- * Resuelve la vault que respalda un plan de riesgo. MVP: una sola vault para
- * todos los planes. Cuando haya varias, este es el punto único de mapeo.
- */
-export function resolveVaultAddress(_planId?: string): string {
+// Mapa plan de riesgo → vault DeFindex. Hoy solo "Conservador" tiene ruta a una
+// vault real (CETES, estrategia Blend). Los demás planes quedan BLOQUEADOS hasta
+// que conectemos sus vaults (p.ej. T-Bills/índices) en Stellar. Para activar uno
+// nuevo: agrega su entrada aquí (planId → dirección C...).
+export const VAULT_BY_PLAN: Record<string, string> = DEFINDEX_VAULT_ADDRESS
+  ? { conservador: DEFINDEX_VAULT_ADDRESS }
+  : {}
+
+/** Dirección de la vault que respalda un plan, o "" si el plan no tiene ruta aún. */
+export function resolveVaultAddress(planId?: string): string {
+  if (planId && VAULT_BY_PLAN[planId]) return VAULT_BY_PLAN[planId]
   return DEFINDEX_VAULT_ADDRESS
+}
+
+/**
+ * ¿El plan está disponible para crear bóveda? En el riel EVM no se bloquea nada.
+ * En el riel Stellar, solo los planes con vault mapeada (hoy "Conservador").
+ */
+export function isPlanUnlocked(planId: string): boolean {
+  if (!STELLAR_VAULTS_ENABLED) return true
+  return Boolean(VAULT_BY_PLAN[planId])
 }
 
 /** Convierte un monto humano (p.ej. 100.5) a la unidad mínima entera del asset. */

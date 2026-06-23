@@ -12,6 +12,7 @@ import { MoneyInput } from "../MoneyInput";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaultsRail, MAX_VAULTS, STELLAR_RAIL, type UserVault } from "@/hooks/useVaultsRail";
+import { isPlanUnlocked } from "@/lib/defindex/vaults";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
 import { useAdvance } from "@/hooks/useAdvance";
@@ -113,14 +114,25 @@ function PlanTile({ risk, size = 46 }: { risk: RiskLevel; size?: number }) {
   );
 }
 
-function PlanCard({ plan, onPick, recommended }: { plan: VaultPlan; onPick: () => void; recommended?: boolean }) {
+function PlanCard({ plan, onPick, recommended, locked }: { plan: VaultPlan; onPick: () => void; recommended?: boolean; locked?: boolean }) {
   return (
-    <div className="card bond-card" onClick={onPick} style={{ cursor: "pointer", border: recommended ? "1px solid var(--accent)" : undefined, background: recommended ? "var(--accent-soft)" : undefined }}>
+    <div
+      className="card bond-card"
+      onClick={locked ? undefined : onPick}
+      style={{
+        cursor: locked ? "default" : "pointer",
+        border: recommended ? "1px solid var(--accent)" : undefined,
+        background: recommended ? "var(--accent-soft)" : undefined,
+        opacity: locked ? 0.55 : 1,
+      }}
+    >
       <PlanTile risk={plan.risk} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{plan.name}</p>
-          {recommended && <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>}
+          {locked
+            ? <span className="pos-pill" style={{ background: "var(--surface-2)", color: "var(--txt-muted)" }}><Icon name="lock" size={11} /> Próximamente</span>
+            : recommended && <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>}
         </div>
         <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{plan.exposure}</p>
         <div style={{ marginTop: 6 }}><RiskBadge risk={plan.risk} /></div>
@@ -177,6 +189,11 @@ export function ScreenVaults({ go }: { go: Go }) {
   const [creating, setCreating] = useState<null | { plan?: VaultPlan }>(null);
   const [recId] = useState<string | null>(() => loadRiskProfile());
   const recPlan = recId ? planById(recId) : null;
+
+  // Plan con el que se preselecciona el creador: el recomendado si está
+  // desbloqueado; si no, el primer plan con vault disponible (hoy "Conservador").
+  const firstUnlocked = RISK_PROFILES.find((p) => isPlanUnlocked(p.id)) ?? RISK_PROFILES[0];
+  const createPreset = recPlan && isPlanUnlocked(recPlan.id) ? recPlan : firstUnlocked;
 
   const weightedApy = totalSaved > 0 ? vaults.reduce((s, v) => s + v.bal * v.apy, 0) / totalSaved : (recPlan?.apy ?? 10.5);
   const atCap = vaults.length >= MAX_VAULTS;
@@ -250,7 +267,7 @@ export function ScreenVaults({ go }: { go: Go }) {
         {!atCap ? (
           <button
             className="btn btn-ghost"
-            onClick={() => setCreating({ plan: recPlan ?? undefined })}
+            onClick={() => setCreating({ plan: createPreset })}
             style={{ width: "100%", marginTop: vaults.length > 0 ? 2 : 0, justifyContent: "center", borderStyle: "dashed" }}
           >
             <Icon name="plus" size={18} /> {vaults.length === 0 ? "Crear mi primera bóveda" : "Nueva bóveda"}
@@ -271,14 +288,18 @@ export function ScreenVaults({ go }: { go: Go }) {
             : <>Cada perfil ajusta tu mezcla de instrumentos soberanos según tu horizonte.</>}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {RISK_PROFILES.map((p) => (
-            <PlanCard
-              key={p.id}
-              plan={p}
-              recommended={recPlan?.id === p.id}
-              onPick={atCap ? () => {} : () => setCreating({ plan: p })}
-            />
-          ))}
+          {RISK_PROFILES.map((p) => {
+            const locked = !isPlanUnlocked(p.id);
+            return (
+              <PlanCard
+                key={p.id}
+                plan={p}
+                locked={locked}
+                recommended={!locked && recPlan?.id === p.id}
+                onPick={atCap || locked ? () => {} : () => setCreating({ plan: p })}
+              />
+            );
+          })}
         </div>
       </div>
       <div className="scroll-bottom" />
@@ -308,7 +329,11 @@ function CreateVaultModal({
   onCreate: (name: string, plan: VaultPlan) => void;
 }) {
   const [name, setName] = useState("");
-  const [planId, setPlanId] = useState<string>(preset?.id ?? recId ?? RISK_PROFILES[0].id);
+  const defaultId =
+    preset && isPlanUnlocked(preset.id) ? preset.id
+    : recId && isPlanUnlocked(recId) ? recId
+    : RISK_PROFILES.find((p) => isPlanUnlocked(p.id))?.id ?? RISK_PROFILES[0].id;
+  const [planId, setPlanId] = useState<string>(defaultId);
   const plan = planById(planId);
   return (
     <div className="modal-overlay" onClick={busy ? undefined : onClose}>
@@ -330,20 +355,27 @@ function CreateVaultModal({
         <div style={{ display: "grid", gap: 8 }}>
           {RISK_PROFILES.map((p) => {
             const active = p.id === planId;
+            const locked = !isPlanUnlocked(p.id);
             return (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setPlanId(p.id)}
+                disabled={locked}
+                onClick={() => !locked && setPlanId(p.id)}
                 style={{
-                  display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 12, borderRadius: 14, cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 12, borderRadius: 14,
+                  cursor: locked ? "default" : "pointer",
+                  opacity: locked ? 0.5 : 1,
                   border: active ? "1px solid var(--accent)" : "1px solid var(--line)",
                   background: active ? "var(--accent-soft)" : "var(--surface-2)",
                 }}
               >
                 <PlanTile risk={p.risk} size={40} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14.5 }}>{p.name}</p>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14.5, display: "flex", alignItems: "center", gap: 6 }}>
+                    {p.name}
+                    {locked && <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--txt-muted)", display: "inline-flex", alignItems: "center", gap: 3 }}><Icon name="lock" size={10} /> Próximamente</span>}
+                  </p>
                   <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--txt-muted)" }}>Riesgo {p.risk.toLowerCase()} · {p.horizon}</p>
                 </div>
                 <span className="num" style={{ fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>{FMT(p.apy, 1)}%</span>
