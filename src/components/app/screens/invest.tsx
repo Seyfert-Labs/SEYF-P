@@ -12,7 +12,8 @@ import { MoneyInput } from "../MoneyInput";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useVaultsRail, MAX_VAULTS, STELLAR_RAIL, type UserVault } from "@/hooks/useVaultsRail";
-import { isPlanUnlocked } from "@/lib/defindex/vaults";
+import { isPlanUnlocked, STELLAR_VAULTS_ONCHAIN } from "@/lib/defindex/vaults";
+import { useStellarConnect } from "../StellarConnectGate";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
 import { useAdvance } from "@/hooks/useAdvance";
@@ -407,6 +408,10 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   // Se calcula antes del early return para no violar reglas de hooks.
   const numVaultId = onchain && v ? parseInt(v.id) : undefined;
   const advanceState = useAdvance(wallet.address, numVaultId);
+  const { ensureConnected } = useStellarConnect();
+  // En el riel Stellar se puede abonar/retirar si la vault está configurada,
+  // aunque Pollar aún no esté conectada: la conexión se pide al hacer la acción.
+  const canFund = onchain || (STELLAR_RAIL && STELLAR_VAULTS_ONCHAIN);
 
   const [action, setAction] = useState<null | "abonar" | "retirar">(null);
   const [advance, setAdvance] = useState(false);
@@ -505,13 +510,13 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           </div>
         )}
         <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setAction("abonar")} disabled={!onchain || busy}><Icon name="plus" size={18} /> Abonar</button>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAction("retirar")} disabled={(v.bal - advanceState.locked) <= 0 || !onchain || busy}>Retirar</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("abonar a tu bóveda")) setAction("abonar"); }} disabled={!canFund || busy}><Icon name="plus" size={18} /> Abonar</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("retirar de tu bóveda")) setAction("retirar"); }} disabled={!canFund || busy || (onchain && (v.bal - advanceState.locked) <= 0)}>Retirar</button>
         </div>
-        {!onchain && (
+        {!canFund && (
           <p style={{ margin: "12px 4px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
             {STELLAR_RAIL
-              ? "Conecta tu wallet Stellar verificando tu identidad en Perfil para abonar y retirar."
+              ? "Configura la vault de DeFindex para abonar y retirar."
               : "Abonar y retirar se activan al conectar el contrato on-chain."}
           </p>
         )}

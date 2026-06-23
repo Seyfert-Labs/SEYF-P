@@ -9,6 +9,7 @@ import { activeChain } from "@/lib/chain";
 import { WalletCtx, defaultWalletState } from "./wallet/WalletContext";
 import PrivyBridge from "./wallet/PrivyBridge";
 import ReyfPollarProvider from "./providers/ReyfPollarProvider";
+import { StellarConnectProvider } from "./app/StellarConnectGate";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
@@ -18,7 +19,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   if (!appId) {
     return (
       <WalletCtx.Provider value={defaultWalletState}>
-        <ReyfPollarProvider>{children}</ReyfPollarProvider>
+        <ReyfPollarProvider>
+          <StellarConnectProvider>{children}</StellarConnectProvider>
+        </ReyfPollarProvider>
       </WalletCtx.Provider>
     );
   }
@@ -43,7 +46,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     >
       <SmartWalletsProvider>
         <PrivyBridge>
-          <ReyfPollarProvider>{children}</ReyfPollarProvider>
+          <ReyfPollarProvider>
+            <StellarConnectProvider>{children}</StellarConnectProvider>
+          </ReyfPollarProvider>
         </PrivyBridge>
       </SmartWalletsProvider>
     </PrivyProvider>
