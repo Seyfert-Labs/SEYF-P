@@ -252,7 +252,10 @@ export function ScreenVaults({ go }: { go: Go }) {
           <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)" }}>
             <Icon name="info" size={20} color="var(--txt-muted)" />
             <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
-              Puedes planear tu estrategia. <b style={{ color: "var(--txt)" }}>Fondear con MXN real</b> se activa al conectar el contrato on-chain.
+              Puedes planear tu estrategia. <b style={{ color: "var(--txt)" }}>Fondear con dinero real</b>{" "}
+              {STELLAR_RAIL
+                ? "se activa al conectar tu wallet Stellar (verifica tu identidad en Perfil)."
+                : "se activa al conectar el contrato on-chain."}
             </p>
           </div>
         )}
@@ -507,7 +510,9 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         </div>
         {!onchain && (
           <p style={{ margin: "12px 4px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
-            Abonar y retirar se activan al conectar el contrato on-chain.
+            {STELLAR_RAIL
+              ? "Conecta tu wallet Stellar verificando tu identidad en Perfil para abonar y retirar."
+              : "Abonar y retirar se activan al conectar el contrato on-chain."}
           </p>
         )}
         {/* Adelanto — acción de liquidez sobre esta bóveda. Solicitar y repagar
