@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { getDefindexSDK, defindexNetwork } from '@/lib/defindex/client'
 import { DEFINDEX_VAULT_ADDRESS, toUnits } from '@/lib/defindex/vaults'
 import { isValidStellarPublicKey } from '@/lib/etherfuse/stellar-public-key'
-import { toErrorResponse } from '@/lib/reyf/api-error'
 
 const bodySchema = z.object({
   caller: z.string().trim().min(56).max(56),
@@ -41,6 +40,8 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ xdr: res.xdr })
   } catch (e) {
-    return toErrorResponse(e, 'defindex/deposit')
+    const message = e instanceof Error ? e.message : 'Error DeFindex'
+    console.error('[defindex/deposit]', message)
+    return NextResponse.json({ error: message }, { status: 502 })
   }
 }

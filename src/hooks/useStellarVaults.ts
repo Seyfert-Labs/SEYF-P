@@ -140,7 +140,10 @@ export function useStellarVaults(address?: string) {
       try {
         const url = delta > 0 ? "/api/defindex/deposit" : "/api/defindex/withdraw";
         const data = await postJson(url, { caller: publicKey, amount: Math.abs(delta) });
-        if (!data.xdr) throw new Error("No se pudo construir la transacción DeFindex");
+        if (!data.xdr) {
+          const reason = typeof data.error === "string" ? data.error : "No se pudo construir la transacción DeFindex";
+          throw new Error(reason);
+        }
         const hash = await signAndSubmit(data.xdr);
         await refreshBalance(publicKey);
         await reload();
