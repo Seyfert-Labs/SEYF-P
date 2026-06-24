@@ -102,7 +102,8 @@ export function useStellarVaults(address?: string) {
       await client.signAndSubmitTx(xdr);
       const state = client.getTransactionState();
       if (state?.step === "error") {
-        throw new Error("La transacción Stellar no se completó");
+        const detail = state.details ? `: ${state.details}` : "";
+        throw new Error(`La transacción Stellar no se completó${detail}`);
       }
       return state?.step === "success" ? state.hash : "";
     },
