@@ -8,6 +8,10 @@ const bodySchema = z.object({
   caller: z.string().trim().min(56).max(56),
   amount: z.number().positive(),
   slippageBps: z.number().int().min(0).max(10_000).optional(),
+  // invest=true invierte en la estrategia (Blend) en la MISMA tx → fee Soroban
+  // mucho mayor (puede superar el tope de la wallet). Por defecto false: el
+  // depósito deja el CETES en la vault (idle) con una tx más barata.
+  invest: z.boolean().optional(),
 })
 
 /**
@@ -24,7 +28,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
-    const { caller, amount, slippageBps = 100 } = parsed.data
+    const { caller, amount, slippageBps = 100, invest = true } = parsed.data
     if (!isValidStellarPublicKey(caller)) {
       return NextResponse.json({ error: 'caller inválido' }, { status: 400 })
     }
@@ -32,7 +36,7 @@ export async function POST(req: Request) {
     const sdk = getDefindexSDK()
     const res = await sdk.depositToVault(
       DEFINDEX_VAULT_ADDRESS,
-      { caller, amounts: [toUnits(amount)], invest: true, slippageBps },
+      { caller, amounts: [toUnits(amount)], invest, slippageBps },
       defindexNetwork(),
     )
     if (!res.xdr) {
