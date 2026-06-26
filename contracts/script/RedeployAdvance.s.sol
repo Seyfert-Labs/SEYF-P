@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
-import {ReyfAdvance} from "../ReyfAdvance.sol";
+import {SeyfAdvance} from "../SeyfAdvance.sol";
 
 interface IERC20Mint {
     function approve(address spender, uint256 amount) external returns (bool);
@@ -15,12 +15,12 @@ interface IVaultsAdmin {
     function owner() external view returns (address);
 }
 
-/// @notice Redespliega SOLO ReyfAdvance (modelo de años + LTV 90%) conservando
-///         el ReyfVaults existente, y lo registra como nuevo advanceManager.
+/// @notice Redespliega SOLO SeyfAdvance (modelo de años + LTV 90%) conservando
+///         el SeyfVaults existente, y lo registra como nuevo advanceManager.
 /// @dev    Variables de entorno:
-///           VAULTS_ADDRESS         ReyfVaults desplegado
+///           VAULTS_ADDRESS         SeyfVaults desplegado
 ///           FUND_TREASURY_MXNB     (opcional) MXNB humanos a fondear en tesorería (default 50000)
-///         El broadcaster debe ser el `owner` de ReyfVaults (setAdvanceManager) y
+///         El broadcaster debe ser el `owner` de SeyfVaults (setAdvanceManager) y
 ///         tener MXNB + ETH en Sepolia para fondear la tesorería del nuevo contrato.
 contract RedeployAdvance is Script {
     address constant MXNB_SEPOLIA = 0x82B9e52b26A2954E113F94Ff26647754d5a4247D;
@@ -35,11 +35,11 @@ contract RedeployAdvance is Script {
 
         vm.startBroadcast();
 
-        ReyfAdvance advance = new ReyfAdvance(vaultsAddr, mxnb);
-        console.log("Nuevo ReyfAdvance (modelo anos):", address(advance));
+        SeyfAdvance advance = new SeyfAdvance(vaultsAddr, mxnb);
+        console.log("Nuevo SeyfAdvance (modelo anos):", address(advance));
 
         IVaultsAdmin(vaultsAddr).setAdvanceManager(address(advance));
-        console.log("advanceManager actualizado en ReyfVaults:", vaultsAddr);
+        console.log("advanceManager actualizado en SeyfVaults:", vaultsAddr);
 
         IERC20Mint token = IERC20Mint(mxnb);
         uint256 bal = token.balanceOf(msg.sender);

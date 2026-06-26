@@ -1,7 +1,7 @@
 "use client";
 
 // Selector de riel de bóvedas. `NEXT_PUBLIC_STELLAR_VAULTS=true` activa el riel
-// Stellar/DeFindex; en otro caso se usa el riel EVM (Arbitrum/ReyfVaults) intacto.
+// Stellar/DeFindex; en otro caso se usa el riel EVM (Arbitrum/SeyfVaults) intacto.
 //
 // La env es una constante de build, así que la implementación se fija al cargar
 // el módulo: cada render llama UN solo hook con identidad estable → cumple las

@@ -1,7 +1,7 @@
 "use client";
 
 // Lee el estado del advance activo de una bóveda on-chain:
-// deuda pendiente (en ReyfAdvance) y colateral bloqueado (en ReyfVaults).
+// deuda pendiente (en SeyfAdvance) y colateral bloqueado (en SeyfVaults).
 // Solo funciona cuando ADVANCE_ONCHAIN es true.
 import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
@@ -13,8 +13,8 @@ import {
   readAdvanceQuote,
   type AdvanceContractMode,
   type AdvanceQuoteResult,
-  reyfAdvanceAbi,
-  reyfVaultsAbi,
+  seyfAdvanceAbi,
+  seyfVaultsAbi,
   MXNB_DECIMALS,
 } from "@/lib/chain";
 
@@ -36,13 +36,13 @@ export function useAdvance(address?: string, vaultId?: number): AdvanceState & {
       const [debtRaw, lockedRaw] = await Promise.all([
         publicClient.readContract({
           address: SEYF_ADVANCE_ADDRESS as Address,
-          abi: reyfAdvanceAbi,
+          abi: seyfAdvanceAbi,
           functionName: "debt",
           args: [address as Address, BigInt(vaultId)],
         }),
         publicClient.readContract({
           address: SEYF_VAULTS_ADDRESS as Address,
-          abi: reyfVaultsAbi,
+          abi: seyfVaultsAbi,
           functionName: "lockedAmount",
           args: [address as Address, BigInt(vaultId)],
         }),

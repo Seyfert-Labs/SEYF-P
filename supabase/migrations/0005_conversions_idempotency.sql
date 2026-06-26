@@ -1,5 +1,5 @@
 -- ============================================================
--- Reyf — endurecimiento del ledger de conversiones (FX vía Bitso).
+-- SEYF — endurecimiento del ledger de conversiones (FX vía Bitso).
 -- Hace la conversión orquestada en /api/convert ATÓMICA e IDEMPOTENTE:
 --   • status: 'pending' al iniciar, 'completed' al confirmar la orden Bitso.
 --     Un reintento con la misma `id` (idempotency key del cliente) NO coloca

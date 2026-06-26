@@ -1,4 +1,4 @@
-import { AppError } from "@/lib/reyf/api-error";
+import { AppError } from "@/lib/seyf/api-error";
 
 /**
  * Maps an Etherfuse HTTP error status code to a structured AppError.

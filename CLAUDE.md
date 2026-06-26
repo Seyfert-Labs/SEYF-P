@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Reyf — super app fintech (MXNB + Privy + Supabase)
+# SEYF — super app fintech (MXNB + Privy + Supabase)
 
 ## Stack
 - Next.js 16.2.6 (App Router), React 19.2, TypeScript 5.9, Tailwind v4
@@ -28,7 +28,7 @@ src/
                         #   account.tsx (Tarjeta/Perfil)
       modals/           # AddBankModal, DepositModal, RedeemModal, SendModal,
                         #   SendOnchainModal, MoreSheet
-      ReyfApp.tsx       # Shell + router de estado interno
+      SeyfApp.tsx       # Shell + router de estado interno
       ui.tsx            # Primitivas de UI (Icon, Spark, Flag, Ring…)
       shared.tsx        # Componentes compartidos entre screens
       ClabeCard.tsx     # Tarjeta con número CLABE del usuario
@@ -77,7 +77,7 @@ src/
 - Las API routes de Juno (`/api/juno/*`) y Bitso (`/api/bitso/*`) son el único punto que firma HMAC. El cliente nunca llama a esas APIs directamente.
 - La capa `store.ts` es el único lugar que decide Supabase vs localStorage — no duplicar esa lógica en componentes.
 - Las funciones de datos Supabase viven en `lib/supabase/db.ts`; el cliente Supabase con service_role en `lib/supabase/server.ts`. No crear clientes Supabase fuera de esos módulos.
-- Pantallas de la app (screens) son componentes dentro de `ReyfApp.tsx`; el router es el estado `route` interno, no Next.js router.
+- Pantallas de la app (screens) son componentes dentro de `SeyfApp.tsx`; el router es el estado `route` interno, no Next.js router.
 - `WalletContext` abstrae Privy — las screens no importan hooks de Privy directamente.
 - La conversión FX se orquesta en `/api/convert` (server-side, idempotente): transfiere MXNB a tesorería on-chain → ejecuta orden en Bitso → guarda en `conversions` → reconcilia saldo.
 
@@ -99,8 +99,8 @@ src/
 | `NEXT_PUBLIC_USE_SUPABASE` | cliente | `"true"` activa persistencia real |
 | `NEXT_PUBLIC_CHAIN` | cliente | `arbitrum` o `arbitrum-sepolia` |
 | `NEXT_PUBLIC_MXNB_ADDRESS` | cliente | Sobreescribe dirección por defecto |
-| `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` | cliente | Contrato ReyfVaults on-chain; sin valor, bóvedas usan `store` |
-| `NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS` | cliente | Contrato ReyfAdvance on-chain; sin valor, el adelanto de liquidez muestra aviso de configuración. Requiere `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` |
+| `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` | cliente | Contrato SeyfVaults on-chain; sin valor, bóvedas usan `store` |
+| `NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS` | cliente | Contrato SeyfAdvance on-chain; sin valor, el adelanto de liquidez muestra aviso de configuración. Requiere `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` |
 | `NEXT_PUBLIC_TREASURY_ADDRESS` | cliente | Tesorería: destino on-chain del MXNB al convertir a divisa. Sin valor, la conversión no mueve fondos on-chain |
 | `NEXT_PUBLIC_ARBITRUM_RPC` | cliente | RPC custom (si no, usa el público) |
 | `NEXT_PUBLIC_BACKEND_URL` | cliente | Solo si el backend está en otro origen |

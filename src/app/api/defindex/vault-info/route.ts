@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getDefindexSDK, defindexNetwork } from '@/lib/defindex/client'
 import { resolveStrategy, resolveVaultAddress } from '@/lib/defindex/vaults'
 import { isDefindexTransientError } from '@/lib/defindex/api-error'
-import { toErrorResponse } from '@/lib/reyf/api-error'
+import { toErrorResponse } from '@/lib/seyf/api-error'
 
 /**
  * GET /api/defindex/vault-info?planId=conservador

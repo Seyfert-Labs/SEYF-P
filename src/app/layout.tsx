@@ -18,7 +18,7 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
-const title = "Reyf — Super app de finanzas";
+const title = "SEYF — Super app de finanzas";
 const description =
   "Pesos digitales, bonos de gobierno y bóvedas de ahorro. Integración Bitso Business / Juno (MXNB).";
 
@@ -27,12 +27,12 @@ export const metadata: Metadata = {
   title,
   description,
   icons: {
-    icon: [{ url: "/brand/reyf-favicon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/brand/reyf-appicon.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/brand/seyf-favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/brand/seyf-appicon.svg", type: "image/svg+xml" }],
   },
   openGraph: {
     type: "website",
-    siteName: "Reyf",
+    siteName: "SEYF",
     title,
     description,
     locale: "es_MX",

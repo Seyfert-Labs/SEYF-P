@@ -13,6 +13,7 @@ import { useUserBanks } from "@/hooks/useUserBanks";
 import { AddBankModal } from "../modals/AddBankModal";
 import { Portal } from "../Portal";
 import { useKycStatus } from "@/hooks/useKycStatus";
+import { RiskProfileSection } from "../RiskQuiz";
 
 function shortAddr(a?: string) {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
@@ -71,7 +72,7 @@ export function ScreenCard({ go }: { go: Go }) {
               <div className="sheen" />
               <div className="mesh" />
               <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <span className="brand" style={{ fontSize: 22, fontWeight: 800 }}>Reyf</span>
+                <span className="brand" style={{ fontSize: 22, fontWeight: 800 }}>SEYF</span>
                 <Contactless size={22} color="var(--accent)" />
               </div>
               <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, marginTop: -4 }}>
@@ -221,10 +222,13 @@ export function ScreenProfile({ go }: { go: Go }) {
           </div>
         )}
 
+        {/* Perfil de ahorrador (movido aquí desde el Home). */}
+        <RiskProfileSection go={go} />
+
         {wallet.enabled && wallet.authenticated && wallet.address && (
           <div className="card" style={{ marginTop: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p className="eyebrow">Mi cuenta Reyf</p>
+              <p className="eyebrow">Mi cuenta SEYF</p>
               <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>Activa</span>
             </div>
             <div className="clabe-box" style={{ marginTop: 10 }}>

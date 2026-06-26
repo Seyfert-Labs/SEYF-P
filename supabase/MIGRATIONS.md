@@ -1,4 +1,4 @@
-# Migraciones Supabase — Reyf
+# Migraciones Supabase — SEYF
 
 ## Para tu colaborador (un solo paso)
 

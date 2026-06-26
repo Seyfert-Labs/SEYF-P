@@ -11,6 +11,8 @@ import {
   recommendPlan,
   saveRiskProfile,
   projectSavings,
+  loadRiskProfile,
+  planById,
   FMT,
   type VaultPlan,
 } from "./data";
@@ -195,6 +197,54 @@ export function RiskQuizBanner({ go }: { go: Go }) {
         </div>
       </div>
       {open && <Portal><RiskQuizModal go={go} onClose={() => setOpen(false)} /></Portal>}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* PERFIL — sección permanente en la pantalla de Perfil                 */
+/* ------------------------------------------------------------------ */
+
+/** Muestra el perfil de ahorrador del usuario en la pantalla de Perfil:
+   si ya lo tiene, su plan actual + opción de rehacer; si no, la invitación. */
+export function RiskProfileSection({ go }: { go: Go }) {
+  const [open, setOpen] = useState(false);
+  // Se relee al cerrar el modal para reflejar un perfil recién calculado.
+  const [planId, setPlanId] = useState<string | null>(() => loadRiskProfile());
+  const plan = planId ? planById(planId) : null;
+
+  const closeAndSync = () => {
+    setOpen(false);
+    setPlanId(loadRiskProfile());
+  };
+
+  if (!plan) {
+    // Sin perfil → la misma invitación que antes vivía en el Home.
+    return <RiskQuizBanner go={go} />;
+  }
+
+  return (
+    <>
+      <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Perfil de ahorrador</p>
+      <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--accent-2-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 26 }}>
+          {plan.emoji}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{plan.name}</p>
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+            {plan.tagline} · <b className="num" style={{ color: "var(--accent)" }}>{FMT(plan.apy, 1)}%</b> anual
+          </p>
+        </div>
+        <button
+          className="chip"
+          onClick={() => setOpen(true)}
+          style={{ flexShrink: 0 }}
+        >
+          Rehacer
+        </button>
+      </div>
+      {open && <Portal><RiskQuizModal go={go} onClose={closeAndSync} /></Portal>}
     </>
   );
 }

@@ -5,7 +5,7 @@ import {
   getStoredOnboardingSession,
   saveStoredOnboardingSession,
   clearStoredOnboardingSession,
-} from '@/lib/reyf/onboarding-session-store'
+} from '@/lib/seyf/onboarding-session-store'
 
 /** Nombre httpOnly; mantenida como fallback de compatibilidad. */
 const COOKIE_NAME = 'seyf_ef_onboarding'

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 909.9 396.0" role="img" aria-label="SEYF monochrome white">
+  <defs>
+    <style><![CDATA[@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@800&display=swap');]]></style>
+  </defs>
+  <g transform="translate(-132.1,-103.5)">
+    <g fill="none" stroke-width="43.5" stroke-linecap="round">
+      <path stroke="#FFFFFF" d="M 274.71 288.69 A 75.4 75.4 0 1 1 221.50 364.67"/>
+      <path stroke="#FFFFFF" d="M 275.29 331.32 A 75.4 75.4 0 1 1 328.51 255.34"/>
+    </g>
+    <text font-family="'Poppins',sans-serif" font-weight="800" font-size="225" fill="#FFFFFF" x="492" y="345">seyf</text>
+  </g>
+</svg>

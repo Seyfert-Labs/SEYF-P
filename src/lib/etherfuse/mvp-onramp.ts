@@ -15,7 +15,7 @@ import {
   fetchOrgOrdersAllPages,
   findPendingOnrampOrderForAmount,
 } from "./orders-api";
-import { AppError } from "@/lib/reyf/api-error";
+import { AppError } from "@/lib/seyf/api-error";
 import { quoteIdFromEtherfusePayload } from "@/lib/etherfuse/quote-id";
 
 function depositFromCreateOrderResponse(data: unknown): {

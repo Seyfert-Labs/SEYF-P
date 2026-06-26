@@ -3,21 +3,21 @@
 **Rama:** `etherfuse-kyc-stablebonds`  
 **Origen:** portado desde `/Users/gerryvela/Documents/seyf-app`  
 **Fecha:** junio 2026  
-**App:** Reyf (`Seyf2/`)
+**App:** SEYF (`Seyf2/`)
 
 ---
 
 ## Resumen
 
-Se integró en Reyf el flujo de **KYC programático** y **compra de CETES** (Stablebonds) vía **Etherfuse**, usando una **wallet Stellar con Pollar** en paralelo al stack existente de **Privy + Arbitrum (MXNB)**.
+Se integró en SEYF el flujo de **KYC programático** y **compra de CETES** (Stablebonds) vía **Etherfuse**, usando una **wallet Stellar con Pollar** en paralelo al stack existente de **Privy + Arbitrum (MXNB)**.
 
 | Área | Estado |
 |------|--------|
 | Cliente HTTP Etherfuse (`lib/etherfuse`) | ✅ Portado |
-| Orquestación server (`lib/reyf`) | ✅ Portado (adaptado a rutas `/api/reyf`) |
+| Orquestación server (`lib/seyf`) | ✅ Portado (adaptado a rutas `/api/seyf`) |
 | APIs KYC + rampa + webhook | ✅ Implementadas |
 | **KYC dentro del shell (Perfil), sin jerga** | ✅ `ScreenKyc` (router interno `kyc`) |
-| **Pollar headless (OTP en nuestra UI, sin modal)** | ✅ `use-reyf-stellar-wallet` |
+| **Pollar headless (OTP en nuestra UI, sin modal)** | ✅ `use-seyf-stellar-wallet` |
 | **`PollarProvider` global** (envuelve toda la app) | ✅ `components/Providers.tsx` |
 | **Bóveda soberana designada + gating KYC** | ✅ plan `conservador` (`backend: "etherfuse"`, `kycGated`) |
 | **Jerga CETES/Stablebonds fuera del front** | ✅ datos, quiz, home, ahorro |
@@ -32,7 +32,7 @@ Se integró en Reyf el flujo de **KYC programático** y **compra de CETES** (Sta
 ### ⚠️ Decisión pendiente — riel de fondeo de la bóveda soberana
 
 El onramp de Etherfuse es **fiat MXN (SPEI/CLABE) → CETES en Stellar**: no acepta una
-stablecoin (MXNB) como origen. Las bóvedas de Reyf hoy se fondean con **MXNB on-chain
+stablecoin (MXNB) como origen. Las bóvedas de SEYF hoy se fondean con **MXNB on-chain
 (Arbitrum)**. Para que "fondear la bóveda soberana" compre bonos por detrás hay que decidir
 el flujo de dinero:
 
@@ -54,7 +54,7 @@ disparo del onramp al fondear no está cableado.
 Usuario
   │
   ├─► Privy (email) ──► Arbitrum Sepolia ──► MXNB, bóvedas, SPEI Juno/Bitso
-  │                     (flujo Reyf existente)
+  │                     (flujo SEYF existente)
   │
   └─► Pollar (Stellar) ──► Etherfuse ramp ──► CETES tokenizados
                           (flujo nuevo en esta rama)
@@ -77,34 +77,34 @@ Usuario
 - `stablebonds-lookup.ts`, `cetes-rate.ts`
 - `webhook-verify.ts`, utilidades Stellar/SPEI
 
-**`src/lib/reyf/`** — capa Reyf (antes `lib/seyf` en seyf-app):
+**`src/lib/seyf/`** — capa SEYF (antes `lib/seyf` en seyf-app):
 - Guards: `etherfuse-kyc-guard`, `etherfuse-ramp-guard`, `etherfuse-ramp-context`
 - Flujo depósito: `etherfuse-spei-deposit-prepare`, `etherfuse-readiness`
 - Estado: `onboarding-session-store`, `kyc-state-store`, `agreements-state-store`
 - Stellar: `stellar-trustline`, `use-ensure-cetes-trustline`
 - Infra: `api-error`, `redis-guards`, `upstash-redis`
-- Cliente: `use-reyf-stellar-wallet`, `stellar-wallet-network`
+- Cliente: `use-seyf-stellar-wallet`, `stellar-wallet-network`
 
-### 2. APIs (`/api/reyf/...`)
+### 2. APIs (`/api/seyf/...`)
 
 | Método | Ruta | Función |
 |--------|------|---------|
-| `POST` | `/api/reyf/kyc/submit` | Identidad → Etherfuse + registro wallet + sesión |
-| `POST` | `/api/reyf/kyc/documents` | INE frente/reverso + selfie |
-| `POST` | `/api/reyf/kyc/agreements` | Acuerdos legales (×3) |
-| `GET` | `/api/reyf/kyc/status` | Estado KYC (live + caché) |
-| `GET` | `/api/reyf/etherfuse/ramp-context` | Contexto rampa + gate KYC |
-| `GET` | `/api/reyf/etherfuse/readiness` | Checklist onramp completo |
-| `GET` | `/api/reyf/etherfuse/deposit-info` | KYC + CLABE depósito |
-| `POST` | `/api/reyf/etherfuse/quote/onramp` | Cotización MXN → CETES |
-| `POST` | `/api/reyf/etherfuse/order/onramp` | Orden onramp (CLABE SPEI) |
-| `POST` | `/api/reyf/etherfuse/onramp/prepare-transfer` | Quote + order atómicos |
-| `POST` | `/api/reyf/etherfuse/bank-account` | Alta CLABE post-KYC |
-| `GET` | `/api/reyf/etherfuse/lookup/stablebonds` | Precios Stablebonds/CETES |
-| `POST` | `/api/reyf/stellar-trustline/cetes` | XDR `changeTrust` CETES |
+| `POST` | `/api/seyf/kyc/submit` | Identidad → Etherfuse + registro wallet + sesión |
+| `POST` | `/api/seyf/kyc/documents` | INE frente/reverso + selfie |
+| `POST` | `/api/seyf/kyc/agreements` | Acuerdos legales (×3) |
+| `GET` | `/api/seyf/kyc/status` | Estado KYC (live + caché) |
+| `GET` | `/api/seyf/etherfuse/ramp-context` | Contexto rampa + gate KYC |
+| `GET` | `/api/seyf/etherfuse/readiness` | Checklist onramp completo |
+| `GET` | `/api/seyf/etherfuse/deposit-info` | KYC + CLABE depósito |
+| `POST` | `/api/seyf/etherfuse/quote/onramp` | Cotización MXN → CETES |
+| `POST` | `/api/seyf/etherfuse/order/onramp` | Orden onramp (CLABE SPEI) |
+| `POST` | `/api/seyf/etherfuse/onramp/prepare-transfer` | Quote + order atómicos |
+| `POST` | `/api/seyf/etherfuse/bank-account` | Alta CLABE post-KYC |
+| `GET` | `/api/seyf/etherfuse/lookup/stablebonds` | Precios Stablebonds/CETES |
+| `POST` | `/api/seyf/stellar-trustline/cetes` | XDR `changeTrust` CETES |
 | `POST` | `/api/webhooks/etherfuse` | `kyc_updated` + onramp confirmado |
 
-> En seyf-app las rutas eran `/api/seyf/...`. Aquí se renombraron a `/api/reyf/...` manteniendo la misma lógica.
+> En seyf-app las rutas eran `/api/seyf/...`. Aquí se renombraron a `/api/seyf/...` manteniendo la misma lógica.
 
 ### 3. UI
 
@@ -114,7 +114,7 @@ Usuario
 | `/app/etherfuse/cetes` | `CetesEtherfuseClient` | Monto MXN → SPEI → acreditación CETES |
 | `/app` → Ahorro | tarjeta en `invest.tsx` | Enlace “CETES tokenizados” |
 
-**Layout:** `src/app/app/etherfuse/layout.tsx` envuelve con `ReyfPollarProvider` (`@pollar/react`).
+**Layout:** `src/app/app/etherfuse/layout.tsx` envuelve con `SeyfPollarProvider` (`@pollar/react`).
 
 ### 4. Dependencias nuevas (`package.json`)
 
@@ -132,7 +132,7 @@ ETHERFUSE_API_BASE_URL=https://api.sand.etherfuse.com
 ETHERFUSE_API_KEY=...
 ETHERFUSE_ONBOARDING_MODE=programmatic
 ETHERFUSE_DEFAULT_BLOCKCHAIN=stellar
-REYF_ALLOW_ETHERFUSE_RAMP=true
+SEYF_ALLOW_ETHERFUSE_RAMP=true
 NEXT_PUBLIC_POLLAR_API_KEY=...
 NEXT_PUBLIC_POLLAR_STELLAR_NETWORK=testnet
 ```
@@ -143,7 +143,7 @@ Opcionales pero recomendadas:
 ETHERFUSE_WEBHOOK_SECRET=...          # base64, para POST /api/webhooks/etherfuse
 UPSTASH_REDIS_REST_URL=...
 UPSTASH_REDIS_REST_TOKEN=...
-REYF_ALLOW_KYC_RESET=true               # botón reiniciar prueba en dev
+SEYF_ALLOW_KYC_RESET=true               # botón reiniciar prueba en dev
 ```
 
 Compatibilidad: varias vars aceptan el prefijo legacy `SEYF_*` (ej. `SEYF_ALLOW_ETHERFUSE_RAMP`).
@@ -159,11 +159,11 @@ Compatibilidad: varias vars aceptan el prefijo legacy `SEYF_*` (ej. `SEYF_ALLOW_
 ```
 1. /app/etherfuse/identidad
 2. Conectar wallet Pollar (Stellar testnet)
-3. POST /api/reyf/kyc/submit        → datos personales + CURP/RFC
-4. POST /api/reyf/kyc/documents     → INE + selfie
-5. POST /api/reyf/kyc/agreements    → firmas legales
-6. GET  /api/reyf/kyc/status        → proposed / approved
-7. POST /api/reyf/stellar-trustline/cetes → trustline CETES (firma en Pollar)
+3. POST /api/seyf/kyc/submit        → datos personales + CURP/RFC
+4. POST /api/seyf/kyc/documents     → INE + selfie
+5. POST /api/seyf/kyc/agreements    → firmas legales
+6. GET  /api/seyf/kyc/status        → proposed / approved
+7. POST /api/seyf/stellar-trustline/cetes → trustline CETES (firma en Pollar)
 ```
 
 En **sandbox/testnet**, el guard KYC puede tratar `proposed` como suficiente para rampa (igual que seyf-app).
@@ -173,7 +173,7 @@ En **sandbox/testnet**, el guard KYC puede tratar `proposed` como suficiente par
 ```
 1. /app/etherfuse/cetes
 2. Verificar ramp-context (KYC aprobado)
-3. POST /api/reyf/etherfuse/onramp/prepare-transfer
+3. POST /api/seyf/etherfuse/onramp/prepare-transfer
    → devuelve CLABE + monto SPEI
 4. Usuario transfiere desde su banco
 5. [sandbox] simular recepción fiat (ruta no portada aún)
@@ -209,9 +209,9 @@ npm run dev
 
 ## Diferencias vs seyf-app
 
-| Tema | seyf-app | Reyf (esta rama) |
+| Tema | seyf-app | SEYF (esta rama) |
 |------|----------|------------------|
-| Prefijo API | `/api/seyf/` | `/api/reyf/` |
+| Prefijo API | `/api/seyf/` | `/api/seyf/` |
 | Wallet principal | Pollar | Privy (Arbitrum) + Pollar (solo CETES) |
 | UI KYC | `identidad-client.tsx` completo | `KycEtherfuseClient` simplificado |
 | UI depósito | `/anadir/monto` + dev panel | `/app/etherfuse/cetes` |
@@ -223,11 +223,11 @@ npm run dev
 
 ## Pendiente (próximos pasos sugeridos)
 
-1. **Portar sandbox** — `POST /api/reyf/etherfuse/sandbox/fiat-received` para probar SPEI sin banco real.
+1. **Portar sandbox** — `POST /api/seyf/etherfuse/sandbox/fiat-received` para probar SPEI sin banco real.
 2. **UI KYC** — traer `identidad-client.tsx` de seyf-app o pulir validaciones/UX del MVP actual.
-3. **Dashboard CETES** — saldo y equivalente MXN (`dashboard-cetes-saldo`, `cetes-mxne-equiv` ya están en `lib/reyf` pero no conectados a Home).
+3. **Dashboard CETES** — saldo y equivalente MXN (`dashboard-cetes-saldo`, `cetes-mxne-equiv` ya están en `lib/seyf` pero no conectados a Home).
 4. **Supabase** — ligar `profiles.wallet` (Privy) con `stellar_public_key` + `etherfuse_customer_id`.
-5. **Auth server-side** — las APIs `/api/reyf/*` siguen scoped por wallet en body/cookie, sin JWT Privy.
+5. **Auth server-side** — las APIs `/api/seyf/*` siguen scoped por wallet en body/cookie, sin JWT Privy.
 6. **Tests** — cablear `lib/etherfuse/__tests__` en CI.
 7. **Commit + push** de la rama `etherfuse-kyc-stablebonds` cuando el equipo valide en sandbox.
 
@@ -240,14 +240,14 @@ Seyf2/
 ├── src/
 │   ├── lib/
 │   │   ├── etherfuse/          # Cliente Etherfuse (REST)
-│   │   └── reyf/               # Orquestación Reyf
+│   │   └── seyf/               # Orquestación SEYF
 │   ├── app/
-│   │   ├── api/reyf/           # KYC + rampa
+│   │   ├── api/seyf/           # KYC + rampa
 │   │   ├── api/webhooks/etherfuse/
 │   │   └── app/etherfuse/      # UI identidad + cetes
 │   └── components/
 │       ├── etherfuse/          # KycEtherfuseClient, CetesEtherfuseClient
-│       └── providers/ReyfPollarProvider.tsx
+│       └── providers/SeyfPollarProvider.tsx
 ├── .env.example                # Variables documentadas
 └── docs/etherfuse-kyc-stablebonds.md   # Este archivo
 ```
@@ -256,8 +256,8 @@ Seyf2/
 
 ## Notas técnicas
 
-- **Modo KYC:** `ETHERFUSE_ONBOARDING_MODE=programmatic` (formulario en Reyf). Alternativa: `hosted` (redirect a UI Etherfuse) — lógica portada en `onboarding.ts`, UI hosted no expuesta aún.
-- **Producción:** `REYF_ALLOW_ETHERFUSE_RAMP=true` obligatorio si `NODE_ENV=production` y no es preview de Vercel.
+- **Modo KYC:** `ETHERFUSE_ONBOARDING_MODE=programmatic` (formulario en SEYF). Alternativa: `hosted` (redirect a UI Etherfuse) — lógica portada en `onboarding.ts`, UI hosted no expuesta aún.
+- **Producción:** `SEYF_ALLOW_ETHERFUSE_RAMP=true` obligatorio si `NODE_ENV=production` y no es preview de Vercel.
 - **Redis:** sin Upstash, parte del estado cae a cookie + memoria; rate limits KYC pueden ser más permisivos.
 - **Cookie onboarding:** nombre `seyf_ef_onboarding` conservado para no romper sesiones si migras datos desde seyf-app.
 
@@ -268,4 +268,4 @@ Seyf2/
 - [Etherfuse docs](https://docs.etherfuse.com/)
 - [Pollar docs](https://docs.pollar.xyz/)
 - Implementación de referencia: `~/Documents/seyf-app`
-- PRD Reyf general: `docs/reyf-app-prd.md`
+- PRD SEYF general: `docs/seyf-app-prd.md`

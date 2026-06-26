@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { z } from 'zod'
-import { AppError } from '@/lib/reyf/api-error'
+import { AppError } from '@/lib/seyf/api-error'
 import { etherfuseFetch, etherfuseReadBody, extractEtherfuseErrorMessage } from '@/lib/etherfuse/client'
 
 const yyyymmdd = z

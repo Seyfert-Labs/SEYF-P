@@ -1,6 +1,6 @@
-# Reyf en Stellar — PULSO Hackathon
+# SEYF en Stellar — PULSO Hackathon
 
-Versión de **Reyf** (super-app fintech) que lleva sus **bóvedas de rendimiento** a
+Versión de **SEYF** (super-app fintech) que lleva sus **bóvedas de rendimiento** a
 **Stellar/Soroban**, usando **[DeFindex](https://www.defindex.io/)** como infraestructura
 de yield. El usuario abre una bóveda, deposita y retira un asset real on-chain, y ve su
 saldo y APY reales — todo firmado desde una wallet embebida Stellar sin que tenga que
@@ -47,7 +47,7 @@ igual que los secrets de Juno/Bitso/Etherfuse. El navegador nunca la ve.
 | Route handlers | `src/app/api/defindex/{vault-info,balance,deposit,withdraw,submit}/route.ts` |
 | Hook de bóvedas Stellar | `src/hooks/useStellarVaults.ts` |
 | Selector de riel | `src/hooks/useVaultsRail.ts` |
-| Wallet Stellar (Pollar) | `src/lib/reyf/use-reyf-stellar-wallet.ts` |
+| Wallet Stellar (Pollar) | `src/lib/seyf/use-seyf-stellar-wallet.ts` |
 
 ## Configuración
 

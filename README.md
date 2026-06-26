@@ -1,6 +1,6 @@
 <div align="center">
 
-# Reyf
+# SEYF
 
 ### La super app de finanzas para ahorrar, invertir y gastar sin fronteras
 
@@ -38,7 +38,7 @@ Construida sobre **MXNB** (Bitso Business / Juno), wallets sociales sin seed phr
 
 ## Tabla de contenidos
 
-- [Qué es Reyf](#qué-es-reyf)
+- [Qué es SEYF](#qué-es-seyf)
 - [Tecnologías](#tecnologías)
 - [Arquitectura](#arquitectura)
 - [Flujos](#flujos)
@@ -54,9 +54,9 @@ Construida sobre **MXNB** (Bitso Business / Juno), wallets sociales sin seed phr
 
 ---
 
-## Qué es Reyf
+## Qué es SEYF
 
-Reyf es una wallet de finanzas personales que une tres mundos en una sola app:
+SEYF es una wallet de finanzas personales que une tres mundos en una sola app:
 
 | | |
 |---|---|
@@ -370,8 +370,8 @@ Ver [`.env.example`](.env.example).
 | `NEXT_PUBLIC_USE_SUPABASE` | cliente | no | `"true"` activa persistencia real en Supabase |
 | `NEXT_PUBLIC_CHAIN` | cliente | no | `arbitrum-sepolia` (default) o `arbitrum` |
 | `NEXT_PUBLIC_MXNB_ADDRESS` | cliente | no | Contrato MXNB (autodetecta por red) |
-| `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` | cliente | no | Contrato ReyfVaults; sin él, las bóvedas usan `store` |
-| `NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS` | cliente | no | Contrato ReyfAdvance; requiere `SEYF_VAULTS_ADDRESS` |
+| `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` | cliente | no | Contrato SeyfVaults; sin él, las bóvedas usan `store` |
+| `NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS` | cliente | no | Contrato SeyfAdvance; requiere `SEYF_VAULTS_ADDRESS` |
 | `NEXT_PUBLIC_TREASURY_ADDRESS` | cliente | no | Tesorería on-chain para conversión pooled+ledger |
 | `NEXT_PUBLIC_ARBITRUM_RPC` | cliente | no | RPC custom de Arbitrum |
 | `NEXT_PUBLIC_BACKEND_URL` | cliente | no | Solo si el backend está en otro origen |
@@ -383,12 +383,12 @@ Las llaves de Juno nunca van con prefijo `NEXT_PUBLIC_`.
 
 **Contratos MXNB (oficiales):** Sepolia `0x82B9e52b26A2954E113F94Ff26647754d5a4247D` · Mainnet `0xF197FFC28c23E0309B5559e7a166f2c6164C80aA` (6 decimales).
 
-### Contratos Reyf desplegados (Arbitrum Sepolia · testnet)
+### Contratos SEYF desplegados (Arbitrum Sepolia · testnet)
 
 | Contrato | Dirección | Función |
 |----------|-----------|---------|
-| **ReyfVaults** | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` | Bóvedas de ahorro on-chain (abrir/abonar/retirar MXNB) |
-| **ReyfAdvance** | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` | Adelanto de liquidez 0% contra el rendimiento futuro |
+| **SeyfVaults** | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` | Bóvedas de ahorro on-chain (abrir/abonar/retirar MXNB) |
+| **SeyfAdvance** | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` | Adelanto de liquidez 0% contra el rendimiento futuro |
 | **Tesorería** | `0xae0AEAd08f5984E6CD00aB4Fd4e9c569D11b2eaF` | Destino on-chain del MXNB al convertir a divisa (pooled+ledger) |
 
 Código y guía de despliegue en [`contracts/README.md`](contracts/README.md).
@@ -409,7 +409,7 @@ Probar los rieles fiat de Juno:
 curl -s localhost:3000/api/juno/account-details          # CLABE del negocio
 curl -s -X POST localhost:3000/api/juno/mock-deposit \
   -H 'content-type: application/json' \
-  -d '{"amount":"2000","receiver_clabe":"<CLABE>","receiver_name":"Reyf","sender_name":"Test"}'
+  -d '{"amount":"2000","receiver_clabe":"<CLABE>","receiver_name":"SEYF","sender_name":"Test"}'
 curl -s localhost:3000/api/juno/balance                  # confirma MXNB
 ```
 
@@ -436,8 +436,8 @@ src/
     Providers.tsx            # PrivyProvider + SmartWalletsProvider
     wallet/                  # WalletContext + PrivyBridge (auth · saldo · gasless · profile sync)
     app/
-      ReyfApp.tsx            # shell + router + tabbar
-      data.ts                # mock data + VaultPlan + RISK_QUESTIONS + helpers (projectSavings, aforeVsReyf…)
+      SeyfApp.tsx            # shell + router + tabbar
+      data.ts                # mock data + VaultPlan + RISK_QUESTIONS + helpers (projectSavings, aforeVsSeyf…)
       RiskQuiz.tsx           # OnboardingQuiz (Typeform) + RiskQuizBanner + RiskQuizModal
       screens/               # core · invest · account
       modals/                # Deposit · Redeem · SendOnchain

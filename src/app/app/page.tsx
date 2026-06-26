@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import ReyfApp from "@/components/app/ReyfApp";
+import SeyfApp from "@/components/app/SeyfApp";
 
 export const metadata: Metadata = {
-  title: "Reyf — App",
+  title: "SEYF — App",
 };
 
 export default function AppPage() {
-  return <ReyfApp />;
+  return <SeyfApp />;
 }

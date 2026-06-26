@@ -3,8 +3,8 @@ import type { EtherfuseKycStatus } from "@/lib/etherfuse/kyc";
 import { getEtherfuseConfig, strictEtherfuseProductionConfig } from "@/lib/etherfuse/config";
 import { verifyEtherfuseWebhookSignature } from "@/lib/etherfuse/webhook-verify";
 import { pickRampOrderTransactionDetails } from "@/lib/etherfuse/orders-api";
-import { upsertStoredKycSnapshot } from "@/lib/reyf/kyc-state-store";
-import { enqueueAutoDeployForDeposit } from "@/lib/reyf/spei-deposit-auto-deploy";
+import { upsertStoredKycSnapshot } from "@/lib/seyf/kyc-state-store";
+import { enqueueAutoDeployForDeposit } from "@/lib/seyf/spei-deposit-auto-deploy";
 
 export const runtime = "nodejs";
 

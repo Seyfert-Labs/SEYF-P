@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDefindexSDK, defindexNetwork } from '@/lib/defindex/client'
 import { DEFINDEX_STRATEGIES } from '@/lib/defindex/catalog'
-import { toErrorResponse } from '@/lib/reyf/api-error'
+import { toErrorResponse } from '@/lib/seyf/api-error'
 
 /**
  * GET /api/defindex/strategies

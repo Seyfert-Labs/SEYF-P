@@ -135,14 +135,16 @@ interface ProjectionCardProps {
   current?: number;
   monthly?: number;
   apy?: number;
+  /** Arranca expandida (la usamos al fondo del Home, como ilustración). */
+  defaultOpen?: boolean;
 }
 
-export function ProjectionCard({ current = 0, monthly: initialMonthly, apy: initialApy }: ProjectionCardProps) {
+export function ProjectionCard({ current = 0, monthly: initialMonthly, apy: initialApy, defaultOpen = false }: ProjectionCardProps) {
   const [horizon, setHorizon] = useState<10 | 20 | 30>(20);
   const [monthly, setMonthly] = useState(initialMonthly ?? 2000);
   const [editingMonthly, setEditingMonthly] = useState(false);
   const [draft, setDraft] = useState("");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   const apy = initialApy ?? defaultApy();
   const planName = defaultPlanName();
@@ -174,7 +176,12 @@ export function ProjectionCard({ current = 0, monthly: initialMonthly, apy: init
           <Icon name="trend" size={20} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Tu proyección de retiro</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Tu proyección de retiro</p>
+            <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--txt-dim)", border: "1px solid var(--line)", borderRadius: 999, padding: "2px 7px" }}>
+              Ilustrativo
+            </span>
+          </div>
           <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
             <span className="num" style={{ color: "var(--accent)", fontWeight: 700 }}>${FMT(projected, 0)}</span>
             {" "}en {horizon} años · {planName}

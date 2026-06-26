@@ -47,7 +47,7 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
         <div className="modal-grab" />
         <p className="modal-title">Enviar a otra cuenta</p>
         <p className="modal-sub">
-          Transferencia <b style={{ color: "var(--txt)" }}>instantánea entre cuentas Reyf</b>. Ingresa la cuenta del destinatario.
+          Transferencia <b style={{ color: "var(--txt)" }}>instantánea entre cuentas SEYF</b>. Ingresa la cuenta del destinatario.
         </p>
 
         {hash ? (
@@ -62,7 +62,7 @@ export function SendOnchainModal({ onClose, onSuccess }: { onClose: () => void; 
           </>
         ) : (
           <>
-            <span className="field-label">Cuenta Reyf del destinatario</span>
+            <span className="field-label">Cuenta SEYF del destinatario</span>
             <input
               className="input num-input"
               placeholder="0x0000000000000000000000000000000000000000"

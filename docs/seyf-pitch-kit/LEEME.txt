@@ -1,0 +1,27 @@
+SEYF PITCH — Carpeta para compartir
+====================================
+
+Esta carpeta es autocontenida: presentación HTML + video demo.
+
+CÓMO COMPARTIR (Google Drive, email, etc.)
+------------------------------------------
+1. Sube esta carpeta completa, o el archivo seyf-pitch-kit.zip
+2. Avisa a quien la reciba que debe DESCARGARLA en su computadora
+   (la vista previa de Drive NO reproduce bien el HTML ni el video)
+
+CÓMO ABRIR
+----------
+1. Descomprime si recibiste el .zip
+2. Abre index.html con Chrome, Safari o Edge
+3. index.html y seyf-demo.mp4 deben estar en la misma carpeta
+
+CÓMO PRESENTAR
+--------------
+• Flechas ← → o barra espaciadora para cambiar slide
+• F = pantalla completa
+• El demo en vivo está en la slide "Solución" (video en el marco de celular)
+
+REGENERAR ESTA CARPETA
+----------------------
+Desde Seyf2/docs:
+  python3 build-seyf-pitch-kit.py

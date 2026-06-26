@@ -254,7 +254,8 @@ function VaultCard({
         </div>
       </div>
       <div style={{ marginTop: 18 }}>
-        <GrowingAmount base={v.bal} apy={effApy} size={38} align="left" id={`vault-${v.id}`} anchorMs={v.updatedAt} />
+        {/* Violeta = saldo en bóveda (convención de estado en toda la app). */}
+        <GrowingAmount base={v.bal} apy={effApy} size={38} align="left" color="#c4b5fd" id={`vault-${v.id}`} anchorMs={v.updatedAt} />
       </div>
       <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span className="pos-pill"><Icon name="leaf" size={12} /> {apyShown} anual</span>
@@ -375,9 +376,10 @@ export function ScreenVaults({ go }: { go: Go }) {
 
         {/* Hero — ahorro total creciendo en vivo */}
         <div className="card glow" style={{ padding: "24px 22px" }}>
-          <p className="eyebrow">Tu ahorro total</p>
+          <p className="eyebrow">Total en bóvedas</p>
           <div style={{ marginTop: 14 }}>
-            <GrowingAmount base={totalSaved} apy={weightedApy} size={56} align="left" id="vaults-total" anchorMs={totalAnchorMs} />
+            {/* Violeta = saldo en bóveda (misma convención que el split del Inicio). */}
+            <GrowingAmount base={totalSaved} apy={weightedApy} size={56} align="left" color="#c4b5fd" id="vaults-total" anchorMs={totalAnchorMs} />
           </div>
           {totalSaved > 0 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
@@ -766,7 +768,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             style={{
               position: "absolute", left: "50%", top: "46%", width: 260, height: 260,
               marginLeft: -130, marginTop: -130, borderRadius: "50%", pointerEvents: "none",
-              background: "radial-gradient(circle, var(--accent-soft), transparent 70%)",
+              background: "radial-gradient(circle, var(--accent-2-soft), transparent 70%)",
             }}
             animate={reduced ? undefined : { scale: [1, 1.18, 1], opacity: [0.45, 0.85, 0.45] }}
             transition={reduced ? undefined : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
@@ -777,7 +779,8 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             </p>
           )}
           <div style={{ position: "relative" }}>
-            <GrowingAmount base={v.bal} apy={liveApy} size={56} id={`vault-${v.id}`} anchorMs={v.updatedAt} countUpOnMount />
+            {/* Violeta = saldo en bóveda (convención de estado en toda la app). */}
+            <GrowingAmount base={v.bal} apy={liveApy} size={56} color="#c4b5fd" id={`vault-${v.id}`} anchorMs={v.updatedAt} countUpOnMount />
           </div>
           <p style={{ position: "relative", fontSize: 13.5, color: "var(--txt-muted)", margin: "10px 0 0" }}>
             {STELLAR_RAIL ? `${vaultAsset} en bóveda` : "MXN en bóveda"}

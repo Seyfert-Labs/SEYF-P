@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isEtherfuseKycApprovedStatus } from "@/lib/reyf/etherfuse-kyc-guard";
+import { isEtherfuseKycApprovedStatus } from "@/lib/seyf/etherfuse-kyc-guard";
 
 describe("isEtherfuseKycApprovedStatus", () => {
   it("accepts approved statuses for ramp operations", () => {

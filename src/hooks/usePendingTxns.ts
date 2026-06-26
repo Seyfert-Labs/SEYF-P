@@ -19,8 +19,8 @@ export interface PendingTxn {
   createdAt: number;
 }
 
-const KEY = (a?: string) => `reyf_pending_${(a ?? "anon").toLowerCase()}`;
-const EVT = "reyf:pending-changed";
+const KEY = (a?: string) => `seyf_pending_${(a ?? "anon").toLowerCase()}`;
+const EVT = "seyf:pending-changed";
 
 function read(addr?: string): PendingTxn[] {
   if (typeof window === "undefined") return [];

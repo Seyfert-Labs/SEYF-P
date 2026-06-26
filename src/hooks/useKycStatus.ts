@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
+import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 
 const VERIFIED = new Set(["approved", "approved_chain_deploying", "proposed"]);
 
-export const KYC_STATUS_UPDATED_EVENT = "reyf:kyc-status-updated";
+export const KYC_STATUS_UPDATED_EVENT = "seyf:kyc-status-updated";
 
-const doneKey = (pk?: string | null) => `reyf_kyc_done_${pk || "anon"}`;
+const doneKey = (pk?: string | null) => `seyf_kyc_done_${pk || "anon"}`;
 
 /** ¿El usuario ya completó el flujo de verificación en este dispositivo? */
 function readKycDoneLocal(pk?: string | null): boolean {
@@ -48,7 +48,7 @@ export function notifyKycStatusUpdated() {
  * está configurado, no bloquea (verified=true).
  */
 export function useKycStatus() {
-  const stellar = useReyfStellarWallet();
+  const stellar = useSeyfStellarWallet();
   const [verified, setVerified] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -75,7 +75,7 @@ export function useKycStatus() {
 
     setLoading(true);
     try {
-      const r = await fetch("/api/reyf/kyc/status");
+      const r = await fetch("/api/seyf/kyc/status");
       const j = await r.json().catch(() => ({}));
       const status = j?.kyc?.status as string | undefined;
       setVerified((!!status && VERIFIED.has(status)) || readKycDoneLocal(stellar.publicKey));

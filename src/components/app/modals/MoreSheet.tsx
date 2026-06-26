@@ -12,7 +12,7 @@ const ACCENT_COLORS = [
   { label: "Rosa",    value: "#F472B6", soft: "rgba(244,114,182,0.14)",  on: "#2a001a" },
 ];
 
-const LS_KEY = "reyf_accent";
+const LS_KEY = "seyf_accent";
 
 function loadAccent() {
   if (typeof window === "undefined") return ACCENT_COLORS[0];
@@ -224,7 +224,7 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
             />
             <PromoCard
               icon="star"
-              title="Reyf Black"
+              title="SEYF Black"
               desc="Sin comisiones en retiros internacionales y soporte prioritario 24/7. Disponible próximamente."
               cta="Notifícame"
             />

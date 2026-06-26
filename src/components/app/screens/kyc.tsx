@@ -9,8 +9,8 @@ import { Icon } from "../ui";
 import { SubHeader } from "../shared";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
-import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
-import { useEnsureCetesTrustline } from "@/lib/reyf/use-ensure-cetes-trustline";
+import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { useEnsureCetesTrustline } from "@/lib/seyf/use-ensure-cetes-trustline";
 import type { EtherfuseKycSnapshot } from "@/lib/etherfuse/kyc";
 import { notifyKycStatusUpdated, markKycCompletedLocally } from "@/hooks/useKycStatus";
 
@@ -68,7 +68,7 @@ function autoSlashDate(raw: string): string {
   return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6)}`;
 }
 
-/** Extrae un mensaje legible de la respuesta de error de /api/reyf/* .
+/** Extrae un mensaje legible de la respuesta de error de /api/seyf/* .
    Prioriza el mensaje estructurado para el usuario (`error.message_es`); el
    `debug_message` (texto técnico crudo del proveedor) solo se loguea, nunca se muestra. */
 function readApiError(j: unknown, status: number): string {
@@ -99,10 +99,10 @@ async function fileToDataUrl(file: File): Promise<string> {
 }
 
 export function ScreenKyc({ go }: { go: Go }) {
-  const reyfWallet = useWallet();
-  const stellar = useReyfStellarWallet();
+  const seyfWallet = useWallet();
+  const stellar = useSeyfStellarWallet();
   const { ensureTrustline } = useEnsureCetesTrustline();
-  const email = reyfWallet.email || "";
+  const email = seyfWallet.email || "";
 
   const [step, setStep] = useState<Step>("connect");
   const [code, setCode] = useState("");
@@ -125,7 +125,7 @@ export function ScreenKyc({ go }: { go: Go }) {
 
   const refreshStatus = useCallback(async () => {
     if (!stellar.publicKey) return;
-    const r = await fetch("/api/reyf/kyc/status");
+    const r = await fetch("/api/seyf/kyc/status");
     const j = await r.json().catch(() => ({}));
     const snap = j.kyc;
     if (r.ok && snap?.status) {
@@ -200,7 +200,7 @@ export function ScreenKyc({ go }: { go: Go }) {
     e.preventDefault();
     if (!stellar.publicKey) return;
     void run(async () => {
-      const r = await fetch("/api/reyf/kyc/submit", {
+      const r = await fetch("/api/seyf/kyc/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -256,7 +256,7 @@ export function ScreenKyc({ go }: { go: Go }) {
       const [front, back, face] = await Promise.all([
         fileToDataUrl(ineFront), fileToDataUrl(ineBack), fileToDataUrl(selfie),
       ]);
-      const r = await fetch("/api/reyf/kyc/documents", {
+      const r = await fetch("/api/seyf/kyc/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -272,7 +272,7 @@ export function ScreenKyc({ go }: { go: Go }) {
 
   const submitAgreements = () =>
     run(async () => {
-      const r = await fetch("/api/reyf/kyc/agreements", {
+      const r = await fetch("/api/seyf/kyc/agreements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -473,7 +473,7 @@ export function ScreenKyc({ go }: { go: Go }) {
           <div className="card">
             <p style={{ margin: "0 0 10px", fontWeight: 800, fontSize: 15 }}>Términos y privacidad</p>
             <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.55 }}>
-              Al continuar aceptas los términos de uso y el aviso de privacidad de Reyf, y autorizas el tratamiento de tus datos para verificar tu identidad.
+              Al continuar aceptas los términos de uso y el aviso de privacidad de SEYF, y autorizas el tratamiento de tus datos para verificar tu identidad.
             </p>
             <button className="btn btn-primary" disabled={busy} onClick={() => void submitAgreements()} style={{ width: "100%" }}>
               {busy ? <span className="spin" /> : "Aceptar y finalizar"}

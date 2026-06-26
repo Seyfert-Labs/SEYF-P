@@ -18,42 +18,88 @@ import { DepositModal } from "../modals/DepositModal";
 import { SendModal } from "../modals/SendModal";
 import { MoreSheet } from "../modals/MoreSheet";
 import { WelcomeBonus } from "../WelcomeBonus";
-import { RiskQuizBanner, OnboardingQuiz } from "../RiskQuiz";
+import { OnboardingQuiz } from "../RiskQuiz";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { loadRiskProfile, planById } from "../data";
 import { Portal } from "../Portal";
 import { ClabeCard } from "../ClabeCard";
 import { ProjectionCard } from "../ProjectionCard";
 import { GrowingAmount } from "../GrowingAmount";
-import { ReyfMark } from "@/components/brand/ReyfLogo";
-import { explorerBase } from "@/lib/chain";
-import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
+import { motion } from "motion/react";
+import { SeyfWordmark } from "@/components/brand/SeyfLogo";
+import { OnboardingHero } from "../OnboardingHero";
+import { CurrencyTicker } from "../CurrencyTicker";
+import { explorerBase, SEYF_VAULTS_ADDRESS, SEYF_ADVANCE_ADDRESS } from "@/lib/chain";
+import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
 
 /* ---------------- ONBOARDING ---------------- */
+const ONB_EASE = [0.22, 1, 0.36, 1] as const;
 // Fases: 0 = Hero, 1 = Quiz de perfil (5 preguntas full-screen)
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState(0);
 
-  if (phase === 0)
+  if (phase === 0) {
+    const feats: { ic: string; tx: string }[] = [
+      { ic: "globe", tx: "Bonos soberanos de 7 países en un toque" },
+      { ic: "bolt", tx: "Adelanta tu rendimiento cuando lo necesites" },
+      { ic: "shield", tx: "0% de comisión · retira al instante" },
+    ];
     return (
-      <div className="onb screen-enter">
-        <ReyfMark size={56} style={{ borderRadius: 17 }} />
-        <div className="onb-hero">
-          <h1>Tu retiro, con el <em>doble de rendimiento</em> que tu Afore.</h1>
-          <p className="sub">Instrumentos soberanos diversificados, liquidez sin penalización y cero comisiones sobre tu saldo.</p>
-          <div style={{ marginTop: 30 }}>
-            <div className="feat"><span className="tk"><Icon name="leaf" size={15} /></span><span className="tx">8–14% anual según tu perfil de riesgo</span></div>
-            <div className="feat"><span className="tk"><Icon name="globe" size={15} /></span><span className="tx">Deuda soberana diversificada por país</span></div>
-            <div className="feat"><span className="tk"><Icon name="shield" size={15} /></span><span className="tx">0% de comisión sobre tu saldo</span></div>
+      <div className="onb screen-enter" style={{ paddingTop: 40, overflowY: "auto" }}>
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: ONB_EASE }}>
+          <SeyfWordmark height={30} />
+        </motion.div>
+        <div className="onb-hero" style={{ justifyContent: "center", gap: 22 }}>
+          <div>
+            <motion.h1 style={{ fontSize: 44, lineHeight: 1.03 }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.05, ease: ONB_EASE }}>
+              Tu dinero rinde el <em>doble que tu Afore</em>.
+            </motion.h1>
+            <motion.p className="sub" style={{ fontSize: 16.5 }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.13, ease: ONB_EASE }}>
+              Ahorra en bonos soberanos de México y el mundo. Liquidez sin penalización y 0% de comisión sobre tu saldo.
+            </motion.p>
+          </div>
+
+          <OnboardingHero />
+
+          {/* Ticker de bonos soberanos por país (banda a ancho completo) */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.9, ease: ONB_EASE }}
+            style={{ marginInline: -28 }}
+          >
+            <p className="eyebrow" style={{ textAlign: "center", marginBottom: 10 }}>Bonos soberanos del mundo</p>
+            <CurrencyTicker />
+          </motion.div>
+
+          <div>
+            {feats.map((f, i) => (
+              <motion.div
+                key={f.ic}
+                className="feat"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.45, delay: 1.2 + i * 0.1, ease: ONB_EASE }}
+              >
+                <span className="tk"><Icon name={f.ic} size={15} /></span>
+                <span className="tx">{f.tx}</span>
+              </motion.div>
+            ))}
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <motion.div
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3, ease: ONB_EASE }}
+        >
           <button className="btn btn-primary" onClick={() => setPhase(1)}>Comenzar gratis</button>
           <button className="btn btn-ghost" onClick={onDone}>Ya tengo cuenta</button>
-        </div>
+        </motion.div>
       </div>
     );
+  }
 
   // Fase 1: quiz full-screen — al terminar llama a onDone (trigger login)
   return <OnboardingQuiz onDone={onDone} />;
@@ -100,7 +146,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
   const [modal, setModal] = useState<null | "deposit" | "send" | "advance" | "more">(null);
   const wallet = useWallet();
-  const stellar = useReyfStellarWallet();
+  const stellar = useSeyfStellarWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
@@ -140,6 +186,14 @@ export function ScreenHome({ go }: { go: Go }) {
     : [];
   // Spot: saldo MXNB on-chain. Las bóvedas se muestran en la pantalla de Ahorro.
   const pesos = realData ? wallet.balance : 48250.4;
+  // Patrimonio = un solo dinero en dos estados: Disponible (líquido, no rinde) +
+  // En bóveda (invertido, rinde). Co-denominados en MXN, por eso se suman aquí;
+  // las divisas/activos Stellar viven aparte en "Otros activos" (otras unidades).
+  const hasVault = totalSaved > 0;
+  const patrimonio = pesos + totalSaved;
+  // Solo la porción invertida rinde → tasa efectiva sobre el patrimonio total,
+  // para que el número crezca en vivo a la velocidad real (no a la de la bóveda).
+  const blendedApy = hasVault && patrimonio > 0 ? (weightedApy * totalSaved) / patrimonio : 0;
   // vaultId numérico para el adelanto (solo válido en modo on-chain).
   // Adelanto: es POR bóveda. Desde Home el usuario no está posicionado en ninguna,
   // así que solo adelantamos directo si hay UNA sola bóveda (no ambiguo). Con varias,
@@ -163,7 +217,7 @@ export function ScreenHome({ go }: { go: Go }) {
         {/* ── 1. HERO: balance + quick row ── */}
         <div className="card glow" style={{ padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <p className="eyebrow">Saldo disponible · MXNB</p>
+            <p className="eyebrow">{hasVault ? "Patrimonio total" : "Saldo disponible · MXNB"}</p>
             <button className="icon-btn" style={{ width: 24, height: 24, background: "none", border: "none" }} onClick={() => setHide(!hide)}>
               <Icon name="eye" size={16} color="var(--txt-dim)" />
             </button>
@@ -177,14 +231,28 @@ export function ScreenHome({ go }: { go: Go }) {
             </p>
           ) : (
             <div style={{ marginTop: 14 }}>
-              {/* Mismo componente y tamaño (56) que el hero de Ahorro → unificado. */}
-              <GrowingAmount base={pesos} apy={0} size={56} align="left" id="home-mxnb" />
+              {/* Número grande = patrimonio (crece a la tasa efectiva). Sin bóveda,
+                  es el disponible puro y no crece. Mismo tamaño (56) que Ahorro. */}
+              <GrowingAmount base={hasVault ? patrimonio : pesos} apy={blendedApy} size={56} align="left" id="home-patrimonio" />
             </div>
           )}
-          {totalSaved > 0 && (
-            <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
-              + <span className="num" style={{ color: "var(--accent)", fontWeight: 700 }}>${FMT(totalSaved, 0)}</span> en ahorro
-            </p>
+          {hasVault && !hide && (
+            // Split de estados: el mismo dinero, líquido vs. invertido.
+            // Lima = Disponible · Violeta = En bóveda (crece en vivo).
+            <div style={{ display: "flex", gap: 24, marginTop: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--txt-muted)", fontWeight: 700 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 3, background: "var(--accent)" }} /> Disponible
+                </span>
+                <span className="num" style={{ fontSize: 16, fontWeight: 800 }}>${FMT(pesos, 0)}</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--txt-muted)", fontWeight: 700 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 3, background: "var(--accent-2)" }} /> En bóveda
+                </span>
+                <GrowingAmount base={totalSaved} apy={weightedApy} size={16} align="left" color="#c4b5fd" id="home-boveda" />
+              </div>
+            </div>
           )}
 
           <div className="quick-row" style={{ marginTop: 18, gap: 6 }}>
@@ -215,9 +283,14 @@ export function ScreenHome({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* ── 1b. OTROS ACTIVOS (divisas de tus conversiones + activos de tu wallet Stellar) ── */}
+        {/* ── 1b. OTROS ACTIVOS — saldos líquidos (divisas de conversiones + wallet Stellar).
+                Etiquetado "Disponible" para separarlo por ESTADO de "Mi ahorro" (bóvedas). ── */}
         {realData && (Object.keys(conv.balances).length > 0 || stellarAssets.length > 0) && (
-          <div className="card" style={{ marginTop: 16, padding: "4px 18px" }}>
+          <>
+          <div className="sec-head" style={{ marginTop: 22, marginBottom: 8 }}>
+            <h3>Disponible en tu wallet</h3>
+          </div>
+          <div className="card" style={{ padding: "4px 18px" }}>
             {Object.entries(conv.balances).map(([code, bal]) => {
               const a = assetByCode(code);
               return (
@@ -237,6 +310,7 @@ export function ScreenHome({ go }: { go: Go }) {
               </div>
             ))}
           </div>
+          </>
         )}
 
         <WelcomeBonus />
@@ -269,12 +343,7 @@ export function ScreenHome({ go }: { go: Go }) {
           )}
         </div>
 
-        {/* ── 3. PROYECCIÓN (colapsable) ── */}
-        <div style={{ marginTop: 18 }}>
-          <ProjectionCard current={totalSaved} apy={profileApy} />
-        </div>
-
-        {/* ── 4. AHORRO — solo si tiene bóveda activa ── */}
+        {/* ── 3. AHORRO — solo si tiene bóveda activa ── */}
         {totalSaved > 0 && (
           <>
             <div className="sec-head" style={{ marginTop: 22 }}><h3>Mi ahorro</h3></div>
@@ -284,8 +353,10 @@ export function ScreenHome({ go }: { go: Go }) {
           </>
         )}
 
-        {/* Quiz solo si no completó onboarding */}
-        {!loadRiskProfile() && <RiskQuizBanner go={go} />}
+        {/* ── 4. PROYECCIÓN — hasta el fondo, expandida e ilustrativa. Se coloca al
+              final (y separada de "Mi ahorro") para no confundirse con un saldo de bóveda. ── */}
+        <div className="sec-head" style={{ marginTop: 26 }}><h3>Proyección a futuro</h3></div>
+        <ProjectionCard current={totalSaved} apy={profileApy} defaultOpen />
 
       </div>
       <div className="scroll-bottom" />
@@ -310,9 +381,10 @@ export function ScreenHome({ go }: { go: Go }) {
 function AcctRow({ go, to, ic, nm, su, vl, series }: { go: Go; to: Parameters<Go>[0]; ic: string; nm: string; su: string; vl: number; series: number[] }) {
   return (
     <div className="lrow" onClick={() => go(to)}>
-      <div className="ava"><Icon name={ic} size={20} color="var(--accent)" /></div>
+      {/* Violeta = en bóveda (invertido), convención de estado en toda la app. */}
+      <div className="ava"><Icon name={ic} size={20} color="var(--accent-2)" /></div>
       <div className="mid"><p className="ti">{nm}</p><p className="su">{su}</p></div>
-      <Spark data={series} w={56} h={26} fillArea />
+      <Spark data={series} w={56} h={26} color="var(--accent-2)" fillArea />
       <div className="amt" style={{ marginLeft: 8 }}><div className="a num">${FMT(vl, 0)}</div></div>
       <Icon name="chevR" size={16} color="var(--txt-dim)" />
     </div>
@@ -336,17 +408,39 @@ function mergeRecent(conversions: Conversion[], onchain: OnchainTransfer[], go?:
 }
 
 /* ---------------- WALLET (pesos digitales · MXNB on-chain) ---------------- */
+/* Clasifica una transferencia MXNB por su contraparte: abono/retiro de bóveda
+   (contrato SeyfVaults), adelanto (contrato SeyfAdvance) o envío/recepción
+   simple. Cada tipo lleva su propio icono + color (tint). */
 function onchainToRow(t: OnchainTransfer, i: number): Txn {
   const pos = t.direction === "in";
+  const to = (t.to || "").toLowerCase();
+  const from = (t.from || "").toLowerCase();
+  const vaults = (SEYF_VAULTS_ADDRESS || "").toLowerCase();
+  const advance = (SEYF_ADVANCE_ADDRESS || "").toLowerCase();
+
+  let nm: string, ic: string, tint: Txn["tint"];
+  if (advance && (to === advance || from === advance)) {
+    nm = "Adelanto de liquidez"; ic = "bolt"; tint = "advance";
+  } else if (vaults && to === vaults) {
+    nm = "Abono a bóveda"; ic = "vault"; tint = "vault";
+  } else if (vaults && from === vaults) {
+    nm = "Retiro de bóveda"; ic = "vault"; tint = "vault";
+  } else if (pos) {
+    nm = "Dinero recibido"; ic = "in"; tint = "pos";
+  } else {
+    nm = "Dinero enviado"; ic = "send"; tint = "neutral";
+  }
+
   return {
     id: i + 1,
-    nm: pos ? "Dinero recibido" : "Dinero enviado",
+    nm,
     su: t.timestamp
       ? new Date(t.timestamp).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
       : "Confirmando…",
     amt: pos ? t.value : -t.value,
-    ic: pos ? "in" : "send",
+    ic,
     pos,
+    tint,
     hash: t.hash,
     fromAddr: t.from,
     toAddr: t.to,

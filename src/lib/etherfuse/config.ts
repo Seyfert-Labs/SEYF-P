@@ -120,13 +120,13 @@ export function getEtherfuseConfig(): EtherfuseConfig {
 
   // --- SEYF_ALLOW_ETHERFUSE_RAMP: must be "true" in production ---
   const allowRampRaw =
-    process.env.REYF_ALLOW_ETHERFUSE_RAMP?.trim() ??
+    process.env.SEYF_ALLOW_ETHERFUSE_RAMP?.trim() ??
     process.env.SEYF_ALLOW_ETHERFUSE_RAMP?.trim();
   const allowRamp = allowRampRaw === "true";
 
   if (strictProd && !allowRamp) {
     errors.push(
-      'REYF_ALLOW_ETHERFUSE_RAMP (o SEYF_ALLOW_ETHERFUSE_RAMP): must be "true" to enable ramp routes in production.',
+      'SEYF_ALLOW_ETHERFUSE_RAMP (o SEYF_ALLOW_ETHERFUSE_RAMP): must be "true" to enable ramp routes in production.',
     );
   }
 

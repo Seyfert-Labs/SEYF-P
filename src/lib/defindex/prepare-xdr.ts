@@ -6,7 +6,7 @@ import {
   Transaction,
   rpc,
 } from '@stellar/stellar-sdk'
-import { isPublicStellarTestnet } from '@/lib/reyf/stellar-wallet-network'
+import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
 
 function networkPassphrase(): string {
   return isPublicStellarTestnet() ? Networks.TESTNET : Networks.PUBLIC

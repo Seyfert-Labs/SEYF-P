@@ -16,7 +16,7 @@ function sameWalletKey(a: string, b: string): boolean {
 
 export type FindRampContextOptions = {
   /**
-   * UUID de cuenta bancaria que Seyf ya generó para esta sesión. Si la wallet ya existe en Etherfuse
+   * UUID de cuenta bancaria que SEYF ya generó para esta sesión. Si la wallet ya existe en Etherfuse
    * pero aún no hay ninguna cuenta bancaria (antes de CLABE), la API no devuelve `bankAccountId`;
    * en ese caso reutilizamos `customerId` de Etherfuse + este UUID para reintentar `onboarding-url`.
    */

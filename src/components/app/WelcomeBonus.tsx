@@ -14,7 +14,7 @@ import { Portal } from "./Portal";
 
 type Status = "idle" | "claiming" | "validating" | "done" | "slow" | "error";
 
-const DISMISS_KEY = "reyf_bonus_dismissed";
+const DISMISS_KEY = "seyf_bonus_dismissed";
 
 export function WelcomeBonus() {
   const wallet = useWallet();

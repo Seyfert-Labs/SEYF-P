@@ -5,7 +5,9 @@
    + rAF), nav hide-on-scroll, FAQ acordeón, tilt 3D de la tarjeta. CTAs → /app. */
 import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
-import { ReyfSymbol } from "@/components/brand/ReyfLogo";
+import { motion, useReducedMotion } from "motion/react";
+import { SeyfSymbol } from "@/components/brand/SeyfLogo";
+import { GrowingAmount } from "@/components/app/GrowingAmount";
 
 /* ---------- counter animado ---------- */
 function Counter({
@@ -82,6 +84,48 @@ const FlagBR = ({ s = 26 }: { s?: number }) => (
 const FlagKR = ({ s = 26 }: { s?: number }) => (
   <svg viewBox="0 0 36 36" width={s} height={s}><rect width="36" height="36" fill="#f4f4f4" /><path d="M18 12a6 6 0 010 12 6 6 0 000-12z" fill="#c8102e" /><path d="M18 12a6 6 0 000 12 6 6 0 010-12z" fill="#0047a0" /></svg>
 );
+const FlagCO = ({ s = 26 }: { s?: number }) => (
+  <svg viewBox="0 0 36 36" width={s} height={s}><rect width="36" height="18" fill="#FCD116" /><rect width="36" height="9" y="18" fill="#003893" /><rect width="36" height="9" y="27" fill="#CE1126" /></svg>
+);
+const FlagAR = ({ s = 26 }: { s?: number }) => (
+  <svg viewBox="0 0 36 36" width={s} height={s}><rect width="36" height="36" fill="#74ACDF" /><rect width="36" height="12" y="12" fill="#f4f4f4" /><circle cx="18" cy="18" r="3.4" fill="#F6B40E" /></svg>
+);
+// Posiciones de las 12 estrellas precalculadas como strings redondeados:
+// evita el mismatch de hidratación por diferencias de punto flotante (Math.sin/cos)
+// entre el render del servidor y el del navegador.
+const EU_STARS: [string, string][] = Array.from({ length: 12 }, (_, i) => {
+  const a = (i * 30 * Math.PI) / 180;
+  return [(18 + 9 * Math.sin(a)).toFixed(3), (18 - 9 * Math.cos(a)).toFixed(3)];
+});
+const FlagEU = ({ s = 26 }: { s?: number }) => (
+  <svg viewBox="0 0 36 36" width={s} height={s}><rect width="36" height="36" fill="#003399" />{EU_STARS.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="1.5" fill="#FFCC00" />)}</svg>
+);
+
+/* ---------- mini gráfica de barras que crecen (mockup) ---------- */
+function MiniBars({ active }: { active: boolean }) {
+  const reduced = useReducedMotion();
+  const bars = [38, 50, 44, 62, 56, 72, 80, 76, 90, 100];
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 46, marginTop: 4 }}>
+      {bars.map((h, i) => {
+        const last = i === bars.length - 1;
+        return (
+          <motion.div
+            key={i}
+            initial={reduced ? false : { scaleY: 0 }}
+            animate={{ scaleY: active ? 1 : 0 }}
+            transition={reduced ? { duration: 0 } : { duration: 0.5, delay: active ? i * 0.05 : 0, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              flex: 1, height: `${h}%`, transformOrigin: "bottom", borderRadius: "3px 3px 1px 1px",
+              background: last ? "var(--accent)" : "var(--line-2)",
+              boxShadow: last ? "0 0 14px -3px var(--accent)" : "none",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 const AppStoreBtn = () => (
   <a className="store-btn" href="#descargar">
@@ -104,6 +148,7 @@ const FAQ_ITEMS = [
 ];
 
 export default function Landing() {
+  const reduced = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
   const phoneStageRef = useRef<HTMLDivElement>(null);
@@ -212,7 +257,7 @@ export default function Landing() {
 
       {/* NAV */}
       <div className={`nav-inner${navHidden ? " nav-hidden" : ""}${navScrolled ? " nav-scrolled" : ""}`}>
-        <a href="#" className="brand-logo"><span className="mk"><ReyfSymbol size={20} /></span> Reyf</a>
+        <a href="#" className="brand-logo"><span className="mk"><SeyfSymbol size={20} /></span> SEYF</a>
         <div className="nav-links">
           <a href="#producto">Producto</a>
           <a href="#bonos">Bonos</a>
@@ -237,7 +282,7 @@ export default function Landing() {
                 <span className="hero-word">y</span> <span className="hero-word em2">creciendo</span>{" "}
                 <span className="hero-word">en</span> <span className="hero-word">automático.</span>
               </h1>
-              <p className="lede reveal">Pesos digitales, bonos de gobierno de 4 países, bóvedas de ahorro y una tarjeta que gasta en cualquier divisa al tipo de cambio de Google. Todo en una sola app.</p>
+              <p className="lede reveal">Pesos digitales, bonos de gobierno de 7 países, bóvedas de ahorro y una tarjeta que gasta en cualquier divisa al tipo de cambio de Google. Todo en una sola app.</p>
               <div className="hero-cta reveal">
                 <Link className="btn btn-primary btn-lg" href="/app">Iniciar ahora</Link>
                 <AppStoreBtn />
@@ -253,12 +298,20 @@ export default function Landing() {
             {/* phone mockup */}
             <div className="phone-stage" ref={phoneStageRef} onMouseMove={onPhoneMove} onMouseLeave={onPhoneLeave}>
               <div className="float-card fc1 reveal">
-                <div className="k">Rinde solo</div>
+                <div className="k" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <motion.span
+                    aria-hidden
+                    animate={reduced ? undefined : { opacity: [1, 0.25, 1], scale: [1, 0.85, 1] }}
+                    transition={reduced ? undefined : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ width: 6, height: 6, borderRadius: 99, background: "var(--accent)", display: "inline-block" }}
+                  />
+                  Rinde solo
+                </div>
                 <div className="v"><span style={{ color: "var(--accent)" }}>+</span><span className="num"><Counter target={9} suffix="% anual" /></span></div>
               </div>
               <div className="float-card fc2 reveal">
-                <div className="k">Bono México</div>
-                <div className="v num"><Counter target={10.25} decimals={2} suffix="%" /></div>
+                <div className="k">Ganado hoy</div>
+                <div className="v"><GrowingAmount base={12.4} apy={9} size={18} align="left" color="var(--accent)" prefix="+$" tail={4} id="lp-ganado" /></div>
               </div>
               <div className="phone-tilt" ref={phoneTiltRef}>
                 <div className="phone" id="phone">
@@ -275,23 +328,36 @@ export default function Landing() {
                         </div>
                         <div className="mini-bal">
                           <div className="mini-eyebrow">Patrimonio total</div>
-                          <div className="num" style={{ fontSize: 27, fontWeight: 700, marginTop: 7 }}>$585,050<span style={{ opacity: 0.5 }}>.40</span></div>
-                          <div className="mini-alloc">
-                            <span style={{ width: "8%", background: "var(--accent)" }} />
-                            <span style={{ width: "53%", background: "var(--accent-2)" }} />
-                            <span style={{ width: "16%", background: "#5BD6C0" }} />
-                            <span style={{ width: "23%", background: "#F5A623" }} />
+                          {/* Saldo creciendo en vivo, como en la app real */}
+                          <div style={{ marginTop: 7 }}>
+                            <GrowingAmount base={585050.4} apy={9} size={27} align="left" tail={4} id="lp-patrimonio" />
+                          </div>
+                          <MiniBars active={screen === 0} />
+                          {/* Split de estados: Disponible (lima) / En bóveda (violeta) — como en la app */}
+                          <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: 2, background: "var(--accent)" }} /> Disponible
+                              </div>
+                              <div className="num" style={{ fontSize: 14, fontWeight: 800, marginTop: 2 }}>$120,400</div>
+                            </div>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: 2, background: "var(--accent-2)" }} /> En bóveda
+                              </div>
+                              <div className="num" style={{ fontSize: 14, fontWeight: 800, marginTop: 2, color: "#c4b5fd" }}>$464,650</div>
+                            </div>
                           </div>
                         </div>
                         <div className="mini-row">
                           <div className="mini-flag"><FlagMX /></div>
-                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>Bono México</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Bonos M · MXN</div></div>
-                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>10.25%</div>
+                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>CETES</div><div style={{ fontSize: 11, color: "var(--muted)" }}>México · MXN</div></div>
+                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>10.8%</div>
                         </div>
                         <div className="mini-row">
-                          <div className="mini-flag"><FlagUS /></div>
-                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>US Treasury</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Bono · USD</div></div>
-                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>4.45%</div>
+                          <div className="mini-flag"><FlagBR /></div>
+                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>Tesouro</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Brasil · BRL</div></div>
+                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>11.2%</div>
                         </div>
                         <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
                           <Link href="/app" style={{ flex: 1, background: "var(--accent)", color: "var(--on-accent)", borderRadius: 13, padding: 11, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Invertir</Link>
@@ -338,16 +404,16 @@ export default function Landing() {
                             <div style={{ fontWeight: 700, fontSize: 13 }}>Viaje a Japón</div>
                             <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 13 }}>11.2%</div>
                           </div>
-                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6 }}>$32,000 <span style={{ opacity: 0.45, fontSize: 13 }}>/ $50,000</span></div>
-                          <div className="mini-alloc"><span style={{ width: "64%", background: "var(--accent)" }} /><span style={{ width: "36%", background: "var(--line-2)" }} /></div>
+                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6, color: "#c4b5fd" }}>$32,000 <span style={{ opacity: 0.45, fontSize: 13, color: "var(--muted)" }}>/ $50,000</span></div>
+                          <div className="mini-alloc"><span style={{ width: "64%", background: "var(--accent-2)" }} /><span style={{ width: "36%", background: "var(--line-2)" }} /></div>
                         </div>
                         <div className="mini-bal">
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div style={{ fontWeight: 700, fontSize: 13 }}>Fondo de emergencia</div>
                             <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 13 }}>9.0%</div>
                           </div>
-                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6 }}>$18,500 <span style={{ opacity: 0.45, fontSize: 13 }}>/ $20,000</span></div>
-                          <div className="mini-alloc"><span style={{ width: "92%", background: "#5BD6C0" }} /><span style={{ width: "8%", background: "var(--line-2)" }} /></div>
+                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6, color: "#c4b5fd" }}>$18,500 <span style={{ opacity: 0.45, fontSize: 13, color: "var(--muted)" }}>/ $20,000</span></div>
+                          <div className="mini-alloc"><span style={{ width: "92%", background: "var(--accent-2)" }} /><span style={{ width: "8%", background: "var(--line-2)" }} /></div>
                         </div>
                         <div style={{ marginTop: "auto" }}>
                           <Link href="/app" style={{ display: "block", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 13, padding: 12, textAlign: "center", fontWeight: 800, fontSize: 13 }}>+ Nueva bóveda</Link>
@@ -374,6 +440,9 @@ export default function Landing() {
                 <span className="it"><span className="flag"><FlagMX /></span> México · Bonos M 10.25%</span>
                 <span className="it"><span className="flag"><FlagUS /></span> EE. UU. · Treasury 4.45%</span>
                 <span className="it"><span className="flag"><FlagBR /></span> Brasil · Tesouro Selic 11.75%</span>
+                <span className="it"><span className="flag"><FlagAR /></span> Argentina · Lecap 14.50%</span>
+                <span className="it"><span className="flag"><FlagCO /></span> Colombia · TES 9.60%</span>
+                <span className="it"><span className="flag"><FlagEU /></span> Europa · Bonos UE 3.40%</span>
                 <span className="it"><span className="flag"><FlagKR /></span> Corea · KTB 3.35%</span>
                 <span className="it" style={{ color: "var(--accent)" }}>Tipo de cambio igual a Google</span>
               </React.Fragment>
@@ -387,7 +456,7 @@ export default function Landing() {
             <div className="stats">
               <div className="stat reveal"><div className="n num">$<Counter target={2.4} decimals={1} /><span className="suf">MMD</span></div><div className="l">gestionados en la plataforma</div></div>
               <div className="stat reveal"><div className="n num"><Counter target={850} suffix="K" /><span className="suf">+</span></div><div className="l">usuarios ahorrando</div></div>
-              <div className="stat reveal"><div className="n num"><Counter target={4} /></div><div className="l">países con bonos soberanos</div></div>
+              <div className="stat reveal"><div className="n num"><Counter target={7} /></div><div className="l">países con bonos soberanos</div></div>
               <div className="stat reveal"><div className="n num"><Counter target={0} /><span className="suf">comisiones</span></div><div className="l">por cambio de divisa</div></div>
             </div>
           </div>
@@ -412,8 +481,8 @@ export default function Landing() {
               </div>
               <div className="card-glass col-3 reveal">
                 <div className="b-icon v"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" /></svg></div>
-                <h3>Bonos de 4 gobiernos</h3>
-                <p>México, EE. UU., Brasil y Corea. Deuda soberana, el instrumento más seguro para crecer.</p>
+                <h3>Bonos de 7 gobiernos</h3>
+                <p>México, EE. UU., Brasil, Argentina, Colombia, Europa y Corea. Deuda soberana, el instrumento más seguro para crecer.</p>
               </div>
               <div className="card-glass col-3 reveal">
                 <div className="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><circle cx="12" cy="12" r="3.5" /><path d="M12 4.5v2M12 17.5v2" /></svg></div>
@@ -451,6 +520,9 @@ export default function Landing() {
               <div className="bond reveal"><div className="flag"><FlagMX s={46} /></div><div className="country">México</div><div className="code">Bonos M · CETES · MXN</div><div className="yld num"><Counter target={10.25} decimals={2} />%<small>anual</small></div></div>
               <div className="bond reveal"><div className="flag"><FlagUS s={46} /></div><div className="country">Estados Unidos</div><div className="code">US Treasury · USD</div><div className="yld num"><Counter target={4.45} decimals={2} />%<small>anual</small></div></div>
               <div className="bond reveal"><div className="flag"><FlagBR s={46} /></div><div className="country">Brasil</div><div className="code">Tesouro Selic · BRL</div><div className="yld num"><Counter target={11.75} decimals={2} />%<small>anual</small></div></div>
+              <div className="bond reveal"><div className="flag"><FlagAR s={46} /></div><div className="country">Argentina</div><div className="code">Lecap · ARS</div><div className="yld num"><Counter target={14.5} decimals={2} />%<small>anual</small></div></div>
+              <div className="bond reveal"><div className="flag"><FlagCO s={46} /></div><div className="country">Colombia</div><div className="code">TES · COP</div><div className="yld num"><Counter target={9.6} decimals={2} />%<small>anual</small></div></div>
+              <div className="bond reveal"><div className="flag"><FlagEU s={46} /></div><div className="country">Europa</div><div className="code">Bonos UE · EUR</div><div className="yld num"><Counter target={3.4} decimals={2} />%<small>anual</small></div></div>
               <div className="bond reveal"><div className="flag"><FlagKR s={46} /></div><div className="country">Corea del Sur</div><div className="code">Korea Treasury · KRW</div><div className="yld num"><Counter target={3.35} decimals={2} />%<small>anual</small></div></div>
             </div>
           </div>
@@ -463,7 +535,7 @@ export default function Landing() {
               <div className="credit" ref={creditRef} onMouseMove={onCardMove} onMouseLeave={onCardLeave}>
                 <div className="sheen" /><div className="blob" />
                 <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <span className="display" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 22, fontWeight: 800 }}><ReyfSymbol size={22} /> Reyf</span>
+                  <span className="display" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 22, fontWeight: 800 }}><SeyfSymbol size={22} /> SEYF</span>
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" /></svg>
                 </div>
                 <div style={{ position: "relative" }}>
@@ -602,7 +674,7 @@ export default function Landing() {
           <div className="wrap">
             <div className="foot-grid">
               <div className="foot-col">
-                <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk"><ReyfSymbol size={20} /></span> Reyf</a>
+                <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk"><SeyfSymbol size={20} /></span> SEYF</a>
                 <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 280, margin: 0 }}>La super app de finanzas para ahorrar, invertir y gastar sin fronteras.</p>
               </div>
               <div className="foot-col"><h5>Producto</h5><a href="#producto">Pesos digitales</a><a href="#bonos">Bonos</a><a href="#producto">Bóvedas</a><a href="#tarjeta">Tarjeta</a></div>
@@ -610,16 +682,16 @@ export default function Landing() {
               <div className="foot-col"><h5>Legal</h5><a href="#">Términos</a><a href="#">Privacidad</a><a href="#">Comisiones</a><a href="#">Soporte</a></div>
               <div className="foot-col">
                 <h5>Inversionistas</h5>
-                <a className="foot-pitch" href="/reyf-pitch.html" target="_blank" rel="noopener noreferrer">
+                <a className="foot-pitch" href="/seyf-pitch.html" target="_blank" rel="noopener noreferrer">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="20" y2="10" /><line x1="18" x2="18" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="16" /></svg>
                   Pitch · Lean Canvas
                 </a>
-                <p className="foot-pitch-note">Conoce el modelo de negocio, la tecnología y la tracción de Reyf.</p>
-                <a href="mailto:inversionistas@reyf.app">Contacto inversión</a>
+                <p className="foot-pitch-note">Conoce el modelo de negocio, la tecnología y la tracción de SEYF.</p>
+                <a href="mailto:inversionistas@seyf.app">Contacto inversión</a>
               </div>
             </div>
             <div className="foot-bottom">
-              <span>© 2026 Reyf. Todos los derechos reservados.</span>
+              <span>© 2026 SEYF. Todos los derechos reservados.</span>
               <span>Hecho con seguridad de grado bancario · Regulado en México</span>
             </div>
           </div>

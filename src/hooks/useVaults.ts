@@ -1,7 +1,7 @@
 "use client";
 
 // Bóvedas de ahorro del usuario.
-// - Si el contrato ReyfVaults está configurado (NEXT_PUBLIC_SEYF_VAULTS_ADDRESS),
+// - Si el contrato SeyfVaults está configurado (NEXT_PUBLIC_SEYF_VAULTS_ADDRESS),
 //   las bóvedas son reales on-chain: se abren, abonan y retiran MXNB vía la
 //   smart wallet (gas patrocinado) y el saldo se lee del contrato.
 // - Si no, cae a la capa `store` (Supabase/localStorage). Degradación graceful.
@@ -13,7 +13,7 @@ import { planByApy, planById } from "@/components/app/data";
 import {
   VAULTS_ONCHAIN,
   SEYF_VAULTS_ADDRESS,
-  reyfVaultsAbi,
+  seyfVaultsAbi,
   erc20Abi,
   MXNB_ADDRESS,
   MXNB_DECIMALS,
@@ -91,7 +91,7 @@ export function useVaults(address?: string) {
         setBusy(true);
         try {
           const data = encodeFunctionData({
-            abi: reyfVaultsAbi,
+            abi: seyfVaultsAbi,
             functionName: "openVault",
             args: [v.nm, toUnits(v.goal), Math.round(v.apy * 100)],
           });
@@ -137,12 +137,12 @@ export function useVaults(address?: string) {
             args: [SEYF_VAULTS_ADDRESS as Address, amount],
           });
           await waitForTx((await wallet.sendTx(MXNB_ADDRESS as string, approve)) as `0x${string}`);
-          const deposit = encodeFunctionData({ abi: reyfVaultsAbi, functionName: "deposit", args: [vaultId, amount] });
+          const deposit = encodeFunctionData({ abi: seyfVaultsAbi, functionName: "deposit", args: [vaultId, amount] });
           hash = await wallet.sendTx(SEYF_VAULTS_ADDRESS as string, deposit);
           await waitForTx(hash as `0x${string}`);
         } else {
           // Retirar.
-          const withdraw = encodeFunctionData({ abi: reyfVaultsAbi, functionName: "withdraw", args: [vaultId, amount] });
+          const withdraw = encodeFunctionData({ abi: seyfVaultsAbi, functionName: "withdraw", args: [vaultId, amount] });
           hash = await wallet.sendTx(SEYF_VAULTS_ADDRESS as string, withdraw);
           await waitForTx(hash as `0x${string}`);
         }
@@ -161,7 +161,7 @@ export function useVaults(address?: string) {
       if (onchain) {
         setBusy(true);
         try {
-          const data = encodeFunctionData({ abi: reyfVaultsAbi, functionName: "closeVault", args: [BigInt(id)] });
+          const data = encodeFunctionData({ abi: seyfVaultsAbi, functionName: "closeVault", args: [BigInt(id)] });
           await waitForTx((await wallet.sendTx(SEYF_VAULTS_ADDRESS as string, data)) as `0x${string}`);
           await reload();
         } finally {

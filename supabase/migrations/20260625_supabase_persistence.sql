@@ -24,7 +24,7 @@ create table if not exists public.kyc_state (
 create index if not exists kyc_state_wallet_idx on public.kyc_state (wallet_public_key);
 
 -- 3) Sesión de onboarding Etherfuse (wallet Stellar → customer_id Etherfuse).
---    La lee /api/reyf/kyc/status para resolver el KYC. Reemplaza Redis.
+--    La lee /api/seyf/kyc/status para resolver el KYC. Reemplaza Redis.
 create table if not exists public.onboarding_sessions (
   wallet_public_key text primary key,
   customer_id text not null,

@@ -6,7 +6,7 @@ import {
   ETHERFUSE_DEFAULT_TIMEOUT_MS,
   ETHERFUSE_MAX_RETRIES,
 } from "../client";
-import { AppError } from "@/lib/reyf/api-error";
+import { AppError } from "@/lib/seyf/api-error";
 
 // ---------------------------------------------------------------------------
 // Helpers

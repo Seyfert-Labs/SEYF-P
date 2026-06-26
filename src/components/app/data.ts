@@ -8,9 +8,14 @@ export interface Vault {
   id: string; nm: string; bal: number; goal: number; apy: number; color: string;
   locked: boolean; note: string;
 }
+/** Tipo de movimiento → define color del icono (no solo el icono en sí).
+   pos = entrada · vault = abono/retiro de bóveda · swap = intercambio FX ·
+   advance = adelanto de liquidez · neutral = salida/gasto. */
+export type TxnTint = "pos" | "vault" | "swap" | "advance" | "neutral";
+
 export interface Txn {
   id: number; nm: string; su: string; amt: number; ic: string; pos?: boolean;
-  cur?: string; sub?: string | null;
+  cur?: string; sub?: string | null; tint?: TxnTint;
   /** Campos extra para movimientos on-chain */
   hash?: string; fromAddr?: string; toAddr?: string; blockNumber?: string;
 }
@@ -26,12 +31,15 @@ export const VAULTS: Vault[] = [
   { id: "dpt", nm: "Enganche depa", bal: 42000, goal: 300000, apy: 11.2, color: "#5BD6C0", locked: true, note: "Bloqueada · 24 meses" },
 ];
 
+/* Un ejemplo de cada tipo de movimiento (icono + color propio):
+   recibido · abono a bóveda · intercambio · enviado · adelanto · rendimiento. */
 export const TXNS: Txn[] = [
-  { id: 1, nm: "Rendimiento diario", su: "Pesos digitales · 9% anual", amt: +12.4, ic: "leaf", pos: true },
-  { id: 2, nm: "Transferencia SPEI", su: "De Mariana G.", amt: +2500.0, ic: "in", pos: true },
-  { id: 3, nm: "OXXO", su: "Hoy · 14:20", amt: -85.0, ic: "bag" },
-  { id: 4, nm: "Spotify", su: "Suscripción", amt: -129.0, ic: "music" },
-  { id: 5, nm: "Recarga de saldo", su: "Tarjeta ··4821", amt: +5000.0, ic: "in", pos: true },
+  { id: 1, nm: "Dinero recibido", su: "SPEI de Mariana G.", amt: +2500.0, ic: "in", pos: true, tint: "pos" },
+  { id: 2, nm: "Abono a bóveda", su: "Fondo de emergencia", amt: -1500.0, ic: "vault", tint: "vault" },
+  { id: 3, nm: "Intercambio", su: "MXN → USD", amt: +128.5, cur: "USD", pos: true, ic: "swap", tint: "swap" },
+  { id: 4, nm: "Dinero enviado", su: "A Carlos M.", amt: -850.0, ic: "send", tint: "neutral" },
+  { id: 5, nm: "Adelanto de liquidez", su: "Sobre tu bóveda", amt: +3200.0, ic: "bolt", pos: true, tint: "advance" },
+  { id: 6, nm: "Rendimiento diario", su: "Bóveda · 9% anual", amt: +12.4, ic: "leaf", pos: true, tint: "pos" },
 ];
 
 export const CARD_TXNS: Txn[] = [
@@ -205,25 +213,25 @@ export function projectSavings(current: number, monthly: number, apy: number, ye
 /** Comisión anual sobre saldo de una Afore (Profuturo: 0.54%). Se cobra sobre
    TODO el saldo cada año, así que su costo compuesto a 30 años es enorme. */
 export const AFORE_COMMISSION = 0.54;
-/** Comisión de Reyf sobre el saldo: 0%. (El modelo de negocio es spread, no saldo.) */
+/** Comisión de SEYF sobre el saldo: 0%. (El modelo de negocio es spread, no saldo.) */
 export const SEYF_COMMISSION = 0;
 /** Tasa de referencia de un préstamo sobre pensión/nómina (Profuturo: 16–40% + IVA). */
 export const AFORE_LOAN_RATE = 35;
 
-export interface AforeVsReyf { years: number; afore: number; reyf: number; feesCost: number; }
+export interface AforeVsSeyf { years: number; afore: number; seyf: number; feesCost: number; }
 
 /** Mismo rendimiento bruto para ambos: la ÚNICA diferencia es la comisión sobre
    saldo. `feesCost` = cuánto te cuesta esa comisión (diferencia de saldo final). */
-export function aforeVsReyf(
+export function aforeVsSeyf(
   current: number,
   monthly: number,
   grossApy: number,
   horizons: number[] = [10, 20, 30],
-): AforeVsReyf[] {
+): AforeVsSeyf[] {
   return horizons.map((years) => {
-    const reyf = projectSavings(current, monthly, grossApy - SEYF_COMMISSION, years);
+    const seyf = projectSavings(current, monthly, grossApy - SEYF_COMMISSION, years);
     const afore = projectSavings(current, monthly, grossApy - AFORE_COMMISSION, years);
-    return { years, afore, reyf, feesCost: reyf - afore };
+    return { years, afore, seyf, feesCost: seyf - afore };
   });
 }
 
@@ -310,7 +318,7 @@ export function recommendPlan(totalScore: number): VaultPlan {
 /* Persistencia del perfil de riesgo.
    - localStorage: lectura síncrona rápida (UI).
    - Supabase (via store): persiste entre dispositivos cuando el usuario está autenticado. */
-const RISK_KEY = "reyf_risk_profile";
+const RISK_KEY = "seyf_risk_profile";
 
 export function saveRiskProfile(planId: string, address?: string) {
   if (typeof window !== "undefined") {
