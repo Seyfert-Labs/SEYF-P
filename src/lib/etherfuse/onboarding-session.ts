@@ -43,13 +43,12 @@ function parseCookieSession(raw: string): EtherfuseOnboardingSession | null {
 
 /**
  * Lee la sesión de onboarding:
- * 1. Redis (si se provee walletPublicKey) — fuente de verdad principal
+ * 1. Supabase (`onboarding_sessions`) si se provee walletPublicKey
  * 2. Cookie httpOnly — fallback de compatibilidad
  */
 export async function getEtherfuseOnboardingSession(
   walletPublicKey?: string,
 ): Promise<EtherfuseOnboardingSession | null> {
-  // Redis first
   if (walletPublicKey) {
     const pk = normalizeStellarPublicKey(walletPublicKey)
     const stored = await getStoredOnboardingSession(pk)
@@ -74,8 +73,7 @@ export async function getEtherfuseOnboardingSession(
 }
 
 /**
- * Guarda la sesión en Redis (fuente de verdad) y en cookie (fallback).
- * Escritura dual — si Redis falla, la cookie sigue funcionando.
+ * Guarda la sesión en Supabase (fuente de verdad) y en cookie (fallback).
  */
 export async function saveEtherfuseOnboardingSession(
   data: EtherfuseOnboardingSession,
@@ -85,7 +83,6 @@ export async function saveEtherfuseOnboardingSession(
     publicKey: normalizeStellarPublicKey(data.publicKey),
   }
 
-  // Redis — fuente de verdad
   await saveStoredOnboardingSession({
     customerId: normalized.customerId,
     bankAccountId: normalized.bankAccountId,
@@ -102,7 +99,7 @@ export async function saveEtherfuseOnboardingSession(
 }
 
 /**
- * Borra la sesión de Redis y la cookie.
+ * Borra la sesión de Supabase y la cookie.
  */
 export async function clearEtherfuseOnboardingSession(
   walletPublicKey?: string,

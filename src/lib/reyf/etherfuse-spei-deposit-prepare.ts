@@ -25,7 +25,7 @@ import { assertEtherfuseKycApproved } from "@/lib/reyf/etherfuse-kyc-guard";
 import type { EtherfuseRampContext } from "@/lib/reyf/etherfuse-ramp-context";
 import { resolveEffectiveBankAccountIdForOnramp } from "@/lib/reyf/etherfuse-readiness";
 import { saveStoredOnboardingSession } from "@/lib/reyf/onboarding-session-store";
-import { acquireOnrampLock, releaseOnrampLock } from "@/lib/reyf/redis-guards";
+import { acquireOnrampLock, releaseOnrampLock } from "@/lib/reyf/guards";
 
 async function ensureAgreementsForWallet(ctx: {
   customerId: string;

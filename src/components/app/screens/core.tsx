@@ -24,8 +24,11 @@ import { loadRiskProfile, planById } from "../data";
 import { Portal } from "../Portal";
 import { ClabeCard } from "../ClabeCard";
 import { ProjectionCard } from "../ProjectionCard";
+import { GrowingAmount } from "../GrowingAmount";
 import { ReyfMark } from "@/components/brand/ReyfLogo";
 import { explorerBase } from "@/lib/chain";
+import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
+import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
 
 /* ---------------- ONBOARDING ---------------- */
 // Fases: 0 = Hero, 1 = Quiz de perfil (5 preguntas full-screen)
@@ -57,11 +60,47 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 }
 
 
+/* Metadatos de presentación de los activos de la wallet Stellar (sin jerga de protocolo). */
+const STELLAR_ASSET_INFO: Record<string, { name: string; icon: string; color: string }> = {
+  XLM: { name: "Stellar Lumens", icon: "star", color: "var(--accent)" },
+  CETES: { name: "Bonos CETES", icon: "shield", color: "#5BD6C0" },
+  USDC: { name: "USD Coin", icon: "globe", color: "#7C9EFF" },
+};
+
+/** Avatar redondo del activo Stellar, del mismo tamaño que las banderas de divisas. */
+function StellarAssetAvatar({ code }: { code: string }) {
+  if (code === "XLM") {
+    return (
+      <span className="flag sm" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#0b0e14" }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden>
+          <path d="M12 3l2.7 5.7 6.3.8-4.6 4.3 1.2 6.2L12 17.8 6.4 20l1.2-6.2L3 9.5l6.3-.8L12 3z" fill="var(--accent)" />
+        </svg>
+      </span>
+    );
+  }
+  const info = STELLAR_ASSET_INFO[code];
+  if (info) {
+    return (
+      <span className="flag sm" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-3)", color: info.color }}>
+        <Icon name={info.icon} size={14} color={info.color} />
+      </span>
+    );
+  }
+  return (
+    <span className="flag sm" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-3)", color: "var(--txt-muted)", fontWeight: 800, fontSize: 8.5 }}>
+      {code.slice(0, 3)}
+    </span>
+  );
+}
+
+const stellarAssetName = (code: string): string => STELLAR_ASSET_INFO[code]?.name ?? code;
+
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
   const [modal, setModal] = useState<null | "deposit" | "send" | "advance" | "more">(null);
   const wallet = useWallet();
+  const stellar = useReyfStellarWallet();
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
@@ -84,7 +123,21 @@ export function ScreenHome({ go }: { go: Go }) {
     pend.reconcile(homeTxns.txns);
   }, [homeTxns.txns, pend.reconcile]);
 
+  // Saldo XLM (gas Stellar / DeFindex) en la wallet Pollar.
+  useEffect(() => {
+    if (stellar.authenticated && stellar.publicKey) {
+      void stellar.refreshBalance();
+    }
+  }, [stellar.authenticated, stellar.publicKey]);
+
   const realData = wallet.enabled && wallet.authenticated;
+  const showStellarAssets = STELLAR_VAULTS_ENABLED && stellar.enabled && stellar.authenticated;
+  // Todos los activos de la wallet Stellar con saldo (XLM, CETES, USDC, …).
+  const stellarAssets = showStellarAssets
+    ? stellar.assetBalances
+        .map((b) => ({ code: (b.code || "").toUpperCase(), bal: Number(b.balance ?? 0) }))
+        .filter((a) => a.code && a.bal > 0)
+    : [];
   // Spot: saldo MXNB on-chain. Las bóvedas se muestran en la pantalla de Ahorro.
   const pesos = realData ? wallet.balance : 48250.4;
   // vaultId numérico para el adelanto (solo válido en modo on-chain).
@@ -110,26 +163,22 @@ export function ScreenHome({ go }: { go: Go }) {
         {/* ── 1. HERO: balance + quick row ── */}
         <div className="card glow" style={{ padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <p className="eyebrow">Saldo disponible</p>
+            <p className="eyebrow">Saldo disponible · MXNB</p>
             <button className="icon-btn" style={{ width: 24, height: 24, background: "none", border: "none" }} onClick={() => setHide(!hide)}>
               <Icon name="eye" size={16} color="var(--txt-dim)" />
             </button>
           </div>
           {hide ? (
             <p style={{
-              marginTop: 10, fontSize: 52, fontWeight: 800, letterSpacing: "-0.03em",
+              marginTop: 14, fontSize: 56, fontWeight: 800, letterSpacing: "-0.03em",
               fontFamily: "var(--font-display)", lineHeight: 1, color: "var(--txt-muted)",
             }}>
               ••••••
             </p>
           ) : (
-            <div style={{ marginTop: 10, lineHeight: 1 }}>
-              <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>
-                <span style={{ fontSize: 28, verticalAlign: "top", marginTop: 10, display: "inline-block", color: "var(--txt-muted)", fontWeight: 700 }}>$</span>
-                <span style={{ fontSize: 62, color: "var(--txt)" }}>{FMT(pesos, 2).split(".")[0]}</span>
-                <span style={{ fontSize: 32, color: "var(--txt-muted)", fontWeight: 700 }}>.{FMT(pesos, 2).split(".")[1]}</span>
-                <span style={{ fontSize: 16, color: "var(--txt-muted)", fontWeight: 600, marginLeft: 6, letterSpacing: 0 }}>MXN</span>
-              </span>
+            <div style={{ marginTop: 14 }}>
+              {/* Mismo componente y tamaño (56) que el hero de Ahorro → unificado. */}
+              <GrowingAmount base={pesos} apy={0} size={56} align="left" id="home-mxnb" />
             </div>
           )}
           {totalSaved > 0 && (
@@ -166,13 +215,13 @@ export function ScreenHome({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* ── 1b. DIVISAS (saldo en Bitso, derivado de tus conversiones) ── */}
-        {realData && Object.keys(conv.balances).length > 0 && (
-          <div className="card" style={{ marginTop: 16, padding: "4px 18px", cursor: "pointer" }} onClick={() => go("convertir")}>
+        {/* ── 1b. OTROS ACTIVOS (divisas de tus conversiones + activos de tu wallet Stellar) ── */}
+        {realData && (Object.keys(conv.balances).length > 0 || stellarAssets.length > 0) && (
+          <div className="card" style={{ marginTop: 16, padding: "4px 18px" }}>
             {Object.entries(conv.balances).map(([code, bal]) => {
               const a = assetByCode(code);
               return (
-                <div className="lrow" key={code}>
+                <div className="lrow" key={code} style={{ cursor: "pointer" }} onClick={() => go("convertir")}>
                   <div className="ava" style={{ overflow: "hidden", padding: 0 }}><Flag code={a?.flag || "us"} cls="sm" /></div>
                   <div className="mid"><p className="ti">{code}</p><p className="su">{a?.name || code}</p></div>
                   <div className="amt"><div className="a num">{FMT(bal, a?.dec ?? 2)}</div></div>
@@ -180,6 +229,13 @@ export function ScreenHome({ go }: { go: Go }) {
                 </div>
               );
             })}
+            {stellarAssets.map((a) => (
+              <div className="lrow" key={a.code} style={{ cursor: "default" }}>
+                <div className="ava" style={{ overflow: "hidden", padding: 0 }}><StellarAssetAvatar code={a.code} /></div>
+                <div className="mid"><p className="ti">{a.code}</p><p className="su">{stellarAssetName(a.code)}</p></div>
+                <div className="amt"><div className="a num">{hide ? "••••" : FMT(a.bal, 2)}</div></div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -234,8 +290,8 @@ export function ScreenHome({ go }: { go: Go }) {
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} /></Portal>}
-      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
+      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalance(); }} /></Portal>}
+      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalance(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
       {modal === "advance" && (
         <Portal>
           <LiquidityAdvanceModal
@@ -314,7 +370,6 @@ export function ScreenWallet({ go }: { go: Go }) {
   const loadingBal = wallet.balanceLoading;
   const shown = realMode ? wallet.balance : 48250.4;
   const refreshBal = wallet.refreshBalance;
-  const [intPart, centsPart] = FMT(shown, 2).split(".");
 
   const onSuccess = () => { void refreshBal(); void refreshTxns(); };
 
@@ -329,9 +384,10 @@ export function ScreenWallet({ go }: { go: Go }) {
           {loadingBal ? (
             <div className="skel" style={{ height: 48, width: 200, margin: "16px auto 0" }} />
           ) : (
-            <p className="amount num" style={{ fontSize: 46, marginTop: 12 }}>
-              ${intPart}<span style={{ opacity: 0.5 }}>.{centsPart}</span>
-            </p>
+            <div style={{ marginTop: 12 }}>
+              {/* Mismo componente y tamaño (56) que Inicio y Ahorro → unificado. */}
+              <GrowingAmount base={shown} apy={0} size={56} id="pesos-digitales" />
+            </div>
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
             <span className="pos-pill"><Icon name="leaf" size={12} /> {realMode ? "Pesos digitales" : "+$12.40 hoy"}</span>

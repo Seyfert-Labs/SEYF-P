@@ -1,16 +1,16 @@
 /**
- * Redis-backed Etherfuse onboarding session store.
+ * Sesión de onboarding Etherfuse persistida en Supabase (tabla
+ * `onboarding_sessions`). Antes vivía en Upstash Redis.
  *
- * Clave: seyf:onboarding:{walletPublicKey}
- * Valor: { customerId, bankAccountId, updatedAt }
- *
- * Sin UPSTASH_REDIS_* en .env: no-op (sesión solo vía cookie/API en dev).
+ * Mapea wallet Stellar → { customerId, bankAccountId } de Etherfuse.
+ * Sin credenciales de Supabase: no-op (sesión solo vía cookie/API en dev).
  */
 
-import { getUpstashRedis } from '@/lib/reyf/upstash-redis'
-
-const KEY_PREFIX = 'seyf:onboarding'
-const TTL_SEC = 60 * 60 * 24 * 365 // 1 año
+import {
+  getOnboardingSession,
+  upsertOnboardingSession,
+  deleteOnboardingSession,
+} from '@/lib/supabase/db'
 
 export type StoredOnboardingSession = {
   customerId: string
@@ -19,22 +19,20 @@ export type StoredOnboardingSession = {
   updatedAt: string
 }
 
-function redisKey(walletPublicKey: string): string {
-  return `${KEY_PREFIX}:${walletPublicKey}`
-}
-
 export async function getStoredOnboardingSession(
   walletPublicKey: string,
 ): Promise<StoredOnboardingSession | null> {
-  const redis = getUpstashRedis()
-  if (!redis) return null
   try {
-    const raw = await redis.get<StoredOnboardingSession>(redisKey(walletPublicKey))
-    if (!raw || typeof raw !== 'object') return null
-    if (!raw.customerId || !raw.bankAccountId) return null
-    return raw
+    const row = await getOnboardingSession(walletPublicKey)
+    if (!row || !row.customer_id || !row.bank_account_id) return null
+    return {
+      customerId: row.customer_id,
+      bankAccountId: row.bank_account_id,
+      walletPublicKey: row.wallet_public_key,
+      updatedAt: row.updated_at,
+    }
   } catch (e) {
-    console.warn('[onboarding-store] Redis get failed:', e)
+    console.warn('[onboarding-store] Supabase get failed:', e)
     return null
   }
 }
@@ -42,25 +40,21 @@ export async function getStoredOnboardingSession(
 export async function saveStoredOnboardingSession(
   data: Omit<StoredOnboardingSession, 'updatedAt'>,
 ): Promise<void> {
-  const redis = getUpstashRedis()
-  if (!redis) return
   try {
-    const record: StoredOnboardingSession = {
-      ...data,
-      updatedAt: new Date().toISOString(),
-    }
-    await redis.set(redisKey(data.walletPublicKey), record, { ex: TTL_SEC })
+    await upsertOnboardingSession({
+      walletPublicKey: data.walletPublicKey,
+      customerId: data.customerId,
+      bankAccountId: data.bankAccountId,
+    })
   } catch (e) {
-    console.warn('[onboarding-store] Redis set failed:', e)
+    console.warn('[onboarding-store] Supabase set failed:', e)
   }
 }
 
 export async function clearStoredOnboardingSession(walletPublicKey: string): Promise<void> {
-  const redis = getUpstashRedis()
-  if (!redis) return
   try {
-    await redis.del(redisKey(walletPublicKey))
+    await deleteOnboardingSession(walletPublicKey)
   } catch (e) {
-    console.warn('[onboarding-store] Redis del failed:', e)
+    console.warn('[onboarding-store] Supabase del failed:', e)
   }
 }

@@ -12,7 +12,7 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
 import { useEnsureCetesTrustline } from "@/lib/reyf/use-ensure-cetes-trustline";
 import type { EtherfuseKycSnapshot } from "@/lib/etherfuse/kyc";
-import { notifyKycStatusUpdated } from "@/hooks/useKycStatus";
+import { notifyKycStatusUpdated, markKycCompletedLocally } from "@/hooks/useKycStatus";
 
 type Step = "connect" | "verified" | "identity" | "documents" | "agreements" | "done";
 
@@ -238,6 +238,7 @@ export function ScreenKyc({ go }: { go: Go }) {
       // saltando documentos/acuerdos que fallarían con esa wallet.
       if (j && typeof j === "object" && (j as { verifiedElsewhere?: boolean }).verifiedElsewhere) {
         await refreshStatus();
+        markKycCompletedLocally(stellar.publicKey);
         setStep("done");
         return;
       }
@@ -279,6 +280,7 @@ export function ScreenKyc({ go }: { go: Go }) {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(readApiError(j, r.status));
       await refreshStatus();
+      markKycCompletedLocally(stellar.publicKey);
       setStep("done");
     });
 

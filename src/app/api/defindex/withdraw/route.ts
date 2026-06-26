@@ -1,37 +1,35 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getDefindexSDK, defindexNetwork } from '@/lib/defindex/client'
-import { DEFINDEX_VAULT_ADDRESS, toUnits } from '@/lib/defindex/vaults'
+import { resolveVaultAddress, toUnits } from '@/lib/defindex/vaults'
 import { isValidStellarPublicKey } from '@/lib/etherfuse/stellar-public-key'
 
 const bodySchema = z
   .object({
     caller: z.string().trim().min(56).max(56),
-    // Retiro por monto de asset subyacente…
     amount: z.number().positive().optional(),
-    // …o por shares (dfTokens), p.ej. para "retirar todo".
     shares: z.number().positive().optional(),
     slippageBps: z.number().int().min(0).max(10_000).optional(),
+    planId: z.string().trim().optional(),
   })
   .refine((b) => b.amount != null || b.shares != null, {
     message: 'Indica amount o shares',
   })
 
 /**
- * POST /api/defindex/withdraw { caller, amount? | shares?, slippageBps? }
- * Construye el XDR sin firmar del retiro. El cliente lo firma con Pollar y lo
- * reenvía a /api/defindex/submit.
+ * POST /api/defindex/withdraw { caller, amount? | shares?, planId? }
  */
 export async function POST(req: Request) {
   try {
-    if (!DEFINDEX_VAULT_ADDRESS) {
-      return NextResponse.json({ error: 'DeFindex vault no configurada' }, { status: 503 })
-    }
     const parsed = bodySchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
-    const { caller, amount, shares, slippageBps = 100 } = parsed.data
+    const { caller, amount, shares, slippageBps = 100, planId } = parsed.data
+    const vaultAddress = resolveVaultAddress(planId)
+    if (!vaultAddress) {
+      return NextResponse.json({ error: 'DeFindex vault no configurada' }, { status: 503 })
+    }
     if (!isValidStellarPublicKey(caller)) {
       return NextResponse.json({ error: 'caller inválido' }, { status: 400 })
     }
@@ -40,10 +38,10 @@ export async function POST(req: Request) {
     const network = defindexNetwork()
     const res =
       shares != null
-        ? await sdk.withdrawShares(DEFINDEX_VAULT_ADDRESS, { caller, shares, slippageBps }, network)
+        ? await sdk.withdrawShares(vaultAddress, { caller, shares, slippageBps }, network)
         : await sdk.withdrawFromVault(
-            DEFINDEX_VAULT_ADDRESS,
-            { caller, amounts: [toUnits(amount as number)], slippageBps },
+            vaultAddress,
+            { caller, amounts: [toUnits(amount as number, planId)], slippageBps },
             network,
           )
     if (!res.xdr) {

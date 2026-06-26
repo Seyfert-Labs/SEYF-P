@@ -27,6 +27,7 @@ export function GrowingAmount({
   prefix = "$",
   id = "",
   countUpOnMount = false,
+  anchorMs,
 }: {
   base: number;
   apy: number;
@@ -40,6 +41,13 @@ export function GrowingAmount({
   id?: string;
   /** Si true, al montar hace count-up desde 0 hasta `base` (sorpresa al abrir). */
   countUpOnMount?: boolean;
+  /**
+   * Timestamp (ms) al que se ancla el crecimiento — normalmente el `updatedAt`
+   * persistido del saldo. Hace que el "money timer" PERSISTA entre recargas:
+   * el valor se deriva como base + base·(apy)·(now - anchorMs). Sin esto, el
+   * timer reinicia desde el montaje en cada carga.
+   */
+  anchorMs?: number;
 }) {
   const live = base > 0 && apy > 0;
   const reduced = useReducedMotion();
@@ -68,16 +76,22 @@ export function GrowingAmount({
   // reiniciar a cero al volver a montar. El setState solo ocurre dentro del intervalo.
   const [grown, setGrown] = useState(() => {
     const e = growStore.get(id);
-    return e && e.base === base ? e.last : 0;
+    if (e && e.base === base) return e.last;
+    // Siembra desde el ancla persistida para no parpadear en 0 antes del primer tick.
+    if (anchorMs != null && live) {
+      const perSec = (base * (apy / 100)) / SECONDS_PER_YEAR;
+      return Math.max(0, ((Date.now() - anchorMs) / 1000) * perSec);
+    }
+    return 0;
   });
 
   useEffect(() => {
     if (!live) return;
     const perSec = (base * (apy / 100)) / SECONDS_PER_YEAR;
-    // Reusa el ancla persistida; reancla solo si cambió el base.
+    // Reancla si cambió el base o si llegó un nuevo ancla persistido (updatedAt).
     let e = growStore.get(id);
-    if (!e || e.base !== base) {
-      e = { start: Date.now(), base, last: 0 };
+    if (!e || e.base !== base || (anchorMs != null && e.start !== anchorMs)) {
+      e = { start: anchorMs ?? Date.now(), base, last: 0 };
       growStore.set(id, e);
     }
     const start = e.start;
@@ -87,7 +101,7 @@ export function GrowingAmount({
       setGrown(g);
     }, 80);
     return () => clearInterval(iv);
-  }, [base, apy, live, id]);
+  }, [base, apy, live, id, anchorMs]);
 
   const value = baseAnim + (live ? grown : 0);
 

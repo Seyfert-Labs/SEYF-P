@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getDefindexSDK, defindexNetwork } from '@/lib/defindex/client'
-import { toErrorResponse } from '@/lib/reyf/api-error'
 
 const bodySchema = z.object({
   signedXdr: z.string().trim().min(1),
@@ -19,12 +18,25 @@ export async function POST(req: Request) {
     }
     const sdk = getDefindexSDK()
     const res = await sdk.sendTransaction(parsed.data.signedXdr, defindexNetwork())
+    if (!res.success) {
+      return NextResponse.json(
+        {
+          error: 'La transacción Soroban no se confirmó en la red',
+          txHash: res.txHash,
+          success: false,
+          ledger: res.ledger,
+        },
+        { status: 502 },
+      )
+    }
     return NextResponse.json({
       txHash: res.txHash,
       success: res.success,
       ledger: res.ledger,
     })
   } catch (e) {
-    return toErrorResponse(e, 'defindex/submit')
+    const message = e instanceof Error ? e.message : 'Error al enviar transacción'
+    console.error('[defindex/submit]', message)
+    return NextResponse.json({ error: message }, { status: 502 })
   }
 }

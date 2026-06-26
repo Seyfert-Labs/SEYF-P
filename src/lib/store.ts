@@ -14,6 +14,12 @@ export interface StoreVault {
   apy: number;
   color: string;
   createdAt: number;
+  /** Riel Stellar: plan DeFindex (conservador→CETES, moderado→USDC, balanceado→XLM). */
+  planId?: string;
+  /** Riel Stellar: id corto de estrategia (cetes | usdc | xlm). */
+  strategyId?: string;
+  /** Último guardado del saldo (ms). Ancla del "money timer" al recargar. */
+  updatedAt?: number;
 }
 export interface StoreBank {
   id: string;
@@ -139,7 +145,17 @@ export const store = {
 
   // ---- Bóvedas ----
   async listVaults(wallet: string): Promise<StoreVault[]> {
-    if (USE_DB) return (await jget<{ vaults: StoreVault[] }>(`/api/db/vaults?wallet=${wallet}`)).vaults ?? [];
+    if (USE_DB) {
+      const db = (await jget<{ vaults: StoreVault[] }>(`/api/db/vaults?wallet=${wallet}`)).vaults ?? [];
+      if (db.length > 0) return db;
+      // Migración: bóvedas en localStorage antes de activar Supabase
+      const local = LS.get<StoreVault[]>(key("vaults", wallet), []);
+      if (local.length > 0) {
+        await Promise.all(local.map((v) => jpost("/api/db/vaults", { wallet, vault: v })));
+        return local;
+      }
+      return [];
+    }
     return LS.get<StoreVault[]>(key("vaults", wallet), []);
   },
   async upsertVault(wallet: string, vault: StoreVault) {

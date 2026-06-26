@@ -17,7 +17,7 @@ import {
   normalizeStellarPublicKey,
 } from '@/lib/etherfuse/stellar-public-key'
 import { AppError, toErrorResponse } from '@/lib/reyf/api-error'
-import { rateLimitResponse } from '@/lib/reyf/redis-guards'
+import { rateLimitResponse } from '@/lib/reyf/guards'
 import { normalizeDateOfBirthToIso } from '@/lib/reyf/normalize-date-of-birth'
 import { isPublicStellarTestnet } from '@/lib/reyf/stellar-wallet-network'
 import { upsertStoredKycSnapshot } from '@/lib/reyf/kyc-state-store'
@@ -147,7 +147,7 @@ export async function POST(req: Request) {
       })
     }
 
-    // Redis-first: pasa publicKey para buscar sesión guardada por wallet
+    // Supabase: pasa publicKey para buscar sesión guardada por wallet
     const existing = await getEtherfuseOnboardingSession(publicKey)
     const fresh = newEtherfuseOnboardingIds()
     const ids = resolveOnboardingIds(existing, publicKey, fresh)

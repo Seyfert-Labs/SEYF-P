@@ -17,7 +17,7 @@ import { isEtherfuseDevPanelEnabled } from "@/lib/reyf/etherfuse-dev-panel";
  * - Si el usuario no terminó KYC / términos / CLABE en Etherfuse, la API puede rechazar cotización u orden
  *   aunque la cookie sea válida; [devnet](https://devnet.etherfuse.com/ramp) puede mostrar otro estado que la API.
  * - Con `walletPublicKeyHint` distinto de la clave en la cookie de /identidad, **no** se usa
- *   esa cookie (se resuelve solo por Redis u org lookup); evita cotizar con un customer y ordenar con otro.
+ *   esa cookie (se resuelve por Supabase u org lookup); evita cotizar con un customer y ordenar con otro.
  * - El portal Etherfuse pide «conectar wallet» para firmar; debe ser la **misma** `publicKey` que en Seyf
  *   (`/identidad` o MVP). Seyf no integra Freighter en el browser: la vinculación es servidor vía API + cookie.
  */
@@ -46,7 +46,7 @@ export async function resolveEtherfuseRampContext(options?: {
       ? normalizeStellarPublicKey(hint)
       : null;
 
-  // 1. Redis — fuente de verdad principal (keyed por walletPublicKey)
+  // 1. Supabase — fuente de verdad (wallet Stellar → customer Etherfuse)
   if (hintPk) {
     const stored = await getStoredOnboardingSession(hintPk);
     if (stored?.customerId && stored.bankAccountId) {
@@ -75,7 +75,7 @@ export async function resolveEtherfuseRampContext(options?: {
             fallbackBankAccountId: session.bankAccountId,
           });
           if (found?.customerId && found.bankAccountId && found.customerId !== session.customerId) {
-            // Cookie stale — guardar en Redis con los IDs correctos
+            // Cookie stale — guardar en Supabase con los IDs correctos
             void saveStoredOnboardingSession({
               customerId: found.customerId,
               bankAccountId: found.bankAccountId,
@@ -93,7 +93,7 @@ export async function resolveEtherfuseRampContext(options?: {
         }
       }
 
-      // Seed Redis con la cookie válida para requests futuros (sin Redis)
+      // Sincronizar Supabase con la cookie válida para requests futuros
       if (hintPk && sessionPk === hintPk) {
         void saveStoredOnboardingSession({
           customerId: session.customerId,
@@ -111,7 +111,7 @@ export async function resolveEtherfuseRampContext(options?: {
     }
   }
 
-  // 3. Etherfuse org wallet lookup — dispositivo nuevo sin Redis ni cookie.
+  // 3. Etherfuse org wallet lookup — dispositivo nuevo sin Supabase ni cookie.
   // Pasa un UUID fresco como fallbackBankAccountId por si el cliente existe
   // en Etherfuse pero todavía no tiene cuenta bancaria registrada en sandbox.
   if (hintPk) {

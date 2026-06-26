@@ -10,7 +10,7 @@ import { upsertStoredAgreementsAccepted } from "@/lib/reyf/agreements-state-stor
 import { assertEtherfuseKycApproved } from "@/lib/reyf/etherfuse-kyc-guard";
 import { resolveEtherfuseRampContext } from "@/lib/reyf/etherfuse-ramp-context";
 import { guardEtherfuseRampRoutes } from "@/lib/reyf/etherfuse-ramp-guard";
-import { acquireOnrampLock, releaseOnrampLock } from "@/lib/reyf/redis-guards";
+import { acquireOnrampLock, releaseOnrampLock } from "@/lib/reyf/guards";
 import { resolveEffectiveBankAccountIdForOnramp } from "@/lib/reyf/etherfuse-readiness";
 import { saveStoredOnboardingSession } from "@/lib/reyf/onboarding-session-store";
 import {
@@ -22,7 +22,7 @@ const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 
 const bodySchema = z.object({
   quoteId: z.string().min(1).max(128).refine((s) => uuidLike.test(s.trim()), "quoteId debe ser un UUID"),
-  wallet: z.string().optional(), // wallet hint para buscar sesión en Redis
+  wallet: z.string().optional(), // wallet hint para buscar sesión en Supabase
 });
 
 async function ensureAgreementsForWallet(ctx: {
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Usar wallet hint del body para buscar sesión en Redis (más confiable que solo cookie)
+  // Usar wallet hint del body para buscar sesión en Supabase (más confiable que solo cookie)
   const ctx = await resolveEtherfuseRampContext({
     walletPublicKeyHint: parsed.data.wallet ?? null,
   });

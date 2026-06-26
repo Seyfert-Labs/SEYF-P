@@ -132,6 +132,12 @@ export interface VaultRow {
   apy: number;
   color: string;
   createdAt: number;
+  /** Riel Stellar: plan DeFindex (conservador→CETES, moderado→USDC, balanceado→XLM). */
+  planId?: string;
+  /** Riel Stellar: id corto de estrategia (cetes | usdc | xlm). */
+  strategyId?: string;
+  /** Último guardado del saldo: ancla del "money timer" al recargar. */
+  updatedAt?: number;
 }
 
 export async function listVaults(wallet: string): Promise<VaultRow[]> {
@@ -139,7 +145,7 @@ export async function listVaults(wallet: string): Promise<VaultRow[]> {
   if (!sb) return [];
   const { data } = await sb
     .from("vaults")
-    .select("id, name, goal, balance, apy, color, created_at")
+    .select("id, name, goal, balance, apy, color, created_at, plan_id, strategy_id, updated_at")
     .eq("wallet_address", wallet)
     .order("created_at", { ascending: true });
   return (
@@ -151,6 +157,9 @@ export async function listVaults(wallet: string): Promise<VaultRow[]> {
       apy: Number(v.apy),
       color: v.color,
       createdAt: new Date(v.created_at).getTime(),
+      planId: v.plan_id ?? undefined,
+      strategyId: v.strategy_id ?? undefined,
+      updatedAt: v.updated_at ? new Date(v.updated_at).getTime() : undefined,
     })) ?? []
   );
 }
@@ -159,6 +168,10 @@ export async function upsertVault(wallet: string, v: VaultRow) {
   const sb = getSupabase();
   if (!sb) return;
   await ensureProfile(wallet);
+  const updatedAt =
+    v.updatedAt != null && Number.isFinite(v.updatedAt)
+      ? new Date(v.updatedAt).toISOString()
+      : new Date().toISOString();
   await sb.from("vaults").upsert(
     {
       id: v.id,
@@ -168,16 +181,163 @@ export async function upsertVault(wallet: string, v: VaultRow) {
       balance: v.bal,
       apy: v.apy,
       color: v.color,
-      updated_at: new Date().toISOString(),
+      plan_id: v.planId ?? null,
+      strategy_id: v.strategyId ?? null,
+      updated_at: updatedAt,
     },
     { onConflict: "id" },
   );
+}
+
+/** Actualiza saldo (y opcionalmente APY) tras abono/retiro on-chain. Reancla el money timer. */
+export async function patchVaultBalance(
+  wallet: string,
+  vaultId: string,
+  balance: number,
+  apy?: number,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const patch: Record<string, unknown> = {
+    balance,
+    updated_at: new Date().toISOString(),
+  };
+  if (apy != null && Number.isFinite(apy)) patch.apy = apy;
+  await sb.from("vaults").update(patch).eq("id", vaultId).eq("wallet_address", wallet);
 }
 
 export async function deleteVault(wallet: string, id: string) {
   const sb = getSupabase();
   if (!sb) return;
   await sb.from("vaults").delete().eq("wallet_address", wallet).eq("id", id);
+}
+
+// ---------- KYC (estado de verificación Etherfuse) ----------
+export interface KycStateRow {
+  customer_id: string;
+  wallet_public_key: string;
+  status: string;
+  approved_at: string | null;
+  current_rejection_reason: string | null;
+  last_event_id: string | null;
+  updated_at: string;
+}
+
+const KYC_COLS =
+  "customer_id, wallet_public_key, status, approved_at, current_rejection_reason, last_event_id, updated_at";
+
+export async function getKycState(
+  customerId: string,
+  walletPublicKey: string,
+): Promise<KycStateRow | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("kyc_state")
+    .select(KYC_COLS)
+    .eq("customer_id", customerId)
+    .eq("wallet_public_key", walletPublicKey)
+    .maybeSingle();
+  return (data as KycStateRow) ?? null;
+}
+
+export async function upsertKycState(row: KycStateRow) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("kyc_state").upsert(row, { onConflict: "customer_id,wallet_public_key" });
+}
+
+export async function listKycStates(limit = 200): Promise<KycStateRow[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("kyc_state")
+    .select(KYC_COLS)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  return (data as KycStateRow[]) ?? [];
+}
+
+// ---------- Sesión de onboarding Etherfuse (wallet Stellar → customer) ----------
+export interface OnboardingSessionRow {
+  wallet_public_key: string;
+  customer_id: string;
+  bank_account_id: string;
+  updated_at: string;
+}
+
+export async function getOnboardingSession(
+  walletPublicKey: string,
+): Promise<OnboardingSessionRow | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("onboarding_sessions")
+    .select("wallet_public_key, customer_id, bank_account_id, updated_at")
+    .eq("wallet_public_key", walletPublicKey)
+    .maybeSingle();
+  return (data as OnboardingSessionRow) ?? null;
+}
+
+export async function upsertOnboardingSession(row: {
+  walletPublicKey: string;
+  customerId: string;
+  bankAccountId: string;
+}) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("onboarding_sessions").upsert(
+    {
+      wallet_public_key: row.walletPublicKey,
+      customer_id: row.customerId,
+      bank_account_id: row.bankAccountId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "wallet_public_key" },
+  );
+}
+
+export async function deleteOnboardingSession(walletPublicKey: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("onboarding_sessions").delete().eq("wallet_public_key", walletPublicKey);
+}
+
+// ---------- Acuerdos del KYC ----------
+export async function getKycAgreements(
+  customerId: string,
+  walletPublicKey: string,
+): Promise<{ accepted: boolean; acceptedAt: string | null } | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("kyc_agreements")
+    .select("accepted, accepted_at")
+    .eq("customer_id", customerId)
+    .eq("wallet_public_key", walletPublicKey)
+    .maybeSingle();
+  if (!data) return null;
+  return { accepted: Boolean(data.accepted), acceptedAt: data.accepted_at ?? null };
+}
+
+export async function upsertKycAgreementsAccepted(params: {
+  customerId: string;
+  walletPublicKey: string;
+  acceptedAt?: string | null;
+}) {
+  const sb = getSupabase();
+  if (!sb) return;
+  const now = new Date().toISOString();
+  await sb.from("kyc_agreements").upsert(
+    {
+      customer_id: params.customerId,
+      wallet_public_key: params.walletPublicKey,
+      accepted: true,
+      accepted_at: params.acceptedAt ?? now,
+      updated_at: now,
+    },
+    { onConflict: "customer_id,wallet_public_key" },
+  );
 }
 
 // ---------- Bono de bienvenida ----------
@@ -393,6 +553,87 @@ export async function getMonthlyUsage(wallet: string, period: string): Promise<M
     .eq("period", period)
     .maybeSingle();
   return { deposit: Number(data?.deposit ?? 0), withdraw: Number(data?.withdraw ?? 0) };
+}
+
+// ---------- Rate limits (reemplaza Redis) ----------
+export async function bumpRateLimitBucket(
+  bucketKey: string,
+  windowSec: number,
+): Promise<{ hits: number; expiresAt: string }> {
+  const sb = getSupabase();
+  const now = Date.now();
+  const expiresAt = new Date(now + windowSec * 1000).toISOString();
+  if (!sb) return { hits: 1, expiresAt };
+
+  const { data: row } = await sb
+    .from("rate_limit_buckets")
+    .select("hits, expires_at")
+    .eq("bucket_key", bucketKey)
+    .maybeSingle();
+
+  if (!row || new Date(row.expires_at).getTime() <= now) {
+    await sb.from("rate_limit_buckets").upsert(
+      { bucket_key: bucketKey, hits: 1, expires_at: expiresAt },
+      { onConflict: "bucket_key" },
+    );
+    return { hits: 1, expiresAt };
+  }
+
+  const hits = Number(row.hits) + 1;
+  await sb.from("rate_limit_buckets").update({ hits }).eq("bucket_key", bucketKey);
+  return { hits, expiresAt: row.expires_at };
+}
+
+// ---------- Adelantos de liquidez ----------
+export async function getAdvanceSessionRow(customerId: string): Promise<Record<string, unknown> | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("advance_sessions")
+    .select("payload")
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  return (data?.payload as Record<string, unknown>) ?? null;
+}
+
+export async function upsertAdvanceSessionRow(customerId: string, payload: Record<string, unknown>) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("advance_sessions").upsert(
+    { customer_id: customerId, payload, updated_at: new Date().toISOString() },
+    { onConflict: "customer_id" },
+  );
+}
+
+export async function deleteAdvanceSessionRow(customerId: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("advance_sessions").delete().eq("customer_id", customerId);
+}
+
+// ---------- Lock onramp ----------
+export async function tryAcquireOnrampLock(customerId: string, ttlSec: number): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return true;
+  const now = Date.now();
+  const expiresAt = new Date(now + ttlSec * 1000).toISOString();
+  const { data: row } = await sb
+    .from("onramp_locks")
+    .select("expires_at")
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  if (row && new Date(row.expires_at).getTime() > now) return false;
+  await sb.from("onramp_locks").upsert(
+    { customer_id: customerId, expires_at: expiresAt },
+    { onConflict: "customer_id" },
+  );
+  return true;
+}
+
+export async function releaseOnrampLockRow(customerId: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("onramp_locks").delete().eq("customer_id", customerId);
 }
 
 export async function addMonthlyUsage(

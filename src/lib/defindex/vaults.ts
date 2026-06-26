@@ -1,67 +1,68 @@
-// ============================================================
-// Catálogo y configuración de las DeFindex vaults (Stellar/Soroban).
-//
-// MVP del hackathon PULSO: una sola vault de testnet a la que mapean todos los
-// planes de riesgo de la app. El balance y el APY se leen reales on-chain vía
-// DeFindex; la metadata cosmética (nombre, meta, color) sigue viviendo en
-// `store` (Supabase/localStorage), igual que el fallback del riel EVM.
-//
-// Este módulo es isomórfico (cliente y servidor): solo lee envs públicas y
-// expone helpers de unidades. La API key vive aparte, en client.ts (server).
-// ============================================================
+// Configuración del riel Stellar/DeFindex (isomórfico cliente/servidor).
 
-/** true si el riel Stellar/DeFindex está activado por env. */
+import {
+  DEFINDEX_STRATEGIES,
+  resolveStrategy,
+  strategyByPlanId,
+  type DefindexStrategyConfig,
+} from '@/lib/defindex/catalog'
+
+export { DEFINDEX_STRATEGIES, resolveStrategy, strategyByPlanId }
+export type { DefindexStrategyConfig }
+
 export const STELLAR_VAULTS_ENABLED =
   (process.env.NEXT_PUBLIC_STELLAR_VAULTS || '').trim().toLowerCase() === 'true'
 
-/** Dirección del contrato de la DeFindex vault (testnet). Sin valor → no onchain. */
+/** Vault por defecto (CETES) — compat con env legacy. */
 export const DEFINDEX_VAULT_ADDRESS = (
-  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_ADDRESS || ''
-).trim()
-
-/** Decimales del asset subyacente de la vault (USDC/EURC/XLM en Stellar = 7). */
-export const DEFINDEX_ASSET_DECIMALS = Number(
-  process.env.NEXT_PUBLIC_DEFINDEX_ASSET_DECIMALS || 7,
+  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_ADDRESS?.trim() ||
+  DEFINDEX_STRATEGIES[0]?.vaultAddress ||
+  ''
 )
 
-/** Símbolo del asset subyacente, solo para mostrar en la UI. */
-export const DEFINDEX_ASSET_SYMBOL = (
-  process.env.NEXT_PUBLIC_DEFINDEX_ASSET_SYMBOL || 'USDC'
-).trim()
+/** planId → dirección de vault DeFindex. */
+export const VAULT_BY_PLAN: Record<string, string> = Object.fromEntries(
+  DEFINDEX_STRATEGIES.map((s) => [s.planId, s.vaultAddress]),
+)
 
-/** El riel Stellar está realmente operativo (activado + vault configurada). */
 export const STELLAR_VAULTS_ONCHAIN =
-  STELLAR_VAULTS_ENABLED && Boolean(DEFINDEX_VAULT_ADDRESS)
+  STELLAR_VAULTS_ENABLED && DEFINDEX_STRATEGIES.length > 0
 
-// Mapa plan de riesgo → vault DeFindex. Hoy solo "Conservador" tiene ruta a una
-// vault real (CETES, estrategia Blend). Los demás planes quedan BLOQUEADOS hasta
-// que conectemos sus vaults (p.ej. T-Bills/índices) en Stellar. Para activar uno
-// nuevo: agrega su entrada aquí (planId → dirección C...).
-export const VAULT_BY_PLAN: Record<string, string> = DEFINDEX_VAULT_ADDRESS
-  ? { conservador: DEFINDEX_VAULT_ADDRESS }
-  : {}
+export const DEFINDEX_INVEST_ON_DEPOSIT =
+  (process.env.NEXT_PUBLIC_DEFINDEX_INVEST_ON_DEPOSIT || '').trim().toLowerCase() === 'true'
 
-/** Dirección de la vault que respalda un plan, o "" si el plan no tiene ruta aún. */
 export function resolveVaultAddress(planId?: string): string {
-  if (planId && VAULT_BY_PLAN[planId]) return VAULT_BY_PLAN[planId]
+  const strat = strategyByPlanId(planId)
+  if (strat) return strat.vaultAddress
   return DEFINDEX_VAULT_ADDRESS
 }
 
-/**
- * ¿El plan está disponible para crear bóveda? En el riel EVM no se bloquea nada.
- * En el riel Stellar, solo los planes con vault mapeada (hoy "Conservador").
- */
+/** En riel Stellar, los 3 planes con vault DeFindex están desbloqueados. */
 export function isPlanUnlocked(planId: string): boolean {
   if (!STELLAR_VAULTS_ENABLED) return true
   return Boolean(VAULT_BY_PLAN[planId])
 }
 
-/** Convierte un monto humano (p.ej. 100.5) a la unidad mínima entera del asset. */
-export function toUnits(amount: number): number {
-  return Math.round(amount * 10 ** DEFINDEX_ASSET_DECIMALS)
+export function assetSymbolForPlan(planId?: string): string {
+  return resolveStrategy(planId).assetSymbol
 }
 
-/** Convierte una unidad mínima entera del asset a monto humano. */
-export function fromUnits(raw: number): number {
-  return raw / 10 ** DEFINDEX_ASSET_DECIMALS
+export function assetDecimalsForPlan(planId?: string): number {
+  return resolveStrategy(planId).decimals
+}
+
+/** @deprecated Usa assetSymbolForPlan(planId) en multi-vault. */
+export const DEFINDEX_ASSET_SYMBOL = resolveStrategy('conservador').assetSymbol
+
+/** @deprecated Usa assetDecimalsForPlan(planId). */
+export const DEFINDEX_ASSET_DECIMALS = resolveStrategy('conservador').decimals
+
+export function toUnits(amount: number, planId?: string): number {
+  const d = assetDecimalsForPlan(planId)
+  return Math.round(amount * 10 ** d)
+}
+
+export function fromUnits(raw: number, planId?: string): number {
+  const d = assetDecimalsForPlan(planId)
+  return raw / 10 ** d
 }

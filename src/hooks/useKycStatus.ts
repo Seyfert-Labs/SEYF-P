@@ -7,6 +7,34 @@ const VERIFIED = new Set(["approved", "approved_chain_deploying", "proposed"]);
 
 export const KYC_STATUS_UPDATED_EVENT = "reyf:kyc-status-updated";
 
+const doneKey = (pk?: string | null) => `reyf_kyc_done_${pk || "anon"}`;
+
+/** ¿El usuario ya completó el flujo de verificación en este dispositivo? */
+function readKycDoneLocal(pk?: string | null): boolean {
+  if (typeof window === "undefined" || !pk) return false;
+  try {
+    return window.localStorage.getItem(doneKey(pk)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Marca el KYC como completado localmente al terminar el flujo. Etherfuse (testnet)
+ * puede tardar en pasar a "approved/proposed"; sin esto el banner "Verifica tu cuenta"
+ * seguía apareciendo en Inicio aunque el usuario ya hubiera terminado.
+ */
+export function markKycCompletedLocally(pk?: string | null) {
+  if (typeof window !== "undefined" && pk) {
+    try {
+      window.localStorage.setItem(doneKey(pk), "1");
+    } catch {
+      /* ignora */
+    }
+  }
+  notifyKycStatusUpdated();
+}
+
 /** Notifica a pantallas (inicio, perfil) que el KYC cambió sin recargar la app. */
 export function notifyKycStatusUpdated() {
   if (typeof window !== "undefined") {
@@ -36,20 +64,31 @@ export function useKycStatus() {
       return;
     }
 
+    // Si el usuario ya completó el flujo localmente, lo damos por verificado de
+    // inmediato (el estado real de Etherfuse puede tardar en propagarse).
+    const localDone = readKycDoneLocal(stellar.publicKey);
+    if (localDone) {
+      setVerified(true);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await fetch("/api/reyf/kyc/status");
       const j = await r.json().catch(() => ({}));
       const status = j?.kyc?.status as string | undefined;
-      setVerified(!!status && VERIFIED.has(status));
+      setVerified((!!status && VERIFIED.has(status)) || readKycDoneLocal(stellar.publicKey));
     } catch {
-      setVerified(false);
+      setVerified(readKycDoneLocal(stellar.publicKey));
     } finally {
       setLoading(false);
     }
   }, [stellar.enabled, stellar.authenticated, stellar.publicKey]);
 
   useEffect(() => {
+    // refresh() es async: el setState ocurre tras los awaits / en cortocircuitos, no síncrono.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
 

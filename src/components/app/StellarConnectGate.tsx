@@ -17,6 +17,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
+import { waitForPollarSession } from "@/lib/pollar/client-api";
 import { Portal } from "./Portal";
 import { Icon } from "./ui";
 
@@ -38,7 +39,10 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
   const [intent, setIntent] = useState("operar");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [activating, setActivating] = useState(false);
+  const [activateError, setActivateError] = useState<string | null>(null);
   const resolverRef = useRef<((ok: boolean) => void) | null>(null);
+  const activationDoneRef = useRef(false);
 
   const ensureConnected = useCallback(
     (label?: string): Promise<boolean> => {
@@ -49,6 +53,8 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
       setIntent(label || "operar");
       setEmail(mail);
       setCode("");
+      setActivateError(null);
+      activationDoneRef.current = false;
       setOpen(true);
       if (mail) void stellar.sendCode(mail); // auto-envía el código si hay correo
       return new Promise<boolean>((resolve) => {
@@ -58,14 +64,34 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
     [connected, stellar, wallet.email],
   );
 
-  // En cuanto Pollar queda autenticado, resuelve y cierra.
+  // Tras OTP: esperar token + wallet en Pollar antes de abrir el modal de abono.
   useEffect(() => {
-    if (open && connected) {
-      resolverRef.current?.(true);
-      resolverRef.current = null;
-      setOpen(false);
-    }
-  }, [open, connected]);
+    if (!open || !connected || activationDoneRef.current) return;
+    let cancelled = false;
+    activationDoneRef.current = true;
+    setActivating(true);
+    setActivateError(null);
+    void (async () => {
+      try {
+        await waitForPollarSession(stellar.getClient, { timeoutMs: 20_000 });
+        if (cancelled) return;
+        resolverRef.current?.(true);
+        resolverRef.current = null;
+        setOpen(false);
+      } catch (e) {
+        if (cancelled) return;
+        activationDoneRef.current = false;
+        setActivateError(e instanceof Error ? e.message : "No se pudo activar tu wallet Stellar");
+        resolverRef.current?.(false);
+        resolverRef.current = null;
+      } finally {
+        if (!cancelled) setActivating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, connected, stellar.getClient]);
 
   const cancel = () => {
     resolverRef.current?.(false);
@@ -73,8 +99,8 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
     setOpen(false);
   };
 
-  const busy = stellar.phase === "sending" || stellar.phase === "verifying";
-  const codeSent = stellar.phase === "code" || stellar.phase === "verifying" || stellar.phase === "error";
+  const busy = stellar.phase === "sending" || stellar.phase === "verifying" || activating;
+  const codeSent = stellar.phase === "code" || stellar.phase === "verifying" || stellar.phase === "error" || activating;
 
   return (
     <StellarConnectCtx.Provider value={{ connected, ensureConnected }}>
@@ -129,13 +155,26 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
                   {stellar.phase === "error" && stellar.error && (
                     <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--neg)" }}>{stellar.error}</p>
                   )}
+                  {activateError && (
+                    <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--neg)" }}>{activateError}</p>
+                  )}
+                  {activating && (
+                    <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--txt-muted)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="spin" style={{ width: 14, height: 14 }} />
+                      Activando tu wallet Stellar…
+                    </p>
+                  )}
                   <button
                     className="btn btn-primary"
                     style={{ marginTop: 14, width: "100%" }}
                     disabled={busy || code.trim().length < 4}
-                    onClick={() => void stellar.verifyCode(code.trim())}
+                    onClick={() => {
+                      setActivateError(null);
+                      activationDoneRef.current = false;
+                      void stellar.verifyCode(code.trim());
+                    }}
                   >
-                    {stellar.phase === "verifying" ? <span className="spin" /> : "Verificar y firmar"}
+                    {stellar.phase === "verifying" || activating ? <span className="spin" /> : "Verificar y continuar"}
                   </button>
                   <button
                     className="btn btn-ghost"

@@ -1,48 +1,46 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getDefindexSDK, defindexNetwork } from '@/lib/defindex/client'
-import { DEFINDEX_VAULT_ADDRESS, toUnits } from '@/lib/defindex/vaults'
+import { resolveVaultAddress, toUnits } from '@/lib/defindex/vaults'
 import { isValidStellarPublicKey } from '@/lib/etherfuse/stellar-public-key'
 
 const bodySchema = z.object({
   caller: z.string().trim().min(56).max(56),
   amount: z.number().positive(),
   slippageBps: z.number().int().min(0).max(10_000).optional(),
-  // invest=true invierte en la estrategia (Blend) en la MISMA tx → fee Soroban
-  // mucho mayor (puede superar el tope de la wallet). Por defecto false: el
-  // depósito deja el CETES en la vault (idle) con una tx más barata.
   invest: z.boolean().optional(),
+  planId: z.string().trim().optional(),
 })
 
 /**
- * POST /api/defindex/deposit { caller, amount, slippageBps? }
- * Construye el XDR sin firmar del depósito. El cliente lo firma con Pollar y lo
- * reenvía a /api/defindex/submit.
+ * POST /api/defindex/deposit { caller, amount, planId?, slippageBps?, invest? }
  */
 export async function POST(req: Request) {
   try {
-    if (!DEFINDEX_VAULT_ADDRESS) {
-      return NextResponse.json({ error: 'DeFindex vault no configurada' }, { status: 503 })
-    }
     const parsed = bodySchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
-    const { caller, amount, slippageBps = 100, invest = true } = parsed.data
+    const investEnv = (process.env.DEFINDEX_INVEST_ON_DEPOSIT || '').trim().toLowerCase() === 'true'
+    const { caller, amount, slippageBps = 100, invest = investEnv, planId } = parsed.data
+    const vaultAddress = resolveVaultAddress(planId)
+    if (!vaultAddress) {
+      return NextResponse.json({ error: 'DeFindex vault no configurada' }, { status: 503 })
+    }
     if (!isValidStellarPublicKey(caller)) {
       return NextResponse.json({ error: 'caller inválido' }, { status: 400 })
     }
 
     const sdk = getDefindexSDK()
     const res = await sdk.depositToVault(
-      DEFINDEX_VAULT_ADDRESS,
-      { caller, amounts: [toUnits(amount)], invest, slippageBps },
+      vaultAddress,
+      { caller, amounts: [toUnits(amount, planId)], invest, slippageBps },
       defindexNetwork(),
     )
     if (!res.xdr) {
       return NextResponse.json({ error: 'DeFindex no devolvió XDR de depósito' }, { status: 502 })
     }
-    return NextResponse.json({ xdr: res.xdr })
+    return NextResponse.json({ xdr: res.xdr, vaultAddress, planId })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Error DeFindex'
     console.error('[defindex/deposit]', message)
