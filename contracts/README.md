@@ -1,10 +1,10 @@
-# Contratos de Reyf
+# Contratos de SEYF
 
 Dos contratos simples para el ahorro on-chain en MXNB (ERC-20, 6 decimales),
 pensados para usarse desde la smart wallet del usuario (ERC-4337, gas
 patrocinado vía Privy).
 
-## 1. `ReyfVaults.sol` — bóvedas de ahorro
+## 1. `SeyfVaults.sol` — bóvedas de ahorro
 Custodia MXNB en bóvedas con nombre, meta y estrategia (`apyBps`) por usuario.
 Cada quien solo mueve sus propias bóvedas; sin admin sobre los fondos.
 
@@ -22,7 +22,7 @@ contrato designa ese manager con `setAdvanceManager`.
 `apyBps` = rendimiento anual en basis points (1150 = 11.5%). Es informativo: el
 contrato custodia el **principal** y el front proyecta el rendimiento.
 
-## 2. `ReyfAdvance.sol` — adelanto de liquidez
+## 2. `SeyfAdvance.sol` — adelanto de liquidez
 Adelanta MXNB hoy contra el rendimiento futuro del ahorro, **sin vender el
 principal** y a **0% de interés**.
 
@@ -32,7 +32,7 @@ principal** y a **0% de interés**.
 - `fundTreasury(amount)` / `withdrawTreasury(amount)` → owner gestiona la tesorería
 - `treasuryBalance()` → MXNB disponible para adelantos
 
-La tesorería la fondea Reyf (el `owner`). El colateral vive en la bóveda del
+La tesorería la fondea SEYF (el `owner`). El colateral vive en la bóveda del
 usuario (no en este contrato), así que retirar tesorería sobrante no toca
 garantías de nadie.
 
@@ -78,13 +78,13 @@ export RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
 export MXNB=0x82B9e52b26A2954E113F94Ff26647754d5a4247D
 
 # 1) Bóvedas
-forge create ReyfVaults.sol:ReyfVaults \
+forge create SeyfVaults.sol:SeyfVaults \
   --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
   --constructor-args $MXNB --broadcast
 # => guarda la dirección: export VAULTS=0x...
 
 # 2) Adelanto (apunta a la bóveda y al token)
-forge create ReyfAdvance.sol:ReyfAdvance \
+forge create SeyfAdvance.sol:SeyfAdvance \
   --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
   --constructor-args $VAULTS $MXNB --broadcast
 # => export ADVANCE=0x...
@@ -103,19 +103,19 @@ cast send $ADVANCE "fundTreasury(uint256)" 10000000000 \
 ## Direcciones desplegadas (Arbitrum Sepolia · testnet)
 | Contrato | Dirección |
 |----------|-----------|
-| `ReyfVaults` | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` |
-| `ReyfAdvance` (legacy v1 · monto, no años) | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` |
+| `SeyfVaults` | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` |
+| `SeyfAdvance` (legacy v1 · monto, no años) | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` |
 | Tesorería (conversión FX) | `0xae0AEAd08f5984E6CD00aB4Fd4e9c569D11b2eaF` |
 
 ### Redesplegar adelanto (modelo 9 años · LTV 90%)
 
 El repo usa `requestAdvance(vaultId, años)`. La dirección legacy de Sepolia usa
-`requestAdvance(vaultId, monto)` — incompatible. **No toques ReyfVaults**; solo
-redespliega `ReyfAdvance` y actualiza la env:
+`requestAdvance(vaultId, monto)` — incompatible. **No toques SeyfVaults**; solo
+redespliega `SeyfAdvance` y actualiza la env:
 
 ```bash
 cd contracts
-export PRIVATE_KEY=0x...          # owner de ReyfVaults (Sepolia: 0xBC3B5d04…)
+export PRIVATE_KEY=0x...          # owner de SeyfVaults (Sepolia: 0xBC3B5d04…)
 export FUND_TREASURY_MXNB=50000   # MXNB para tesorería del adelanto
 ./scripts/redeploy-advance-sepolia.sh
 ```

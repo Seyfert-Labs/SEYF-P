@@ -1,18 +1,18 @@
 import { randomUUID } from "node:crypto";
 
 /**
- * Modelo de integración Seyf ↔ Etherfuse (paso 2 del checklist).
+ * Modelo de integración SEYF ↔ Etherfuse (paso 2 del checklist).
  *
  * - **Organización partner (tú):** identificada por la API key (`GET /ramp/me` → org "seyf").
  *   No es el ID que pasas como `customerId`.
  * - **Usuario final (cliente ramp):** Etherfuse crea el registro de cliente cuando llamas
  *   `POST /ramp/onboarding-url` con UUIDs que **generas tú**: `customerId` y `bankAccountId`,
- *   más la wallet Stellar (`publicKey` + `blockchain: stellar`). Hoy Seyf guarda eso en cookie
+ *   más la wallet Stellar (`publicKey` + `blockchain: stellar`). Hoy SEYF guarda eso en cookie
  *   httpOnly (`lib/etherfuse/onboarding-session.ts`) hasta tener Postgres; luego:
  *   `seyf_user_id` → `etherfuse_customer_id`, `etherfuse_bank_account_id`, `stellar_public_key`.
  *   La **CLABE** se captura en el onboarding hosted de Etherfuse (paso bancario del portal).
  * - **Child org (`POST /ramp/organization`):** sub-organizaciones con flujo de aprobación KYB aparte.
- *   En el MVP retail de Seyf **no** es el camino por usuario; sirve para partners/negocios, no para cada ahorrador.
+ *   En el MVP retail de SEYF **no** es el camino por usuario; sirve para partners/negocios, no para cada ahorrador.
  *
  * Onboarding:
  * - **hosted** (default): UI de Etherfuse vía URL firmada — más rápido para validar el MVP ([guía](https://docs.etherfuse.com/guides/onboarding-hosted)).
@@ -22,7 +22,7 @@ import { randomUUID } from "node:crypto";
  * @see https://docs.etherfuse.com/guides/onboarding
  *
  * **Paso 4 (cotización / orden / webhooks):** `lib/etherfuse/ramp-api.ts`, rutas
- * `GET/POST /api/reyf/etherfuse/...` y `POST /api/webhooks/etherfuse` (ver `.env.example`).
+ * `GET/POST /api/seyf/etherfuse/...` y `POST /api/webhooks/etherfuse` (ver `.env.example`).
  */
 
 export const ETHERFUSE_BLOCKCHAINS = [
@@ -43,7 +43,7 @@ export function getEtherfuseOnboardingMode(): EtherfuseOnboardingMode {
   return "hosted";
 }
 
-/** MVP Seyf: solo Stellar (MXNe / Stablebonds). */
+/** MVP SEYF: solo Stellar (MXNe / Stablebonds). */
 export function getEtherfuseDefaultBlockchain(): EtherfuseBlockchain {
   const v = process.env.ETHERFUSE_DEFAULT_BLOCKCHAIN?.trim().toLowerCase();
   if (

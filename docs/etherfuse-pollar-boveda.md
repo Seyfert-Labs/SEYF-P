@@ -1,7 +1,7 @@
 # Etherfuse + Pollar + Bóveda soberana — bitácora de implementación
 
 **Rama:** `etherfuse-kyc-stablebonds`
-**App:** Reyf (`Seyf2/`)
+**App:** SEYF (`Seyf2/`)
 **Fecha:** junio 2026
 **PR:** #4 → `main` (https://github.com/MarxMad/EthMex2026/pull/4)
 
@@ -15,14 +15,14 @@
 
 - El usuario **no debe ver jerga**: nada de "CETES", "Stablebonds", "Etherfuse",
   "Stellar" ni "Pollar" en la UI. Todo va por detrás.
-- Reyf ofrece **distintas bóvedas de ahorro**. Una de ellas está respaldada por
+- SEYF ofrece **distintas bóvedas de ahorro**. Una de ellas está respaldada por
   bonos soberanos tokenizados (Etherfuse). Las demás se irán conectando a otros
   proveedores de yield.
 - **Rieles separados**: no se unifica todo on-chain. MXNB/DeFi viven en Arbitrum;
   los bonos soberanos en Stellar. Solo se unifica la **identidad** y la
   **presentación** (todo se ve como "bóvedas").
 - El **KYC de Etherfuse** es la pieza clave y debe vivir en **Perfil**, simple.
-  Reyf no tenía KYC propio; se usa el de Etherfuse, presentado como propio.
+  SEYF no tenía KYC propio; se usa el de Etherfuse, presentado como propio.
 
 ---
 
@@ -75,10 +75,10 @@ Usuario (1 correo)
 - **`src/components/app/screens/account.tsx`**: tarjeta "Verifica tu identidad" en
   Perfil que enruta a `kyc`.
 - **`src/components/app/nav.ts`**: `Screen` incluye `"kyc"`.
-- **`src/components/app/ReyfApp.tsx`**: `kyc` en el mapa de screens; oculta tabs.
+- **`src/components/app/SeyfApp.tsx`**: `kyc` en el mapa de screens; oculta tabs.
 
 ### Pollar headless
-- **`src/lib/reyf/use-reyf-stellar-wallet.ts`**: maneja el OTP vía
+- **`src/lib/seyf/use-seyf-stellar-wallet.ts`**: maneja el OTP vía
   `getClient().login({provider:'email', email})` + `verifyEmailCode(code)`, con un
   state machine (`phase`: idle → sending → code → verifying → connected → error)
   alimentado por `onAuthStateChange`. El check `enabled` acepta
@@ -109,9 +109,9 @@ Usuario (1 correo)
 2. ScreenKyc: "Enviar código" → Pollar manda OTP al correo de Privy
 3. Usuario captura el código → wallet Stellar creada/recuperada (Pollar)
 4. "Código verificado" → formulario de datos (CURP/RFC, dirección)
-5. POST /api/reyf/kyc/submit → Etherfuse (idNumbers: mx_curp, mx_rfc)
-6. Subir INE frente/reverso + selfie → /api/reyf/kyc/documents
-7. Aceptar términos → /api/reyf/kyc/agreements
+5. POST /api/seyf/kyc/submit → Etherfuse (idNumbers: mx_curp, mx_rfc)
+6. Subir INE frente/reverso + selfie → /api/seyf/kyc/documents
+7. Aceptar términos → /api/seyf/kyc/agreements
 8. Listo → trustline asegurada en background. Ya puede abrir la bóveda soberana.
 ```
 
@@ -123,7 +123,7 @@ Usuario (1 correo)
 |---|---|---|
 | Pantalla "servicio no configurado" en local y Vercel | `NEXT_PUBLIC_POLLAR_API_KEY` no incrustada (dev stale / falta en Vercel) | Reiniciar dev / setear env en Vercel + redeploy. Las `NEXT_PUBLIC_*` se incrustan al **compilar**. |
 | CORS `sdk.api.pollar.xyz` 403 | Dominio no autorizado en Pollar | Agregar el dominio de Vercel en el dashboard de Pollar. |
-| `POST /api/reyf/kyc/submit` → 400 | idNumbers enviados como `curp`/`rfc`; Etherfuse espera `mx_curp`/`mx_rfc` | Cambiados los tipos en `ScreenKyc`. |
+| `POST /api/seyf/kyc/submit` → 400 | idNumbers enviados como `curp`/`rfc`; Etherfuse espera `mx_curp`/`mx_rfc` | Cambiados los tipos en `ScreenKyc`. |
 | Error mostrado como `[object Object]` | `new Error(j.error)` con `error` siendo objeto | Helper `readApiError()` (prioriza `debug_message` / `message_es`). |
 | Sin feedback al verificar OTP | Transición directa a datos | Barra "Código verificado" antes del formulario. |
 | Fix `enabled` perdido | Squash `(#3)` + merge de `main` sobrescribió el hook | Re-aplicado el fallback `PUBLISHABLE_KEY`. |
@@ -150,7 +150,7 @@ ETHERFUSE_API_BASE_URL=https://api.sand.etherfuse.com
 ETHERFUSE_API_KEY=...
 ETHERFUSE_ONBOARDING_MODE=programmatic
 ETHERFUSE_DEFAULT_BLOCKCHAIN=stellar
-REYF_ALLOW_ETHERFUSE_RAMP=true
+SEYF_ALLOW_ETHERFUSE_RAMP=true
 ```
 
 - Marcar las `NEXT_PUBLIC_*` para **Production y Preview**.
@@ -162,7 +162,7 @@ REYF_ALLOW_ETHERFUSE_RAMP=true
 ## 8. Decisión pendiente — riel de fondeo de la bóveda soberana
 
 El onramp de Etherfuse es **fiat MXN (SPEI/CLABE) → bono en Stellar**: **no acepta
-MXNB** como origen. Las bóvedas de Reyf se fondean con **MXNB on-chain (Arbitrum)**.
+MXNB** como origen. Las bóvedas de SEYF se fondean con **MXNB on-chain (Arbitrum)**.
 Para que "fondear la bóveda soberana compre el bono por detrás" hay que elegir el
 flujo de dinero:
 

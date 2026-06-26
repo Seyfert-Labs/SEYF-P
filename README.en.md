@@ -1,6 +1,6 @@
 <div align="center">
 
-# Reyf
+# SEYF
 
 ### The retirement savings super app — save, invest, and spend without borders
 
@@ -24,7 +24,7 @@ Built on **MXNB** (Bitso Business / Juno), social smart wallets with no seed phr
 
 ## Description
 
-**Reyf** is a mobile-first personal finance and retirement-savings platform for Mexico. It combines the familiarity of a neobank (SPEI deposits, peso balances, simple copy) with on-chain infrastructure users never have to think about: **MXNB** on Arbitrum, ERC-4337 smart wallets, and programmatic access to yield and sovereign fixed income.
+**SEYF** is a mobile-first personal finance and retirement-savings platform for Mexico. It combines the familiarity of a neobank (SPEI deposits, peso balances, simple copy) with on-chain infrastructure users never have to think about: **MXNB** on Arbitrum, ERC-4337 smart wallets, and programmatic access to yield and sovereign fixed income.
 
 ### The problem we address
 
@@ -35,17 +35,17 @@ Mexico’s mandatory pension system (AFORE) leaves most workers under-covered:
 - **Low real returns and poor transparency** — annual statements are opaque; voluntary savings are underused.
 - **No liquidity** without punitive early withdrawals from long-term products.
 
-Reyf targets Mexicans aged **25–55** who want a **voluntary, transparent, liquid** alternative: save in digital pesos, earn real yield, diversify into tokenized government bonds, and access liquidity without selling their positions.
+SEYF targets Mexicans aged **25–55** who want a **voluntary, transparent, liquid** alternative: save in digital pesos, earn real yield, diversify into tokenized government bonds, and access liquidity without selling their positions.
 
 ### What we built
 
-Reyf is a **single Next.js application** with two layers:
+SEYF is a **single Next.js application** with two layers:
 
 1. **Neobank UX (Arbitrum + MXNB)**  
    Email login via Privy → smart wallet with **no seed phrase** → gasless transfers via ZeroDev/Pimlico → SPEI on/off-ramp through Juno/Bitso Business → real MXNB balance on-chain.
 
 2. **Retirement vaults (Solidity + app shell)**  
-   Custom **`ReyfVaults`** contract: users open named vaults with a risk profile (`apyBps`), deposit MXNB, withdraw free balance, and track goals. Custom **`ReyfAdvance`** contract: **0% interest liquidity advance** against **future yield** — users receive MXNB today and lock collateral in the vault until they repay. This is Reyf’s answer to AFORE pension loans at **35% + VAT** vs **0%** (it is their own yield, advanced).
+   Custom **`SeyfVaults`** contract: users open named vaults with a risk profile (`apyBps`), deposit MXNB, withdraw free balance, and track goals. Custom **`SeyfAdvance`** contract: **0% interest liquidity advance** against **future yield** — users receive MXNB today and lock collateral in the vault until they repay. This is SEYF’s answer to AFORE pension loans at **35% + VAT** vs **0%** (it is their own yield, advanced).
 
 3. **Sovereign bonds track (Etherfuse + Stellar)**  
    Programmatic **KYC** and **CETES / Stablebonds** on-ramp via Etherfuse, with a Stellar wallet (Pollar) parallel to the Privy/Arbitrum stack. KYC lives inside the app shell; users never see “Stellar” or “Etherfuse” in the product copy.
@@ -59,8 +59,8 @@ Reyf is a **single Next.js application** with two layers:
 |------|----------------|
 | **Onboard** | Email OTP → smart wallet → 5-question risk quiz → profile synced to Supabase |
 | **Deposit** | SPEI / mock issuance → MXNB minted → funded to user wallet; optimistic “pending → confirmed” UI |
-| **Save in vault** | Approve + `deposit(vaultId, amount)` on `ReyfVaults`; balance read on-chain |
-| **Advance yield** | User selects **1 year of yield** (current contract limit); app computes MXNB amount → `requestAdvance(vaultId, amountInUnits)` on `ReyfAdvance` |
+| **Save in vault** | Approve + `deposit(vaultId, amount)` on `SeyfVaults`; balance read on-chain |
+| **Advance yield** | User selects **1 year of yield** (current contract limit); app computes MXNB amount → `requestAdvance(vaultId, amountInUnits)` on `SeyfAdvance` |
 | **Repay advance** | Approve + `repay(vaultId, amount)`; collateral released proportionally |
 | **Redeem** | MXNB → MXN SPEI to registered CLABE via Juno redemption |
 | **KYC (Etherfuse)** | In-app identity flow → documents → agreements → vault gated for sovereign strategy |
@@ -70,8 +70,8 @@ Reyf is a **single Next.js application** with two layers:
 | Contract | Address | Role |
 |----------|---------|------|
 | **MXNB** | `0x82B9e52b26A2954E113F94Ff26647754d5a4247D` | ERC-20, 6 decimals (Bitso/Juno) |
-| **ReyfVaults** | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` | Custody vault balances; `advanceManager` can lock collateral |
-| **ReyfAdvance** | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` | Treasury-funded advances; legacy v1 uses **amount** param (see Progress) |
+| **SeyfVaults** | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` | Custody vault balances; `advanceManager` can lock collateral |
+| **SeyfAdvance** | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` | Treasury-funded advances; legacy v1 uses **amount** param (see Progress) |
 | **Treasury** | `0xae0AEAd08f5984E6CD00aB4Fd4e9c569D11b2eaF` | Pooled MXNB for FX conversion |
 
 Contract source, tests (21 Foundry tests including reentrancy), and deploy scripts: [`contracts/`](contracts/).
@@ -102,8 +102,8 @@ Contract source, tests (21 Foundry tests including reentrancy), and deploy scrip
 
 ### Week 2 — Vaults + liquidity advance (core DeFi differentiator)
 
-- Authored and deployed **`ReyfVaults.sol`**: per-user vaults with name, goal, `apyBps`, deposit/withdraw, and **lien** API for the advance manager.
-- Authored and deployed **`ReyfAdvance.sol`**: 0% advance against future yield; treasury funding; repay with proportional collateral release.
+- Authored and deployed **`SeyfVaults.sol`**: per-user vaults with name, goal, `apyBps`, deposit/withdraw, and **lien** API for the advance manager.
+- Authored and deployed **`SeyfAdvance.sol`**: 0% advance against future yield; treasury funding; repay with proportional collateral release.
 - Built **Foundry test suite** (21 tests): vault isolation, lien access control, advance caps, partial repay, treasury, **reentrancy attacks** on withdraw and advance.
 - Connected app **`useVaults`** hook: `openVault`, `deposit`, `withdraw`, `closeVault` via gasless smart-wallet transactions.
 - Built **LiquidityAdvanceModal**: year selection, yield projection, confirm flow, on-chain receipt link, active-advance management + **RepayModal**.
@@ -112,7 +112,7 @@ Contract source, tests (21 Foundry tests including reentrancy), and deploy scrip
 
 - Shipped **`/api/convert`**: idempotent Bitso orders + ledger settlement + on-chain treasury transfer for MXNB out.
 - Added **risk quiz** (5 questions) → four strategies (Conservador / Moderado / Balanceado / Crecimiento) with AFORE fee comparison and 10/20/30-year projections.
-- Ported **Etherfuse KYC + Stablebonds** stack from a sibling codebase: `/api/reyf/kyc/*`, ramp APIs, webhooks, Pollar Stellar wallet, in-app **`ScreenKyc`** (no external Etherfuse UI).
+- Ported **Etherfuse KYC + Stablebonds** stack from a sibling codebase: `/api/seyf/kyc/*`, ramp APIs, webhooks, Pollar Stellar wallet, in-app **`ScreenKyc`** (no external Etherfuse UI).
 - Connected KYC status to **home/profile banners** (“verify account” → “account verified”).
 - Documented product roadmap and sovereign-vault funding rail decision (SPEI to Etherfuse vs MXNB path).
 
@@ -122,7 +122,7 @@ This was a major focus during the buildathon demo period:
 
 **Problem discovered:** Users deposited **$7,000 MXNB** into a vault successfully (verified on Arbiscan: `7_000_000_000` units, vault id `0`), but **liquidity advance** transactions only transferred **~0.000001 MXNB** while the UI showed **$700–$5,985**.
 
-**Root cause:** ABI mismatch between **deployed** `ReyfAdvance` (legacy v1: `requestAdvance(vaultId, amountInTokenUnits)`) and **frontend** (new model: `requestAdvance(vaultId, years)`). Sending `years = 9` was interpreted on-chain as **9 wei** of MXNB.
+**Root cause:** ABI mismatch between **deployed** `SeyfAdvance` (legacy v1: `requestAdvance(vaultId, amountInTokenUnits)`) and **frontend** (new model: `requestAdvance(vaultId, years)`). Sending `years = 9` was interpreted on-chain as **9 wei** of MXNB.
 
 **Fix shipped (no redeploy required for testnet demo):**
 
@@ -138,7 +138,7 @@ This was a major focus during the buildathon demo period:
 - `maxAdvance(user, vault0)`: **665 MXNB** ✓  
 - `advanceManager` correctly points to deployed advance contract ✓  
 
-**Prepared but optional:** `contracts/scripts/redeploy-advance-sepolia.sh` to deploy **model B** contract (`requestAdvance(vaultId, years)`, up to **9 years / 90% LTV**) when the team is ready — no change to `ReyfVaults` required.
+**Prepared but optional:** `contracts/scripts/redeploy-advance-sepolia.sh` to deploy **model B** contract (`requestAdvance(vaultId, years)`, up to **9 years / 90% LTV**) when the team is ready — no change to `SeyfVaults` required.
 
 ### What works end-to-end today
 
@@ -152,7 +152,7 @@ This was a major focus during the buildathon demo period:
 - Legacy advance contract: **1 year of yield max** per operation (multi-year single-tx requires contract redeploy).
 - Sovereign vault **on-ramp** not fully wired (MXNB vs SPEI-to-Etherfuse rail decision pending).
 - Etherfuse auto-deploy post-deposit is stubbed; sandbox SPEI simulation route not yet ported.
-- Privy JWT not yet enforced on all `/api/reyf/*` routes (scoped by wallet + session cookie today).
+- Privy JWT not yet enforced on all `/api/seyf/*` routes (scoped by wallet + session cookie today).
 
 ---
 
@@ -164,11 +164,11 @@ Select up to **8** for the submission form; full stack below for reference.
 
 | Tag | How we use it |
 |-----|----------------|
-| **React** | UI components, hooks, app shell (`ReyfApp`, modals, screens) |
+| **React** | UI components, hooks, app shell (`SeyfApp`, modals, screens) |
 | **Next** | App Router, API routes, SSR landing, Vercel deploy |
 | **Web3** | Smart wallets, on-chain reads, vault/advance transactions |
 | **Ethers** | *(via **viem** — Ethereum JSON-RPC, ABI encode, `readContract`, `getLogs`)* |
-| **Solidity** | `ReyfVaults`, `ReyfAdvance`, Foundry tests |
+| **Solidity** | `SeyfVaults`, `SeyfAdvance`, Foundry tests |
 | **Node** | Next.js server handlers, Juno HMAC, Etherfuse orchestration |
 
 > If the form allows free text: **viem**, **Privy**, **Supabase**, **TypeScript**, **Tailwind**, **Etherfuse**, **Stellar/Pollar**.
@@ -195,12 +195,12 @@ Select up to **8** for the submission form; full stack below for reference.
 Seyf2/
 ├── src/app/api/juno/          # Fiat rails (HMAC)
 ├── src/app/api/db/            # Supabase persistence
-├── src/app/api/reyf/          # Etherfuse KYC + ramp
+├── src/app/api/seyf/          # Etherfuse KYC + ramp
 ├── src/components/app/        # Mobile app UI + LiquidityAdvanceModal
 ├── src/lib/chain.ts           # viem, vault/advance ABIs, readAdvanceQuote
 ├── contracts/
-│   ├── ReyfVaults.sol
-│   ├── ReyfAdvance.sol
+│   ├── SeyfVaults.sol
+│   ├── SeyfAdvance.sol
 │   └── test/                  # 21 Foundry tests
 └── docs/                      # PRD, pitch, Etherfuse integration notes
 ```
@@ -216,7 +216,7 @@ Seyf2/
 | Use of funds | Purpose |
 |--------------|---------|
 | **Regulatory & legal** | Fintech counsel (CNBV-adjacent structure), KYC/AML program design |
-| **Smart contract audit** | `ReyfVaults` + `ReyfAdvance` before mainnet real funds |
+| **Smart contract audit** | `SeyfVaults` + `SeyfAdvance` before mainnet real funds |
 | **Etherfuse / SPEI production** | Live sovereign-bond rail, webhook ops, treasury float for advances |
 | **Team** | 1 backend (rails + ledger), 1 mobile/frontend, 1 part-time compliance |
 
@@ -232,9 +232,9 @@ Seyf2/
 - Yield differential on vault strategies (user sees projected APY; protocol captures spread vs underlying instruments).
 - B2B white-label vault infrastructure for cooperatives and gig platforms (longer term).
 
-**Not raising via token.** MXNB is Bitso/Juno’s regulated digital peso — Reyf is the UX and orchestration layer, not a new stablecoin issuer.
+**Not raising via token.** MXNB is Bitso/Juno’s regulated digital peso — SEYF is the UX and orchestration layer, not a new stablecoin issuer.
 
-**Contact:** submission via EthMex 2026 / GitHub issues on the repo. Team details in pitch deck (`docs/reyf-pitch.html`).
+**Contact:** submission via EthMex 2026 / GitHub issues on the repo. Team details in pitch deck (`docs/seyf-pitch.html`).
 
 ---
 

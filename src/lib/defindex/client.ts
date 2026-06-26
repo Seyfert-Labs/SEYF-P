@@ -1,6 +1,6 @@
 import 'server-only'
 import { DefindexSDK, SupportedNetworks } from '@defindex/sdk'
-import { isPublicStellarTestnet } from '@/lib/reyf/stellar-wallet-network'
+import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
 
 // ============================================================
 // Cliente DeFindex (solo servidor). El SDK habla con api.defindex.io usando

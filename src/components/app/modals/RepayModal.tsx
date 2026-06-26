@@ -1,7 +1,7 @@
 "use client";
 
 /* Repago (total o parcial) de un adelanto de liquidez.
-   Flujo: aprueba MXNB al contrato ReyfAdvance → llama repay(vaultId, amount).
+   Flujo: aprueba MXNB al contrato SeyfAdvance → llama repay(vaultId, amount).
    El colateral se libera proporcionalmente al monto repagado. */
 import React, { useState } from "react";
 import { encodeFunctionData, parseUnits } from "viem";
@@ -11,7 +11,7 @@ import { FMT } from "../data";
 import { useWallet } from "@/components/wallet/WalletContext";
 import {
   SEYF_ADVANCE_ADDRESS,
-  reyfAdvanceAbi,
+  seyfAdvanceAbi,
   erc20Abi,
   MXNB_ADDRESS,
   MXNB_DECIMALS,
@@ -61,7 +61,7 @@ export function RepayModal({
     try {
       const units = toUnits(n);
 
-      // 1. Aprobar MXNB al contrato ReyfAdvance
+      // 1. Aprobar MXNB al contrato SeyfAdvance
       const approveData = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
@@ -71,7 +71,7 @@ export function RepayModal({
 
       // 2. Repagar — libera el colateral proporcional
       const repayData = encodeFunctionData({
-        abi: reyfAdvanceAbi,
+        abi: seyfAdvanceAbi,
         functionName: "repay",
         args: [BigInt(vaultId), units],
       });

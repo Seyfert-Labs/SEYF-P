@@ -51,7 +51,7 @@ export async function fetchRampableAssetsForWallet(params: {
 }
 
 /**
- * Elige CODE:ISSUER para onramp MXN → crypto (preferencia Seyf: CETES estable, luego MXNe/USDC).
+ * Elige CODE:ISSUER para onramp MXN → crypto (preferencia SEYF: CETES estable, luego MXNe/USDC).
  *
  * `ETHERFUSE_ONRAMP_TARGET_ASSET` ya no tiene prioridad sobre GET /ramp/assets: un issuer obsoleto
  * en .env provoca `NonStableAsset` en sandbox; solo se usa si coincide con un `identifier` devuelto

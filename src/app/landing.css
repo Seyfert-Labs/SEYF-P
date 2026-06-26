@@ -15,6 +15,11 @@
   --txt:       #F4F2FB;
   --muted:     #A29CB8;
   --dim:       #6A6582;
+  /* Alias para que los componentes de la app (GrowingAmount, etc.) rendericen
+     bien dentro del mockup del teléfono, que usa los tokens de globals.css. */
+  --txt-muted: #A29CB8;
+  --txt-dim:   #6A6582;
+  --surface-3: rgba(255,255,255,0.09);
   --accent:    #C8FF4D;
   --accent-2:  #8B5CF6;
   --on-accent: #0A0A0F;
@@ -220,8 +225,9 @@
   background: radial-gradient(circle, var(--accent-soft), transparent 70%); opacity: .8; pointer-events: none; }
 
 /* ---------- bonds ---------- */
-.lp .bonds-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-.lp .bond { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 24px; transition: transform .25s, border-color .25s; }
+.lp .bonds-row { display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 4px 2px 8px; }
+.lp .bonds-row::-webkit-scrollbar { display: none; }
+.lp .bond { flex: 0 0 auto; width: 232px; scroll-snap-align: start; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 24px; transition: transform .25s, border-color .25s; }
 .lp .bond:hover { transform: translateY(-5px); border-color: var(--accent); }
 .lp .bond .flag { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; border: 1px solid var(--line-2); margin-bottom: 18px; }
 .lp .bond .country { font-weight: 800; font-size: 17px; }

@@ -1,5 +1,5 @@
 import { getEtherfuseConfig } from "./config";
-import { AppError } from "@/lib/reyf/api-error";
+import { AppError } from "@/lib/seyf/api-error";
 import { mapEtherfuseHttpError, mapEtherfuseNetworkError } from "./errors";
 
 export const ETHERFUSE_DEFAULT_TIMEOUT_MS = 10_000;

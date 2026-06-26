@@ -28,6 +28,7 @@ export function GrowingAmount({
   id = "",
   countUpOnMount = false,
   anchorMs,
+  color,
 }: {
   base: number;
   apy: number;
@@ -37,6 +38,9 @@ export function GrowingAmount({
   tail?: number;
   align?: "center" | "left";
   prefix?: string;
+  /** Color del dígito entero y los micro-decimales. Default: blanco + lima.
+      Pásalo (p. ej. violeta) para marcar un saldo en bóveda. */
+  color?: string;
   /** Clave estable para persistir el crecimiento entre navegaciones (p. ej. el id de la bóveda). */
   id?: string;
   /** Si true, al montar hace count-up desde 0 hasta `base` (sorpresa al abrir). */
@@ -128,10 +132,10 @@ export function GrowingAmount({
       <span style={{ fontSize: size * 0.5, color: "var(--txt-muted)", fontWeight: 700, alignSelf: "flex-start", marginTop: size * 0.08 }}>
         {prefix}
       </span>
-      <span style={{ fontSize: size, color: "var(--txt)" }}>{whole}</span>
+      <span style={{ fontSize: size, color: color ?? "var(--txt)" }}>{whole}</span>
       <span style={{ fontSize: size * 0.55, color: "var(--txt-muted)", fontWeight: 700 }}>.{cents}</span>
       {live && (
-        <span style={{ fontSize: size * 0.34, color: "var(--accent)", fontWeight: 700, marginLeft: 1, fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: size * 0.34, color: color ?? "var(--accent)", fontWeight: 700, marginLeft: 1, fontVariantNumeric: "tabular-nums" }}>
           {micro}
         </span>
       )}

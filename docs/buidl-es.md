@@ -1,8 +1,8 @@
-# 🏦 Reyf — La AFORE del futuro
+# 🏦 SEYF — La AFORE del futuro
 
 > **El retiro digno que el sistema no te va a dar: en pesos y dólares digitales, rindiendo desde el día uno, on-chain y para todos — incluido el 57% que ninguna AFORE cubre.**
 
-**Reyf** es una super app de ahorro para el retiro construida sobre **MXNB** (el peso digital de Bitso/Juno en Arbitrum). Convierte rieles cripto en una experiencia de neobanco que cualquiera entiende: sin gas, sin seed phrases, sin saber que hay blockchain debajo.
+**SEYF** es una super app de ahorro para el retiro construida sobre **MXNB** (el peso digital de Bitso/Juno en Arbitrum). Convierte rieles cripto en una experiencia de neobanco que cualquiera entiende: sin gas, sin seed phrases, sin saber que hay blockchain debajo.
 
 - 🔗 **Demo en vivo:** https://eth-mex2026.vercel.app
 - 💻 **Código:** https://github.com/MarxMad/EthMex2026
@@ -21,7 +21,7 @@ El sistema de pensiones en México está roto por diseño:
 
 ## 🟢 La solución
 
-Reyf es **la AFORE del futuro**: voluntaria, global, on-chain y para todos. Cada peso que ahorras vive on-chain como MXNB — es genuinamente tuyo, rinde y se mueve global — pero la app se siente como cualquier banco.
+SEYF es **la AFORE del futuro**: voluntaria, global, on-chain y para todos. Cada peso que ahorras vive on-chain como MXNB — es genuinamente tuyo, rinde y se mueve global — pero la app se siente como cualquier banco.
 
 | Feature | Por qué importa para el retiro |
 |---|---|
@@ -82,7 +82,7 @@ Y un **invariante de solvencia** verificable (`/api/treasury/reconcile`): para c
 - **Privy** — auth + embedded wallet + **smart wallet ERC-4337 con gas patrocinado** (UX sin gas)
 - **viem 2 + permissionless 0.2** — onchain
 - **Supabase** — persistencia + ledger per-usuario reconciliado
-- **Foundry** — contratos (`ReyfVaults`, `ReyfAdvance`)
+- **Foundry** — contratos (`SeyfVaults`, `SeyfAdvance`)
 - **Arbitrum** — settlement L2 barato y rápido
 
 ## 📲 Features

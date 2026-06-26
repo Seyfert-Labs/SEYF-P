@@ -1,9 +1,9 @@
 -- =============================================================================
--- REYF — Script único para Supabase (Postgres)
+-- SEYF — Script único para Supabase (Postgres)
 -- =============================================================================
 --
 -- PARA TU COLABORADOR:
---   1. Abrir https://supabase.com → proyecto Reyf → SQL Editor → New query
+--   1. Abrir https://supabase.com → proyecto SEYF → SQL Editor → New query
 --   2. Pegar TODO este archivo y pulsar Run (o Ctrl/Cmd + Enter)
 --   3. Debe terminar sin errores. Es idempotente: se puede ejecutar varias veces.
 --   4. Verificar al final la consulta de comprobación (lista de tablas).

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEYF — Brand Kit</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;box-sizing:border-box}
+  body{font-family:'Poppins',-apple-system,'Segoe UI',sans-serif;background:#0E1117;color:#F4F2FB;padding:48px}
+  h1{font-size:28px;font-weight:800}
+  .sub{color:#9C96B4;margin:6px 0 40px;font-size:14px}
+  h2{font-size:12px;color:#CDFC4A;text-transform:uppercase;letter-spacing:.12em;margin:44px 0 16px;font-weight:700}
+  .grid{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+  .card{border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:26px;background:#161A22}
+  .card.light{background:#F4F2FB}
+  .card h3{font-size:11px;color:#67627E;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;font-weight:700}
+  img{display:block}
+  .row{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  label{font-size:11px;color:#67627E;display:block;margin-top:6px;text-align:center}
+  .sw{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+  .chip{text-align:center}
+  .chip .b{width:72px;height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.1)}
+  .chip p{font-size:11px;color:#9C96B4;margin-top:6px}
+  .tag{display:inline-block;background:#CDFC4A;color:#0A0912;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:6px;margin-bottom:8px}
+</style>
+</head>
+<body>
+  <span class="tag">final</span>
+  <h1>SEYF — Brand Kit</h1>
+  <p class="sub">Símbolo vectorial de dos anillos entrelazados (lima + violeta) · wordmark Poppins · "buy now pay never" · Stellar fintech</p>
+
+  <h2>Logo horizontal</h2>
+  <div class="grid">
+    <div class="card"><h3>Fondo oscuro</h3><img src="01-seyf-horizontal-dark.svg" width="380"></div>
+    <div class="card light"><h3>Fondo claro</h3><img src="02-seyf-horizontal-light.svg" width="380"></div>
+  </div>
+
+  <h2>Vertical (stacked)</h2>
+  <div class="grid">
+    <div class="card"><h3>Apilado oscuro</h3><img src="03-seyf-stacked-dark.svg" width="200"></div>
+  </div>
+
+  <h2>Símbolo &amp; App icon</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Símbolo (transparente)</h3>
+      <div class="row">
+        <img src="04-seyf-symbol.svg" width="120">
+        <div class="chip"><img src="04-seyf-symbol.svg" width="64"><label>64px</label></div>
+        <div class="chip"><img src="04-seyf-symbol.svg" width="32"><label>32px</label></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>App icon</h3>
+      <div class="row">
+        <img src="05-seyf-appicon.svg" width="120">
+        <div class="chip"><img src="08-seyf-favicon.svg" width="48"><label>favicon 48</label></div>
+        <div class="chip"><img src="08-seyf-favicon.svg" width="32"><label>favicon 32</label></div>
+        <div class="chip"><img src="08-seyf-favicon.svg" width="16"><label>16px</label></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Monocromático</h2>
+  <div class="grid">
+    <div class="card"><h3>Blanco / oscuro</h3><img src="06-seyf-mono-white.svg" width="340"></div>
+    <div class="card light"><h3>Negro / claro</h3><img src="07-seyf-mono-black.svg" width="340"></div>
+  </div>
+
+  <h2>Paleta</h2>
+  <div class="sw">
+    <div class="chip"><div class="b" style="background:#CDFC4A"></div><p>Lima<br>#CDFC4A</p></div>
+    <div class="chip"><div class="b" style="background:#8357F5"></div><p>Violeta<br>#8357F5</p></div>
+    <div class="chip"><div class="b" style="background:#0A0912"></div><p>Fondo oscuro<br>#0A0912</p></div>
+    <div class="chip"><div class="b" style="background:#F4F2FB"></div><p>Fondo claro<br>#F4F2FB</p></div>
+    <div class="chip"><div class="b" style="background:#FDFDFD"></div><p>Blanco<br>#FDFDFD</p></div>
+    <div class="chip"><div class="b" style="background:#0E1117"></div><p>Negro<br>#0E1117</p></div>
+  </div>
+
+  <h2>Slogan</h2>
+  <p style="font-size:32px;font-weight:800;color:#CDFC4A;letter-spacing:.04em;margin:8px 0">buy now pay never</p>
+  <p style="color:#9C96B4;font-size:13px">Solo se usa en versiones con wordmark (01–03). Excluido en símbolo, app icon, favicon y mono.</p>
+
+  <h2>Nota técnica</h2>
+  <p style="color:#9C96B4;font-size:13px;line-height:1.7;max-width:640px">
+    El símbolo es <strong style="color:#FDFDFD">100% vectorial</strong>: dos anillos en forma de C de trazo uniforme y extremos redondeados (arcos circulares con <code>stroke-linecap="round"</code>) que se entrelazan como eslabones de cadena para formar una S — anillo lima arriba y anillo violeta abajo. El efecto tejido se logra con un <code>clipPath</code> a y=310 que invierte qué anillo queda por encima en cada cruce. En las versiones mono ambos anillos comparten color (sin tejido). El wordmark usa <strong style="color:#FDFDFD">Poppins vía Google Fonts</strong> (@import). La barra vertical violeta fue eliminada.
+  </p>
+</body>
+</html>

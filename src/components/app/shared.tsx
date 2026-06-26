@@ -10,6 +10,16 @@ import type { Conversion } from "@/hooks/useConversions";
 
 const curLabel = (code: string) => code;
 
+/* Color del icono según el tipo de movimiento. Cada tipo tiene su tinte para
+   distinguirlos de un vistazo (no solo por el icono). */
+const TINT: Record<string, { color: string; bg: string }> = {
+  pos:     { color: "var(--accent)",   bg: "var(--accent-soft)" },
+  vault:   { color: "var(--accent-2)", bg: "var(--accent-2-soft)" },
+  swap:    { color: "#7C9EFF",         bg: "rgba(124,158,255,0.14)" },
+  advance: { color: "#F5A623",         bg: "rgba(245,166,35,0.14)" },
+  neutral: { color: "var(--txt)",      bg: "var(--surface-2)" },
+};
+
 /* avatar clickable → perfil (reutilizable en cualquier pantalla de tab) */
 export function AvatarButton({ go }: { go: Go }) {
   const wallet = useWallet();
@@ -107,7 +117,7 @@ export function Money({
 /* fila de transacción pendiente (optimistic UI · confirmando on-chain) */
 export function PendingTxnRow({ p }: { p: { kind: "deposit" | "send" | "convert"; dir?: "in" | "out"; amount: number } }) {
   const pos = p.kind === "deposit" || (p.kind === "convert" && p.dir === "in");
-  const title = p.kind === "deposit" ? "Depósito" : p.kind === "send" ? "Envío" : "Cambio";
+  const title = p.kind === "deposit" ? "Depósito" : p.kind === "send" ? "Envío" : "Intercambio";
   return (
     <div className="lrow" style={{ opacity: 0.92 }}>
       <div className="ava" style={{ background: "var(--surface-3)" }}>
@@ -130,11 +140,11 @@ export function PendingTxnRow({ p }: { p: { kind: "deposit" | "send" | "convert"
 export function ConvTxnRow({ c }: { c: Conversion }) {
   return (
     <div className="lrow">
-      <div className="ava" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)", borderColor: "transparent" }}>
+      <div className="ava" style={{ background: TINT.swap.bg, color: TINT.swap.color, borderColor: "transparent" }}>
         <Icon name="swap" size={20} />
       </div>
       <div className="mid">
-        <p className="ti">Conversión</p>
+        <p className="ti">Intercambio</p>
         <p className="su">{curLabel(c.from)} → {curLabel(c.to)}</p>
       </div>
       <div className="amt">
@@ -150,9 +160,11 @@ export function ConvTxnRow({ c }: { c: Conversion }) {
 /* fila de transacción / lista */
 export function TxnRow({ t, go }: { t: Txn; go?: Go }) {
   const pos = t.amt > 0;
+  // El tinte explícito gana; si no hay, una entrada se pinta verde y una salida neutra.
+  const tint = t.tint ? TINT[t.tint] : pos ? TINT.pos : null;
   return (
     <div className="lrow" onClick={() => go && go("txn", t)}>
-      <div className="ava" style={pos ? { background: "var(--accent-soft)", color: "var(--accent)", borderColor: "transparent" } : {}}>
+      <div className="ava" style={tint ? { background: tint.bg, color: tint.color, borderColor: "transparent" } : {}}>
         <Icon name={t.ic} size={20} />
       </div>
       <div className="mid">

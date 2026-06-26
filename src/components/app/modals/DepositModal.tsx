@@ -1,7 +1,7 @@
 "use client";
 
 /* Modal de recepción de fondos.
-   Dos métodos: SPEI (CLABE) y Cuenta Reyf (dirección on-chain).
+   Dos métodos: SPEI (CLABE) y Cuenta SEYF (dirección on-chain).
    El bloque "Simular depósito" solo aparece fuera de producción. */
 import React, { useState } from "react";
 import { Icon } from "../ui";
@@ -75,7 +75,7 @@ export function DepositModal({
 
         <div className="seg" style={{ marginBottom: 20 }}>
           <button className={tab === "spei" ? "on" : ""} onClick={() => setTab("spei")}>SPEI</button>
-          <button className={tab === "cuenta" ? "on" : ""} onClick={() => setTab("cuenta")}>Cuenta Reyf</button>
+          <button className={tab === "cuenta" ? "on" : ""} onClick={() => setTab("cuenta")}>Cuenta SEYF</button>
         </div>
 
         {/* ── SPEI ── */}
@@ -92,14 +92,14 @@ export function DepositModal({
           </>
         )}
 
-        {/* ── Cuenta Reyf ── */}
+        {/* ── Cuenta SEYF ── */}
         {tab === "cuenta" && (
           <>
             <div className="deposit-card">
               <div className="dc-glow" />
               <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <p className="eyebrow">Cuenta Reyf</p>
+                  <p className="eyebrow">Cuenta SEYF</p>
                   <p style={{ margin: "4px 0 0", fontSize: "var(--t-xs)", fontWeight: 800, color: "var(--accent)" }}>
                     Red Arbitrum · MXN
                   </p>

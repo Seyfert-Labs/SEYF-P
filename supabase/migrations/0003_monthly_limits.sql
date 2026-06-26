@@ -1,5 +1,5 @@
 -- ============================================================
--- Reyf — límites mensuales de depósito y retiro por usuario.
+-- SEYF — límites mensuales de depósito y retiro por usuario.
 -- Acumula el monto usado por periodo (YYYY-MM) para topar a 20,000 MXN
 -- mensuales cada uno. Acceso: SOLO server-side (service role). RLS bloqueado.
 -- Ejecuta este archivo en el SQL Editor de Supabase.

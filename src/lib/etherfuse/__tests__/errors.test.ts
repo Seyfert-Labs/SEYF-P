@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
 import { mapEtherfuseHttpError, mapEtherfuseNetworkError } from "../errors";
-import { AppError, toErrorResponse } from "@/lib/reyf/api-error";
+import { AppError, toErrorResponse } from "@/lib/seyf/api-error";
 
 describe("mapEtherfuseHttpError() — unit tests", () => {
   it("maps 429 to provider_unavailable with retryable:true and statusCode:429 (Req 4.3)", () => {

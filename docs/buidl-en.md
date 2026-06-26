@@ -1,8 +1,8 @@
-# 🏦 Reyf — The AFORE of the Future
+# 🏦 SEYF — The AFORE of the Future
 
 > **The dignified retirement the system won't give you: in digital pesos and dollars, earning yield from day one, on-chain, and for everyone — including the 57% no pension fund covers.**
 
-**Reyf** is a retirement-savings super app built on **MXNB** (Bitso/Juno's digital peso on Arbitrum). It turns crypto rails into a neobank experience anyone understands: no gas, no seed phrases, no idea there's a blockchain underneath.
+**SEYF** is a retirement-savings super app built on **MXNB** (Bitso/Juno's digital peso on Arbitrum). It turns crypto rails into a neobank experience anyone understands: no gas, no seed phrases, no idea there's a blockchain underneath.
 
 - 🔗 **Live demo:** https://eth-mex2026.vercel.app
 - 💻 **Code:** https://github.com/MarxMad/EthMex2026
@@ -20,7 +20,7 @@ Mexico's pension system is broken by design:
 
 ## 🟢 The solution
 
-Reyf is **the AFORE of the future**: voluntary, global, on-chain, and for everyone. Every peso you save lives on-chain as MXNB — genuinely yours, yield-bearing, and globally mobile — but the app feels like any bank.
+SEYF is **the AFORE of the future**: voluntary, global, on-chain, and for everyone. Every peso you save lives on-chain as MXNB — genuinely yours, yield-bearing, and globally mobile — but the app feels like any bank.
 
 | Feature | Why it matters for retirement |
 |---|---|
@@ -81,7 +81,7 @@ A verifiable **solvency invariant** (`/api/treasury/reconcile`): for each asset,
 - **Privy** — auth + embedded wallet + **ERC-4337 smart wallet with sponsored gas** (gasless UX)
 - **viem 2 + permissionless 0.2** — onchain
 - **Supabase** — persistence + reconciled per-user ledger
-- **Foundry** — contracts (`ReyfVaults`, `ReyfAdvance`)
+- **Foundry** — contracts (`SeyfVaults`, `SeyfAdvance`)
 - **Arbitrum** — cheap, fast L2 settlement
 
 ## 📲 Features

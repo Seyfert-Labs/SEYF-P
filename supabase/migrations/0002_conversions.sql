@@ -1,5 +1,5 @@
 -- ============================================================
--- Reyf — conversiones de divisas (FX vía Bitso), por usuario.
+-- SEYF — conversiones de divisas (FX vía Bitso), por usuario.
 -- El swap MXNB ↔ USDT/EUR/… ocurre en la cuenta Bitso (off-chain),
 -- así que no aparece en el ledger on-chain. Lo persistimos aquí para
 -- listarlo en Movimientos y derivar el saldo por-usuario en divisas.

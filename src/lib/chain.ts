@@ -93,7 +93,7 @@ export const explorerBase = IS_TESTNET
   : "https://arbiscan.io";
 
 // ============================================================
-// Bóvedas on-chain (contrato ReyfVaults). Si NEXT_PUBLIC_SEYF_VAULTS_ADDRESS
+// Bóvedas on-chain (contrato SeyfVaults). Si NEXT_PUBLIC_SEYF_VAULTS_ADDRESS
 // está presente, las bóvedas son reales on-chain; si no, la app usa la capa
 // `store` (Supabase/localStorage) como degradación graceful.
 // ============================================================
@@ -102,8 +102,8 @@ export const SEYF_VAULTS_ADDRESS = (process.env.NEXT_PUBLIC_SEYF_VAULTS_ADDRESS 
 export const VAULTS_ONCHAIN = Boolean(SEYF_VAULTS_ADDRESS);
 
 // ============================================================
-// Adelanto de liquidez on-chain (contrato ReyfAdvance).
-// Requiere que ReyfVaults también esté configurado.
+// Adelanto de liquidez on-chain (contrato SeyfAdvance).
+// Requiere que SeyfVaults también esté configurado.
 // ============================================================
 
 export const SEYF_ADVANCE_ADDRESS = (process.env.NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS || "") as Address | "";
@@ -131,7 +131,7 @@ async function readVaultFreeBalance(user: Address, vaultId: number): Promise<num
   const [vaults, locked] = await Promise.all([
     publicClient.readContract({
       address: SEYF_VAULTS_ADDRESS as Address,
-      abi: reyfVaultsAbi,
+      abi: seyfVaultsAbi,
       functionName: "getVaults",
       args: [user],
     }) as Promise<
@@ -146,7 +146,7 @@ async function readVaultFreeBalance(user: Address, vaultId: number): Promise<num
     >,
     publicClient.readContract({
       address: SEYF_VAULTS_ADDRESS as Address,
-      abi: reyfVaultsAbi,
+      abi: seyfVaultsAbi,
       functionName: "lockedAmount",
       args: [user, BigInt(vaultId)],
     }) as Promise<bigint>,
@@ -160,7 +160,7 @@ async function readVaultFreeBalance(user: Address, vaultId: number): Promise<num
 async function readVaultApyBps(user: Address, vaultId: number): Promise<number> {
   const vaults = (await publicClient.readContract({
     address: SEYF_VAULTS_ADDRESS as Address,
-    abi: reyfVaultsAbi,
+    abi: seyfVaultsAbi,
     functionName: "getVaults",
     args: [user],
   })) as readonly { apyBps: number; exists: boolean }[];
@@ -181,19 +181,19 @@ export async function readAdvanceQuote(
     const [freeRaw, quoteRaw, maxYearsRaw] = await Promise.all([
       publicClient.readContract({
         address: SEYF_ADVANCE_ADDRESS as Address,
-        abi: reyfAdvanceAbi,
+        abi: seyfAdvanceAbi,
         functionName: "freeBalance",
         args: [user, BigInt(vaultId)],
       }) as Promise<bigint>,
       publicClient.readContract({
         address: SEYF_ADVANCE_ADDRESS as Address,
-        abi: reyfAdvanceAbi,
+        abi: seyfAdvanceAbi,
         functionName: "quoteAdvance",
         args: [user, BigInt(vaultId), BigInt(years)],
       }) as Promise<bigint>,
       publicClient.readContract({
         address: SEYF_ADVANCE_ADDRESS as Address,
-        abi: reyfAdvanceAbi,
+        abi: seyfAdvanceAbi,
         functionName: "maxYears",
         args: [user, BigInt(vaultId)],
       }) as Promise<bigint>,
@@ -216,7 +216,7 @@ export async function readAdvanceQuote(
       readVaultFreeBalance(user, vaultId),
       publicClient.readContract({
         address: SEYF_ADVANCE_ADDRESS as Address,
-        abi: reyfAdvanceLegacyAbi,
+        abi: seyfAdvanceLegacyAbi,
         functionName: "maxAdvance",
         args: [user, BigInt(vaultId)],
       }) as Promise<bigint>,
@@ -256,7 +256,7 @@ export async function readAdvanceQuote(
 
 /** Codifica `requestAdvance` según la versión del contrato desplegado. */
 export function encodeRequestAdvance(vaultId: number, quote: AdvanceQuoteResult) {
-  const abi = quote.mode === "years" ? reyfAdvanceAbi : reyfAdvanceLegacyAbi;
+  const abi = quote.mode === "years" ? seyfAdvanceAbi : seyfAdvanceLegacyAbi;
   return encodeFunctionData({
     abi,
     functionName: "requestAdvance",
@@ -264,7 +264,7 @@ export function encodeRequestAdvance(vaultId: number, quote: AdvanceQuoteResult)
   });
 }
 
-export const reyfAdvanceLegacyAbi = [
+export const seyfAdvanceLegacyAbi = [
   {
     type: "function",
     name: "maxAdvance",
@@ -307,7 +307,7 @@ export const reyfAdvanceLegacyAbi = [
   },
 ] as const;
 
-export const reyfAdvanceAbi = [
+export const seyfAdvanceAbi = [
   {
     type: "function",
     name: "requestAdvance",
@@ -371,7 +371,7 @@ export const reyfAdvanceAbi = [
   },
 ] as const;
 
-export const reyfVaultsAbi = [
+export const seyfVaultsAbi = [
   {
     type: "function",
     name: "openVault",
@@ -469,7 +469,7 @@ export async function readOnchainVaults(owner: Address): Promise<OnchainVault[]>
   if (!SEYF_VAULTS_ADDRESS) return [];
   const raw = (await publicClient.readContract({
     address: SEYF_VAULTS_ADDRESS,
-    abi: reyfVaultsAbi,
+    abi: seyfVaultsAbi,
     functionName: "getVaults",
     args: [owner],
   })) as readonly {
@@ -506,12 +506,12 @@ export async function readVaultLimits(owner: Address): Promise<VaultLimits | nul
     const [maxRaw, usedRaw] = await Promise.all([
       publicClient.readContract({
         address: SEYF_VAULTS_ADDRESS,
-        abi: reyfVaultsAbi,
+        abi: seyfVaultsAbi,
         functionName: "maxUserBalance",
       }) as Promise<bigint>,
       publicClient.readContract({
         address: SEYF_VAULTS_ADDRESS,
-        abi: reyfVaultsAbi,
+        abi: seyfVaultsAbi,
         functionName: "userTotalBalance",
         args: [owner],
       }) as Promise<bigint>,

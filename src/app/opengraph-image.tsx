@@ -4,13 +4,13 @@ import { join } from "node:path";
 
 /* Imagen de previsualización para redes/mensajería (Telegram, WhatsApp, X…).
    Se genera en build y se sirve como PNG. Usa el logo horizontal del brand kit. */
-export const alt = "Reyf — Super app de finanzas";
+export const alt = "SEYF — Super app de finanzas";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
   const logo = await readFile(
-    join(process.cwd(), "public/brand/reyf-horizontal-dark.svg"),
+    join(process.cwd(), "public/brand/seyf-horizontal-dark.svg"),
     "base64",
   );
   const logoSrc = `data:image/svg+xml;base64,${logo}`;
@@ -41,7 +41,7 @@ export default async function Image() {
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoSrc} width={560} alt="Reyf" />
+          <img src={logoSrc} width={560} alt="SEYF" />
         </div>
         <div
           style={{

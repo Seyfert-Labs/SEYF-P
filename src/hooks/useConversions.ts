@@ -11,7 +11,7 @@ import { store, type StoreConversion } from "@/lib/store";
 
 export type Conversion = StoreConversion;
 
-const EVT = "reyf:conversions-changed";
+const EVT = "seyf:conversions-changed";
 
 export function useConversions(address?: string) {
   const [conversions, setConversions] = useState<Conversion[]>([]);

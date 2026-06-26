@@ -84,13 +84,20 @@ export function Icon({
   );
 }
 
+// Estrellas de la bandera UE precalculadas como strings redondeados → evita
+// mismatch de hidratación por punto flotante (Math.sin/cos) server vs cliente.
+const EU_FLAG_STARS: [string, string][] = Array.from({ length: 12 }, (_, i) => {
+  const a = (i * 30 * Math.PI) / 180;
+  return [(18 + 9 * Math.sin(a)).toFixed(3), (18 - 9 * Math.cos(a)).toFixed(3)];
+});
+
 export function Flag({ code, cls = "" }: { code: string; cls?: string }) {
   const flags: Record<string, React.ReactNode> = {
     mx: <svg viewBox="0 0 36 36"><rect width="12" height="36" x="0" fill="#0a6b3b" /><rect width="12" height="36" x="12" fill="#f4f4f4" /><rect width="12" height="36" x="24" fill="#c8102e" /><circle cx="18" cy="18" r="3.4" fill="#7a5230" /></svg>,
     us: <svg viewBox="0 0 36 36"><rect width="36" height="36" fill="#f4f4f4" />{[0, 2, 4, 6, 8, 10, 12].map((i) => <rect key={i} y={(i * 36) / 13} width="36" height={36 / 13} fill="#b22234" />)}<rect width="17" height={(36 / 13) * 7} fill="#3c3b6e" /></svg>,
     br: <svg viewBox="0 0 36 36"><rect width="36" height="36" fill="#1b9e3e" /><path d="M18 5L33 18 18 31 3 18z" fill="#ffd200" /><circle cx="18" cy="18" r="6.2" fill="#1e3a8a" /></svg>,
     kr: <svg viewBox="0 0 36 36"><rect width="36" height="36" fill="#f4f4f4" /><path d="M18 12a6 6 0 010 12 6 6 0 000-12z" fill="#c8102e" /><path d="M18 12a6 6 0 000 12 6 6 0 010-12z" fill="#0047a0" /></svg>,
-    eu: <svg viewBox="0 0 36 36"><rect width="36" height="36" fill="#0047a0" />{Array.from({ length: 12 }).map((_, i) => { const a = (i * 30 * Math.PI) / 180; return <circle key={i} cx={18 + 9 * Math.sin(a)} cy={18 - 9 * Math.cos(a)} r="1.5" fill="#ffd200" />; })}</svg>,
+    eu: <svg viewBox="0 0 36 36"><rect width="36" height="36" fill="#0047a0" />{EU_FLAG_STARS.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="1.5" fill="#ffd200" />)}</svg>,
   };
   return <div className={`flag ${cls}`}>{flags[code] || <svg viewBox="0 0 36 36"><rect width="36" height="36" fill="#444" /></svg>}</div>;
 }

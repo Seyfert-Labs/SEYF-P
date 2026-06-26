@@ -255,7 +255,7 @@ export function SendModal({
             <div className="card" style={{ marginTop: 14, background: "var(--accent-2-soft)", border: "none", display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ flexShrink: 0, marginTop: 1, display: "flex" }}><Icon name="info" size={16} color="var(--accent-2)" /></span>
               <p style={{ margin: 0, fontSize: "var(--t-xs)", color: "var(--txt-muted)", lineHeight: 1.55 }}>
-                Envía <b style={{ color: "var(--txt)" }}>MXN (Arbitrum)</b> a cualquier dirección. El gas está cubierto por Reyf.
+                Envía <b style={{ color: "var(--txt)" }}>MXN (Arbitrum)</b> a cualquier dirección. El gas está cubierto por SEYF.
               </p>
             </div>
 

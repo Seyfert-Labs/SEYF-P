@@ -14,7 +14,7 @@
 // `ensureConnected` resuelve true cuando la wallet queda conectada (o ya lo
 // estaba, o el riel Stellar no aplica), y false si el usuario cancela.
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { useReyfStellarWallet } from "@/lib/reyf/use-reyf-stellar-wallet";
+import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
 import { waitForPollarSession } from "@/lib/pollar/client-api";
@@ -31,7 +31,7 @@ const StellarConnectCtx = createContext<Ctx>({
 export const useStellarConnect = () => useContext(StellarConnectCtx);
 
 export function StellarConnectProvider({ children }: { children: ReactNode }) {
-  const stellar = useReyfStellarWallet();
+  const stellar = useSeyfStellarWallet();
   const wallet = useWallet();
   const connected = Boolean(stellar.authenticated && stellar.publicKey);
 

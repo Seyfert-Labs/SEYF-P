@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
-import {ReyfVaults} from "../ReyfVaults.sol";
-import {ReyfAdvance} from "../ReyfAdvance.sol";
+import {SeyfVaults} from "../SeyfVaults.sol";
+import {SeyfAdvance} from "../SeyfAdvance.sol";
 
 contract Deploy is Script {
     // MXNB en Arbitrum Sepolia
@@ -16,11 +16,11 @@ contract Deploy is Script {
 
         vm.startBroadcast();
 
-        ReyfVaults vaults = new ReyfVaults(mxnb);
-        console.log("ReyfVaults:  ", address(vaults));
+        SeyfVaults vaults = new SeyfVaults(mxnb);
+        console.log("SeyfVaults:  ", address(vaults));
 
-        ReyfAdvance advance = new ReyfAdvance(address(vaults), mxnb);
-        console.log("ReyfAdvance: ", address(advance));
+        SeyfAdvance advance = new SeyfAdvance(address(vaults), mxnb);
+        console.log("SeyfAdvance: ", address(advance));
 
         vaults.setAdvanceManager(address(advance));
         console.log("advanceManager set");
