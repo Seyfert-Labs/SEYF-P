@@ -89,7 +89,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           </div>
         </div>
         <motion.div
-          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 28, paddingTop: 4 }}
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3, ease: ONB_EASE }}
