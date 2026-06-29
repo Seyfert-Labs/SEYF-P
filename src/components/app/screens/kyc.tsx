@@ -11,6 +11,7 @@ import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { useEnsureCetesTrustline } from "@/lib/seyf/use-ensure-cetes-trustline";
+import { useEnsureStellarFunding } from "@/lib/seyf/use-ensure-stellar-funding";
 import type { EtherfuseKycSnapshot } from "@/lib/etherfuse/kyc";
 import { notifyKycStatusUpdated, markKycCompletedLocally } from "@/hooks/useKycStatus";
 
@@ -102,6 +103,7 @@ export function ScreenKyc({ go }: { go: Go }) {
   const seyfWallet = useWallet();
   const stellar = useSeyfStellarWallet();
   const { ensureTrustline } = useEnsureCetesTrustline();
+  const { ensureFunding } = useEnsureStellarFunding();
   const email = seyfWallet.email || "";
 
   const [step, setStep] = useState<Step>("connect");
@@ -154,10 +156,16 @@ export function ScreenKyc({ go }: { go: Go }) {
     };
   }, [stellar.authenticated, stellar.publicKey, refreshStatus]);
 
-  // En "done", asegura el riel de acreditación en segundo plano (sin UI).
+  // En "done", asegura el riel de acreditación en segundo plano (sin UI):
+  // primero fondea la wallet con XLM (testnet) para que pueda pagar las fees de
+  // la trustline, y luego la agrega.
   useEffect(() => {
-    if (step === "done") void ensureTrustline();
-  }, [step, ensureTrustline]);
+    if (step !== "done") return;
+    void (async () => {
+      await ensureFunding();
+      await ensureTrustline();
+    })();
+  }, [step, ensureFunding, ensureTrustline]);
 
   const run = async (fn: () => Promise<void>) => {
     setErr(null);
