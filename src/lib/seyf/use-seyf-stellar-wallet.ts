@@ -26,6 +26,32 @@ function mapBalances(state: WalletBalanceState) {
   return { assetBalances, xlmBalance: native ? (native.available || native.balance || '0').trim() : null }
 }
 
+/** Traduce mensajes de error de Pollar a español legible. */
+function translatePollarError(state: AuthState): string {
+  if (state.step !== 'error') return ''
+  const msg = state.message ?? ''
+  const code = (state as { errorCode?: string }).errorCode ?? ''
+  const prev = (state as { previousStep?: string }).previousStep ?? ''
+
+  if (code === 'SESSION_CREATE_FAILED' || prev === 'creating_session') {
+    return 'No se pudo conectar con el servicio de verificación. Verifica tu conexión o intenta de nuevo en unos segundos.'
+  }
+  if (code === 'EMAIL_SEND_FAILED' || prev === 'sending_email') {
+    return 'No se pudo enviar el código a tu correo. Verifica que el correo sea correcto e intenta de nuevo.'
+  }
+  if (code === 'EMAIL_CODE_INVALID') {
+    return 'El código ingresado es incorrecto. Revisa tu correo e intenta de nuevo.'
+  }
+  if (code === 'EMAIL_CODE_EXPIRED') {
+    return 'El código expiró. Solicita uno nuevo.'
+  }
+  if (msg.toLowerCase().includes('origin')) {
+    return 'Este dominio no está autorizado. Contacta soporte.'
+  }
+  if (msg) return msg
+  return 'No se pudo verificar. Intenta de nuevo.'
+}
+
 /** Traduce el estado de auth de Pollar a nuestra fase de enrolamiento. */
 function phaseFromAuth(step: AuthState['step']): StellarEnrollPhase {
   switch (step) {
@@ -60,20 +86,34 @@ export function useSeyfStellarWallet() {
 
   const [phase, setPhase] = useState<StellarEnrollPhase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const codeSentRef = useRef(false)
 
   // Refleja el estado de auth de Pollar (driven por el cliente headless).
   useEffect(() => {
     let unsub: (() => void) | undefined
     try {
       const client = getClient()
-      setPhase(phaseFromAuth(client.getAuthState().step))
+      const initial = client.getAuthState()
+      setPhase(phaseFromAuth(initial.step))
+      if (initial.step === 'entering_code' || initial.step === 'verifying_email_code') {
+        codeSentRef.current = true
+      }
       unsub = client.onAuthStateChange((s) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[SEYF·OTP] auth state →', s.step, s)
+        }
         setPhase(phaseFromAuth(s.step))
-        if (s.step === 'error') setError(s.message ?? 'No se pudo verificar')
-        else setError(null)
+        if (s.step === 'entering_code') codeSentRef.current = true
+        if (s.step === 'error') {
+          setError(translatePollarError(s))
+        } else {
+          setError(null)
+        }
       })
-    } catch {
-      /* cliente no listo todavía */
+    } catch (e) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[SEYF·OTP] getClient() no disponible aún:', e)
+      }
     }
     return () => unsub?.()
   }, [getClient])
@@ -103,10 +143,17 @@ export function useSeyfStellarWallet() {
   const sendCode = useCallback(async (email: string) => {
     setError(null)
     setPhase('sending')
+    codeSentRef.current = false
     try {
-      getClient().login({ provider: 'email', email })
+      const client = getClient()
+      if (process.env.NODE_ENV === 'development') {
+        console.info('[SEYF·OTP] sendCode →', email, '| auth step:', client.getAuthState().step)
+      }
+      client.login({ provider: 'email', email })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo enviar el código')
+      const msg = e instanceof Error ? e.message : 'No se pudo enviar el código'
+      console.error('[SEYF·OTP] sendCode error síncrono:', e)
+      setError(msg)
       setPhase('error')
     }
   }, [getClient])
@@ -116,9 +163,21 @@ export function useSeyfStellarWallet() {
     setError(null)
     setPhase('verifying')
     try {
-      getClient().verifyEmailCode(code)
+      const client = getClient()
+      const currentStep = client.getAuthState().step
+      if (process.env.NODE_ENV === 'development') {
+        console.info('[SEYF·OTP] verifyCode → code length:', code.length, '| auth step:', currentStep)
+      }
+      if (currentStep !== 'entering_code' && currentStep !== 'error') {
+        setError('El código aún no se ha enviado. Solicita uno nuevo.')
+        setPhase('error')
+        return
+      }
+      client.verifyEmailCode(code)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Código inválido')
+      const msg = e instanceof Error ? e.message : 'Código inválido'
+      console.error('[SEYF·OTP] verifyCode error:', e)
+      setError(msg)
       setPhase('error')
     }
   }, [getClient])
@@ -140,6 +199,7 @@ export function useSeyfStellarWallet() {
     // Enrolamiento silencioso (OTP en nuestra UI).
     phase,
     error,
+    codeSentOnce: codeSentRef.current,
     sendCode,
     verifyCode,
     // Fallback al modal de Pollar (no usado en el flujo nuevo).

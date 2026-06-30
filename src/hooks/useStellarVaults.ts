@@ -16,6 +16,7 @@ import {
   assetSymbolForPlan,
 } from "@/lib/defindex/vaults";
 import { signAndSubmitDefindexXdr } from "@/lib/defindex/sign-and-submit";
+import { fundStellarWallet } from "@/lib/seyf/use-ensure-stellar-funding";
 import type { VaultLimits } from "@/lib/chain";
 
 export type UserVault = StoreVault;
@@ -181,6 +182,10 @@ export function useStellarVaults(address?: string) {
 
       setBusy(true);
       try {
+        // En testnet la wallet Pollar necesita XLM para pagar las fees de la firma.
+        // Idempotente: si ya tiene saldo, no vuelve a fondear.
+        await fundStellarWallet(publicKey);
+
         const url = delta > 0 ? "/api/defindex/deposit" : "/api/defindex/withdraw";
         const body =
           delta > 0
