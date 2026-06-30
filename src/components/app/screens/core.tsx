@@ -11,7 +11,7 @@ import { useOnchainTxns } from "@/hooks/useOnchain";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useConversions, type Conversion } from "@/hooks/useConversions";
 import { assetByCode } from "@/lib/bitso/assets";
-import { useVaults } from "@/hooks/useVaults";
+import { useVaultsRail } from "@/hooks/useVaultsRail";
 import { useKycStatus } from "@/hooks/useKycStatus";
 import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
@@ -150,7 +150,9 @@ export function ScreenHome({ go }: { go: Go }) {
   const homeTxns = useOnchainTxns(wallet.address);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
-  const { vaults, totalSaved, onchain } = useVaults(wallet.address);
+  // Riel correcto (Stellar/DeFindex o EVM) para que "En bóveda" del home coincida
+  // con el saldo real reconciliado de la pantalla de Ahorro (mismo hook, misma fuente).
+  const { vaults, totalSaved, onchain } = useVaultsRail(wallet.address);
   const kyc = useKycStatus();
   const refreshBal = wallet.refreshBalance;
 
