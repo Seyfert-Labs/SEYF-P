@@ -5,11 +5,10 @@ import {
   Horizon,
   Networks,
   Operation,
-  Transaction,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
 import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
-import { toStroops, fromStroops } from '@/lib/soroswap/assets'
+import { toStroops } from '@/lib/soroswap/assets'
 
 /** USDC de Circle en Stellar testnet (activo clásico, liquidez en SDEX). */
 export const USDC_ISSUER_TESTNET = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
@@ -71,6 +70,21 @@ function deserializeAsset(a: SdexPathQuote['sendAsset']): Asset {
   return new Asset(a.code, a.issuer)
 }
 
+/** Horizon devuelve montos de path con 7 decimales implícitos (ej. 49498600 = 4.9498600 USDC). */
+export function horizonAmountToHuman(raw: string | number): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0) return 0
+  if (n >= 1_000_000) return n / 1e7
+  return n
+}
+
+function destMinHuman(amountOut: string, slippageBps: number): string {
+  const human = horizonAmountToHuman(amountOut)
+  if (human <= 0) return '0.0000001'
+  const min = human * (1 - slippageBps / 10_000)
+  return Math.max(min, 0.0000001).toFixed(7)
+}
+
 export function isSdexSwapPair(from: string, to: string): boolean {
   const f = from.toUpperCase()
   const t = to.toUpperCase()
@@ -82,6 +96,24 @@ export function isNoPathSoroswapError(message: string): boolean {
   return m.includes('no path found') || m.includes('path not found') || m.includes('quote failed')
 }
 
+async function fetchBestPath(
+  from: SdexSwapCode,
+  to: SdexSwapCode,
+  amountHuman: number,
+) {
+  const server = horizonServer()
+  const sendAsset = from === 'XLM' ? Asset.native() : usdcAsset()
+  const destAsset = to === 'XLM' ? Asset.native() : usdcAsset()
+  const amount = toStroops(amountHuman)
+  const paths = await server.strictSendPaths(sendAsset, amount, [destAsset]).call()
+  const best = paths.records?.[0]
+  if (!best?.destination_amount) {
+    throw new Error('No hay ruta SDEX para este par. Prueba con un monto menor.')
+  }
+  const path = (best.path ?? []).map((p) => serializeAsset(assetFromHorizon(p)))
+  return { best, path, sendAsset, destAsset }
+}
+
 /** Cotiza XLM↔USDC vía SDEX (Horizon path payment). */
 export async function quoteSdexPathPayment(
   from: SdexSwapCode,
@@ -89,44 +121,21 @@ export async function quoteSdexPathPayment(
   amountHuman: number,
   slippageBps = 50,
 ): Promise<{ quote: SdexPathQuote; amountOut: number }> {
-  const server = horizonServer()
-  const sendAsset = from === 'XLM' ? Asset.native() : usdcAsset()
-  const destAsset = to === 'XLM' ? Asset.native() : usdcAsset()
-  const amount = toStroops(amountHuman)
-
-  const paths = await server.strictSendPaths(sendAsset, amount, [destAsset]).call()
-  const best = paths.records?.[0]
-  if (!best?.destination_amount) {
-    throw new Error('No hay ruta SDEX para este par. Prueba con un monto menor.')
-  }
-
-  const path = (best.path ?? []).map((p) => serializeAsset(assetFromHorizon(p)))
+  const { best, path } = await fetchBestPath(from, to, amountHuman)
 
   const quote: SdexPathQuote = {
     _provider: 'sdex',
     from,
     to,
-    amountIn: amount,
+    amountIn: toStroops(amountHuman),
     amountOut: best.destination_amount,
-    sendAsset: serializeAsset(sendAsset),
-    destAsset: serializeAsset(destAsset),
+    sendAsset: serializeAsset(from === 'XLM' ? Asset.native() : usdcAsset()),
+    destAsset: serializeAsset(to === 'XLM' ? Asset.native() : usdcAsset()),
     path,
     slippageBps,
   }
 
-  return { quote, amountOut: fromStroops(best.destination_amount) }
-}
-
-function destMin(amountOut: string, slippageBps: number): string {
-  const n = Number(amountOut)
-  if (!Number.isFinite(n) || n <= 0) return amountOut
-  const min = n * (1 - slippageBps / 10_000)
-  return min.toFixed(7)
-}
-
-async function needsUsdcTrustline(publicKey: string): Promise<boolean> {
-  if (await hasUsdcTrustline(publicKey)) return false
-  return true
+  return { quote, amountOut: horizonAmountToHuman(best.destination_amount) }
 }
 
 export async function hasUsdcTrustline(publicKey: string): Promise<boolean> {
@@ -147,7 +156,7 @@ export async function hasUsdcTrustline(publicKey: string): Promise<boolean> {
   }
 }
 
-/** Construye XDR sin firmar para un path payment SDEX. */
+/** Construye XDR sin firmar; re-cotiza la ruta al instante del build. */
 export async function buildSdexPathPaymentXdr(
   publicKey: string,
   quote: SdexPathQuote,
@@ -156,21 +165,24 @@ export async function buildSdexPathPaymentXdr(
   const server = horizonServer()
   const account = await server.loadAccount(publicKey)
 
+  const amountHuman = Number(quote.amountIn) / 1e7
+  const { path } = await fetchBestPath(quote.from, quote.to, amountHuman)
+
   const sendAsset = deserializeAsset(quote.sendAsset)
   const destAsset = deserializeAsset(quote.destAsset)
-  const path = quote.path.map(deserializeAsset)
+  const sendAmountFixed = amountHuman.toFixed(7)
+  const destMin = destMinHuman(quote.amountOut, quote.slippageBps)
 
-  const sendAmountFixed = (Number(quote.amountIn) / 1e7).toFixed(7)
+  const opCount = quote.to === 'USDC' && !(await hasUsdcTrustline(publicKey)) ? 2 : 1
+  const fee = String(Number(BASE_FEE) * Math.max(opCount, 1))
 
   let builder = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee,
     networkPassphrase: passphrase,
   })
 
-  if (quote.to === 'USDC' && (await needsUsdcTrustline(publicKey))) {
-    builder = builder.addOperation(
-      Operation.changeTrust({ asset: usdcAsset() }),
-    )
+  if (quote.to === 'USDC' && !(await hasUsdcTrustline(publicKey))) {
+    builder = builder.addOperation(Operation.changeTrust({ asset: usdcAsset() }))
   }
 
   const tx = builder
@@ -180,8 +192,8 @@ export async function buildSdexPathPaymentXdr(
         sendAmount: sendAmountFixed,
         destination: publicKey,
         destAsset,
-        destMin: destMin(quote.amountOut, quote.slippageBps),
-        path,
+        destMin,
+        path: path.map(deserializeAsset),
       }),
     )
     .setTimeout(120)
@@ -190,15 +202,50 @@ export async function buildSdexPathPaymentXdr(
   return tx.toXDR()
 }
 
+function horizonSubmitError(e: unknown): string {
+  const err = e as {
+    response?: { data?: { extras?: { result_codes?: { transaction?: string; operations?: string[] } } } }
+    message?: string
+  }
+  const codes = err.response?.data?.extras?.result_codes
+  const tx = codes?.transaction
+  const op = codes?.operations?.join(', ')
+  if (tx || op) {
+    const map: Record<string, string> = {
+      op_under_dest_min: 'El precio cambió demasiado rápido. Intenta de nuevo con un monto menor.',
+      op_underfunded: 'Saldo insuficiente para completar el cambio.',
+      op_no_trust: 'Tu cuenta no tiene trustline para USDC. Intenta de nuevo.',
+      tx_insufficient_fee: 'Comisión de red insuficiente. Intenta de nuevo.',
+    }
+    const key = op?.split(', ')[0] ?? tx ?? ''
+    if (map[key]) return map[key]
+    return `Stellar rechazó la transacción (${[tx, op].filter(Boolean).join(' / ')}).`
+  }
+  return e instanceof Error ? e.message : 'No se pudo enviar la transacción'
+}
+
 /** Envía un XDR firmado a Horizon (transacciones clásicas / SDEX). */
 export async function submitSignedStellarXdr(signedXdr: string): Promise<string> {
   const { passphrase } = networkConfig()
   const server = horizonServer()
-  const tx = new Transaction(signedXdr, passphrase)
-  const result = await server.submitTransaction(tx)
-  return result.hash
+  const tx = TransactionBuilder.fromXDR(signedXdr, passphrase)
+  try {
+    const result = await server.submitTransaction(tx)
+    return result.hash
+  } catch (e) {
+    throw new Error(horizonSubmitError(e))
+  }
 }
 
 export function isSdexQuote(quote: Record<string, unknown>): quote is SdexPathQuote & Record<string, unknown> {
   return quote._provider === 'sdex'
+}
+
+export function inferSwapProvider(
+  provider: string | undefined,
+  quote?: Record<string, unknown>,
+): 'sdex' | 'soroswap' {
+  if (provider === 'sdex' || provider === 'soroswap') return provider
+  if (quote && isSdexQuote(quote)) return 'sdex'
+  return 'soroswap'
 }

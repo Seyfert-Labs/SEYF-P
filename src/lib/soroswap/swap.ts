@@ -9,6 +9,7 @@ import { pollarSignXdr, waitForPollarSession } from '@/lib/pollar/client-api'
 
 export type SoroswapQuoteResult = {
   quote: Record<string, unknown>
+  provider?: 'soroswap' | 'sdex'
   from: string
   to: string
   amountIn: number
@@ -77,7 +78,8 @@ export async function executeSoroswapSwap(opts: {
   // 5. Envía a la red (Soroswap relay o Horizon para SDEX).
   const sendRes = await postJson<{ txHash?: string }>('/api/soroswap/send', {
     signedXdr,
-    provider: buildRes.data.provider,
+    provider: buildRes.data.provider ?? quoteRes.data.provider,
+    quote: quoteRes.data.quote,
   })
   if (!sendRes.ok || !sendRes.data.txHash) {
     throw new Error(sendRes.data.error || 'La transacción no se confirmó en la red')
