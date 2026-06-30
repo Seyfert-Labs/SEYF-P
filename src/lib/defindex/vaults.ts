@@ -13,7 +13,7 @@ export type { DefindexStrategyConfig }
 export const STELLAR_VAULTS_ENABLED =
   (process.env.NEXT_PUBLIC_STELLAR_VAULTS || '').trim().toLowerCase() === 'true'
 
-/** Vault por defecto (CETES) — compat con env legacy. */
+/** Vault por defecto (XLM, primera del catálogo) — compat con env legacy. */
 export const DEFINDEX_VAULT_ADDRESS = (
   process.env.NEXT_PUBLIC_DEFINDEX_VAULT_ADDRESS?.trim() ||
   DEFINDEX_STRATEGIES[0]?.vaultAddress ||

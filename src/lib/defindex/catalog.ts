@@ -30,7 +30,42 @@ export interface DefindexStrategyConfig {
   apyTarget: number
 }
 
+// Direcciones de vault DeFindex (testnet), una por bóveda SEYF (CETES, USDC, XLM).
+// En este deploy cada estrategia Blend se maneja directamente como vault de depósito.
+// Configurables por env (NEXT_PUBLIC_DEFINDEX_VAULT_*); el fallback es el deploy actual.
+const VAULT_XLM =
+  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_XLM?.trim() ||
+  'CDVLOSPJPQOTB6ZCWO5VSGTOLGMKTXSFWYTUP572GTPNOWX4F76X3HPM'
+const VAULT_CETES =
+  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_CETES?.trim() ||
+  'CCP4RBDWPRNO2LWO23XFU4BBLGA73J5N3BK7EHRJUHVN33YEMMFB2MBE'
+const VAULT_USDC =
+  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_USDC?.trim() ||
+  'CALLOM5I7XLQPPOPQMYAHUWW4N7O3JKT42KQ4ASEEVBXDJQNJOALFSUY'
+
+// XLM va primero: el usuario tiene XLM (fondeado por Friendbot), así que es la
+// bóveda con la que sí puede depositar de inmediato → preferencia en UI y default.
 export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
+  {
+    id: 'xlm',
+    planId: 'balanceado',
+    name: 'XLM',
+    strategyAddress: 'CDVLOSPJPQOTB6ZCWO5VSGTOLGMKTXSFWYTUP572GTPNOWX4F76X3HPM',
+    strategyName: 'XLM Blend Strategy',
+    vaultKey: 'xlm_paltalabs_vault',
+    vaultAddress: VAULT_XLM,
+    assetSymbol: 'XLM',
+    assetIssuer: '',
+    decimals: 7,
+    risk: 'Medio',
+    horizon: '7 a 15 años',
+    exposure: 'Activo nativo de Stellar (XLM)',
+    structured: 'Exposición a XLM, el activo de la red Stellar. Más potencial de rendimiento con algo más de variación.',
+    color: 'var(--accent)',
+    emoji: '📊',
+    // APY de referencia cercano al rendimiento real de XLM en testnet.
+    apyTarget: 2.8,
+  },
   {
     id: 'cetes',
     planId: 'conservador',
@@ -38,7 +73,7 @@ export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
     strategyAddress: 'CCP4RBDWPRNO2LWO23XFU4BBLGA73J5N3BK7EHRJUHVN33YEMMFB2MBE',
     strategyName: 'CETES Blend Strategy',
     vaultKey: 'cetes_paltalabs_vault',
-    vaultAddress: 'CBIS5TEMTNNOTBE3WXPQUAGUEDYZZVIWAKTXEQCOUJ34OJJ3FJ5NLF2P',
+    vaultAddress: VAULT_CETES,
     assetSymbol: 'CETES',
     assetIssuer: 'GC3CW7EDYRTWQ635VDIGY6S4ZUF5L6TQ7AA4MWS7LEQDBLUSZXV7UPS4',
     decimals: 7,
@@ -58,7 +93,7 @@ export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
     strategyAddress: 'CALLOM5I7XLQPPOPQMYAHUWW4N7O3JKT42KQ4ASEEVBXDJQNJOALFSUY',
     strategyName: 'USDC Blend Strategy',
     vaultKey: 'usdc_paltalabs_vault',
-    vaultAddress: 'CBMVK2JK6NTOT2O4HNQAIQFJY232BHKGLIMXDVQVHIIZKDACXDFZDWHN',
+    vaultAddress: VAULT_USDC,
     assetSymbol: 'USDC',
     assetIssuer: 'GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56',
     decimals: 7,
@@ -70,26 +105,6 @@ export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
     emoji: '🧭',
     // APY de referencia cercano al rendimiento real de USDC en testnet.
     apyTarget: 4.5,
-  },
-  {
-    id: 'xlm',
-    planId: 'balanceado',
-    name: 'XLM',
-    strategyAddress: 'CDVLOSPJPQOTB6ZCWO5VSGTOLGMKTXSFWYTUP572GTPNOWX4F76X3HPM',
-    strategyName: 'XLM Blend Strategy',
-    vaultKey: 'xlm_paltalabs_vault',
-    vaultAddress: 'CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6',
-    assetSymbol: 'XLM',
-    assetIssuer: '',
-    decimals: 7,
-    risk: 'Medio',
-    horizon: '7 a 15 años',
-    exposure: 'Activo nativo de Stellar (XLM)',
-    structured: 'Exposición a XLM, el activo de la red Stellar. Más potencial de rendimiento con algo más de variación.',
-    color: 'var(--accent)',
-    emoji: '📊',
-    // APY de referencia cercano al rendimiento real de XLM en testnet.
-    apyTarget: 2.8,
   },
 ]
 

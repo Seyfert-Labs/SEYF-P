@@ -276,8 +276,10 @@ export function ScreenVaults({ go }: { go: Go }) {
   const [recId] = useState<string | null>(() => loadRiskProfile());
   const recPlan = recId ? planById(recId) : null;
 
+  // Preferencia XLM: es la bóveda con la que el usuario sí puede depositar
+  // (tiene XLM por Friendbot). Se preselecciona aunque el quiz recomiende otra.
   const defaultStrategy =
-    (recPlan && byPlanId(recPlan.id)) ?? strategies[0];
+    byPlanId("balanceado") ?? (recPlan && byPlanId(recPlan.id)) ?? strategies[0];
 
   // APY efectivo de una bóveda: el guardado si existe, si no el vivo de DeFindex
   // y, en su defecto, el de referencia del catálogo. Evita que el APY salga 0/—.
@@ -444,12 +446,6 @@ export function ScreenVaults({ go }: { go: Go }) {
           <h3>Mis bóvedas</h3>
           <span style={{ fontSize: 12, color: "var(--txt-dim)", fontWeight: 700 }}>{vaults.length}/{MAX_VAULTS}</span>
         </div>
-        {STELLAR_RAIL && (
-          <p style={{ margin: "0 2px 12px", fontSize: 12.5, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-            Tu <b style={{ color: "var(--txt)" }}>bóveda</b> es el nombre de tu meta (viaje, emergencia…).
-            El <b style={{ color: "var(--txt)" }}>activo</b> (CETES, USDC, XLM) define en qué rinde tu dinero.
-          </p>
-        )}
         {vaults.length === 0 ? (
           <button
             className="btn btn-ghost"
@@ -501,15 +497,15 @@ export function ScreenVaults({ go }: { go: Go }) {
         <div className="sec-head" style={{ marginTop: 24 }}>
           <h3>{STELLAR_RAIL ? "Activos de ahorro" : "Estrategias de ahorro"}</h3>
         </div>
-        <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-          {STELLAR_RAIL ? (
-            <>Cada activo rinde a su propia tasa. Elige el que mejor se ajuste a tu meta.</>
-          ) : recPlan ? (
-            <>Según tu perfil te recomendamos <b style={{ color: "var(--accent)" }}>{recPlan.name}</b>.</>
-          ) : (
-            <>Cada perfil ajusta tu mezcla de instrumentos soberanos según tu horizonte.</>
-          )}
-        </p>
+        {!STELLAR_RAIL && (
+          <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            {recPlan ? (
+              <>Según tu perfil te recomendamos <b style={{ color: "var(--accent)" }}>{recPlan.name}</b>.</>
+            ) : (
+              <>Cada perfil ajusta tu mezcla de instrumentos soberanos según tu horizonte.</>
+            )}
+          </p>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {STELLAR_RAIL
             ? strategies.map((s) => (
@@ -823,23 +819,6 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
                   Horizonte: {defindexStrategy.horizon}
                 </p>
               </div>
-            {v.bal > 0 && (
-              <div className="card" style={{ marginTop: 14, textAlign: "left", background: "var(--accent-soft)", border: "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Icon name="trend" size={18} color="var(--accent)" />
-                  <p className="eyebrow" style={{ color: "var(--accent)", margin: 0 }}>Proyección de tu retiro</p>
-                </div>
-                <p style={{ margin: "8px 0 6px", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
-                  Manteniendo tu saldo a {fmtApy(liveApy)} anual, podrías retirar:
-                </p>
-                {[1, 5, 10, 20].map((yrs, i) => (
-                  <div key={yrs} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: i === 0 ? "none" : "1px solid var(--line)" }}>
-                    <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>En {yrs} {yrs === 1 ? "año" : "años"}</span>
-                    <span className="num" style={{ fontSize: 16, fontWeight: 800, color: "var(--accent)" }}>${FMT(projectSavings(v.bal, 0, liveApy, yrs), 0)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </>
         )}
 
