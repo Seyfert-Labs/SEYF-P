@@ -82,9 +82,11 @@ export interface SoroswapQuoteInput {
 /** Cotización opaca de Soroswap; se reenvía tal cual a /quote/build. */
 export type SoroswapQuote = Record<string, unknown> & { amountOut?: string | number }
 
-// `sdex` se excluye a propósito: la wallet Pollar es una smart wallet (Soroban),
-// y la doc oficial indica omitir sdex para smart wallets. Solo AMMs Soroban.
-const DEFAULT_PROTOCOLS = ['soroswap', 'phoenix', 'aqua']
+// Incluimos `sdex`: Pollar entrega cuentas Stellar CLÁSICAS (G…), no contratos
+// Soroban (C…). En testnet la liquidez XLM/USDC vive principalmente en SDEX;
+// excluirlo deja sin ruta ("Quote Failed"). Las cuentas clásicas firman SDEX sin
+// problema (es justo lo que hace el repo de referencia que funciona en testnet).
+const DEFAULT_PROTOCOLS = ['sdex', 'soroswap', 'phoenix', 'aqua']
 
 /** POST /quote — cotiza un swap. */
 export function soroswapQuote(input: SoroswapQuoteInput): Promise<SoroswapQuote> {
@@ -95,9 +97,9 @@ export function soroswapQuote(input: SoroswapQuoteInput): Promise<SoroswapQuote>
     tradeType: input.tradeType ?? 'EXACT_IN',
     protocols: DEFAULT_PROTOCOLS,
     slippageBps: input.slippageBps ?? 50, // 50 bps = 0.5 %
-    // NO usamos gaslessTrustline: la API solo lo soporta con SDEX, y SDEX se
-    // excluye para smart wallets (Pollar). Los tokens SAC de Soroban no requieren
-    // trustline clásico, así que el swap funciona sin ese flag.
+    // Una cuenta clásica necesita trustline para recibir USDC; gaslessTrustline lo
+    // crea patrocinado. Solo funciona con SDEX presente (por eso lo incluimos arriba).
+    gaslessTrustline: 'create',
   })
 }
 
