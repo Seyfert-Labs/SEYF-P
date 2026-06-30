@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { soroswapSend, SoroswapApiError } from '@/lib/soroswap/client'
+import { submitSignedStellarXdr } from '@/lib/stellar/path-payment'
 
 const bodySchema = z.object({
-  // XDR ya firmado por Pollar.
   signedXdr: z.string().trim().min(1),
+  provider: z.enum(['soroswap', 'sdex']).optional(),
 })
 
 function extractHash(res: Record<string, unknown>): string | null {
@@ -16,8 +17,8 @@ function extractHash(res: Record<string, unknown>): string | null {
 }
 
 /**
- * POST /api/soroswap/send { signedXdr }
- * Reenvía a la red el XDR firmado y devuelve el hash de la transacción.
+ * POST /api/soroswap/send { signedXdr, provider? }
+ * Envía el XDR firmado (Soroswap relay o Horizon directo para SDEX).
  */
 export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
@@ -25,8 +26,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 })
   }
 
+  const { signedXdr, provider } = parsed.data
+
   try {
-    const res = await soroswapSend(parsed.data.signedXdr)
+    if (provider === 'sdex') {
+      const txHash = await submitSignedStellarXdr(signedXdr)
+      return NextResponse.json({ txHash, success: true })
+    }
+
+    const res = await soroswapSend(signedXdr)
     const txHash = extractHash(res)
     if (!txHash) {
       console.error('[soroswap/send] respuesta sin hash:', JSON.stringify(res).slice(0, 300))

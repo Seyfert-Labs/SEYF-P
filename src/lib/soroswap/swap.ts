@@ -63,7 +63,7 @@ export async function executeSoroswapSwap(opts: {
   if (!quoteRes.ok) throw new Error(quoteRes.data.error || 'No se pudo cotizar el swap')
 
   // 3. Construye el XDR (sin firmar) para esta wallet.
-  const buildRes = await postJson<{ xdr?: string }>('/api/soroswap/build', {
+  const buildRes = await postJson<{ xdr?: string; provider?: 'soroswap' | 'sdex' }>('/api/soroswap/build', {
     quote: quoteRes.data.quote,
     from: publicKey,
   })
@@ -74,8 +74,11 @@ export async function executeSoroswapSwap(opts: {
   // 4. Firma con Pollar (preserva el footprint Soroban del XDR de Soroswap).
   const signedXdr = await pollarSignXdr(client, buildRes.data.xdr, publicKey)
 
-  // 5. Envía a la red vía Soroswap.
-  const sendRes = await postJson<{ txHash?: string }>('/api/soroswap/send', { signedXdr })
+  // 5. Envía a la red (Soroswap relay o Horizon para SDEX).
+  const sendRes = await postJson<{ txHash?: string }>('/api/soroswap/send', {
+    signedXdr,
+    provider: buildRes.data.provider,
+  })
   if (!sendRes.ok || !sendRes.data.txHash) {
     throw new Error(sendRes.data.error || 'La transacción no se confirmó en la red')
   }

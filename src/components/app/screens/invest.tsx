@@ -1210,7 +1210,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         )}
 
         <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "14px 4px 0", lineHeight: 1.5 }}>
-          Swap on-chain en <b style={{ color: "var(--txt)" }}>Soroswap</b> (Stellar), firmado con tu wallet. Las tasas vienen del pool en vivo; CETES aún no tiene pool en testnet.
+          Conversión on-chain en Stellar (Soroswap o SDEX). Las tasas vienen del mercado en vivo; en testnet XLM↔USDC usa el libro de órdenes clásico.
         </p>
       </div>
       <div className="scroll-bottom" />

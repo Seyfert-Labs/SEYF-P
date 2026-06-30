@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { soroswapQuote, SoroswapApiError } from '@/lib/soroswap/client'
 import { soroswapAssetByCode, toStroops, fromStroops } from '@/lib/soroswap/assets'
+import {
+  isNoPathSoroswapError,
+  isSdexSwapPair,
+  quoteSdexPathPayment,
+  type SdexSwapCode,
+} from '@/lib/stellar/path-payment'
 
 const bodySchema = z.object({
   from: z.string().trim().min(1),
@@ -12,8 +18,7 @@ const bodySchema = z.object({
 
 /**
  * POST /api/soroswap/quote { from, to, amount }
- * Resuelve los códigos (XLM/USDC/…) a direcciones de contrato y cotiza el swap.
- * Devuelve la cotización opaca (para /build) + el monto de salida en humano.
+ * Cotiza vía Soroswap AMM; si no hay pool (testnet), cae a SDEX path payment para XLM↔USDC.
  */
 export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
@@ -26,12 +31,11 @@ export async function POST(req: Request) {
   const assetOut = soroswapAssetByCode(to)
   if (!assetIn?.address || !assetOut?.address) {
     return NextResponse.json(
-      { error: `Par no disponible en Soroswap (${from}→${to}). Falta liquidez o configuración del token.` },
+      { error: `Par no disponible (${from}→${to}).` },
       { status: 422 },
     )
   }
 
-  // Diagnóstico: muestra qué direcciones resolvió el build (detecta env overrides).
   const route = `${assetIn.code}(${assetIn.address.slice(0, 6)}…)→${assetOut.code}(${assetOut.address.slice(0, 6)}…)`
 
   try {
@@ -43,15 +47,48 @@ export async function POST(req: Request) {
     })
     return NextResponse.json({
       quote,
+      provider: 'soroswap' as const,
       from: assetIn.code,
       to: assetOut.code,
       amountIn: amount,
       amountOut: fromStroops(quote.amountOut),
     })
   } catch (e) {
-    const status = e instanceof SoroswapApiError ? (e.status >= 400 ? e.status : 502) : 502
     const message = e instanceof Error ? e.message : 'No se pudo cotizar el swap'
-    console.error(`[soroswap/quote] ${route} assetOut=${assetOut.address}`, message)
+
+    // Fallback SDEX: en testnet no hay pools AMM XLM/USDC, pero el order book clásico sí tiene liquidez.
+    if (isSdexSwapPair(from, to) && isNoPathSoroswapError(message)) {
+      try {
+        const sdex = await quoteSdexPathPayment(
+          from.toUpperCase() as SdexSwapCode,
+          to.toUpperCase() as SdexSwapCode,
+          amount,
+          slippageBps ?? 50,
+        )
+        console.info(`[soroswap/quote] Soroswap sin ruta → SDEX ${from}→${to} out=${sdex.amountOut}`)
+        return NextResponse.json({
+          quote: sdex.quote,
+          provider: 'sdex' as const,
+          from: from.toUpperCase(),
+          to: to.toUpperCase(),
+          amountIn: amount,
+          amountOut: sdex.amountOut,
+        })
+      } catch (sdexErr) {
+        const sdexMsg = sdexErr instanceof Error ? sdexErr.message : 'SDEX sin ruta'
+        console.error(`[soroswap/quote] SDEX fallback falló:`, sdexMsg)
+        return NextResponse.json(
+          {
+            error:
+              'No hay liquidez para este cambio en testnet. Prueba XLM↔USDC con un monto menor (ej. 1–10 XLM) o intenta más tarde.',
+          },
+          { status: 422 },
+        )
+      }
+    }
+
+    const status = e instanceof SoroswapApiError ? (e.status >= 400 ? e.status : 502) : 502
+    console.error(`[soroswap/quote] ${route}`, message)
     return NextResponse.json({ error: `[${route}] ${message}` }, { status })
   }
 }
