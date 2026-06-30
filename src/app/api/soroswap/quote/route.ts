@@ -31,6 +31,9 @@ export async function POST(req: Request) {
     )
   }
 
+  // Diagnóstico: muestra qué direcciones resolvió el build (detecta env overrides).
+  const route = `${assetIn.code}(${assetIn.address.slice(0, 6)}…)→${assetOut.code}(${assetOut.address.slice(0, 6)}…)`
+
   try {
     const quote = await soroswapQuote({
       assetIn: assetIn.address,
@@ -48,7 +51,7 @@ export async function POST(req: Request) {
   } catch (e) {
     const status = e instanceof SoroswapApiError ? (e.status >= 400 ? e.status : 502) : 502
     const message = e instanceof Error ? e.message : 'No se pudo cotizar el swap'
-    console.error('[soroswap/quote]', message)
-    return NextResponse.json({ error: message }, { status })
+    console.error(`[soroswap/quote] ${route} assetOut=${assetOut.address}`, message)
+    return NextResponse.json({ error: `[${route}] ${message}` }, { status })
   }
 }
