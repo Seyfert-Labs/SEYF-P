@@ -993,6 +993,10 @@ export function ScreenConvert({ go }: { go: Go }) {
     Number(stellar.assetBalances.find((b) => (b.code || "").toUpperCase() === code.toUpperCase())?.balance ?? 0);
   const availableFrom = balanceOf(fromCode);
 
+  useEffect(() => {
+    if (stellar.authenticated) void stellar.refreshBalance();
+  }, [stellar.authenticated, stellar.refreshBalance]);
+
   const swap = () => { setFromCode(toCode); setToCode(fromCode); setStatus("idle"); };
   const setPct = (p: number) => {
     const v = availableFrom * (p / 100);
@@ -1043,7 +1047,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         amount: amt,
         getClient: stellar.getClient,
       });
-      void stellar.refreshBalance();
+      void stellar.refreshBalanceAfterTx();
       setDoneInfo({ received: res.amountOut, recCode: toCode, spent: res.amountIn, spentCode: fromCode, txHash: res.txHash });
       setMsg("");
       // Pop-up de confirmación breve (~5s) y se cierra solo (solo si sigue en done).

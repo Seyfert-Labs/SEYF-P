@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePollar } from '@pollar/react'
 import type { AuthState, WalletBalanceState } from '@pollar/core'
 import { isValidStellarPublicKey, normalizeStellarPublicKey } from '@/lib/etherfuse/stellar-public-key'
+import { pollStellarBalance, STELLAR_BALANCE_CHANGED_EVT } from '@/lib/seyf/stellar-balance-refresh'
 
 export type SeyfStellarSession = {
   stellarAddress: string
@@ -15,15 +16,23 @@ export type SeyfStellarSession = {
 /** Fase del enrolamiento silencioso (OTP por correo, manejado en nuestra UI). */
 export type StellarEnrollPhase = 'idle' | 'sending' | 'code' | 'verifying' | 'connected' | 'error'
 
-function mapBalances(state: WalletBalanceState) {
-  if (state.step !== 'loaded') return { assetBalances: [] as { code?: string; balance?: string }[], xlmBalance: null as string | null }
+type BalanceRow = { code?: string; balance?: string }
+type MappedBalances = { assetBalances: BalanceRow[]; xlmBalance: string | null }
+
+function mapBalances(state: WalletBalanceState): MappedBalances {
+  if (state.step !== 'loaded') {
+    return { assetBalances: [] as BalanceRow[], xlmBalance: null }
+  }
   const rows = state.data.balances
   const assetBalances = rows.map((b) => ({
     code: b.type === 'native' ? 'XLM' : b.code,
     balance: (b.available || b.balance || '0').trim(),
   }))
   const native = rows.find((x) => x.type === 'native')
-  return { assetBalances, xlmBalance: native ? (native.available || native.balance || '0').trim() : null }
+  return {
+    assetBalances,
+    xlmBalance: native ? (native.available || native.balance || '0').trim() : null,
+  }
 }
 
 /** Traduce mensajes de error de Pollar a español legible. */
@@ -127,7 +136,53 @@ export function useSeyfStellarWallet() {
     }
   }, [walletAddress])
 
-  const { assetBalances, xlmBalance } = useMemo(() => mapBalances(walletBalance), [walletBalance])
+  const lastBalancesRef = useRef<MappedBalances>({ assetBalances: [], xlmBalance: null })
+  const mapped = useMemo(() => mapBalances(walletBalance), [walletBalance])
+
+  useEffect(() => {
+    if (walletBalance.step === 'loaded') {
+      lastBalancesRef.current = mapped
+    }
+  }, [walletBalance.step, mapped])
+
+  // Mientras recarga, conserva el último saldo válido (evita parpadeos y datos “pegados” en loading).
+  const { assetBalances, xlmBalance } =
+    walletBalance.step === 'loading' && lastBalancesRef.current.assetBalances.length > 0
+      ? lastBalancesRef.current
+      : mapped
+
+  const refreshBalanceNow = useCallback(async () => {
+    if (!publicKey) return
+    await refreshRef.current?.(publicKey)
+  }, [publicKey])
+
+  const refreshBalanceAfterTx = useCallback(async () => {
+    if (!publicKey) return
+    await pollStellarBalance((pk) => refreshRef.current?.(pk), publicKey)
+  }, [publicKey])
+
+  // Polling en vivo mientras la wallet está conectada.
+  useEffect(() => {
+    if (!isAuthenticated || !publicKey) return
+    void refreshBalanceNow()
+    const id = setInterval(() => void refreshBalanceNow(), 20_000)
+    return () => clearInterval(id)
+  }, [isAuthenticated, publicKey, refreshBalanceNow])
+
+  // Al volver a la pestaña / tras una tx, re-sincroniza.
+  useEffect(() => {
+    if (!isAuthenticated || !publicKey) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshBalanceNow()
+    }
+    const onBalanceEvent = () => void refreshBalanceNow()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener(STELLAR_BALANCE_CHANGED_EVT, onBalanceEvent)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener(STELLAR_BALANCE_CHANGED_EVT, onBalanceEvent)
+    }
+  }, [isAuthenticated, publicKey, refreshBalanceNow])
 
   const cetesBalance = useMemo(() => {
     const row = assetBalances.find((b) => (b.code || '').toUpperCase().includes('CETES'))
@@ -205,7 +260,8 @@ export function useSeyfStellarWallet() {
     // Fallback al modal de Pollar (no usado en el flujo nuevo).
     login,
     logout,
-    refreshBalance: () => refreshRef.current?.(),
+    refreshBalance: refreshBalanceNow,
+    refreshBalanceAfterTx,
     getClient,
     etherfusePublicKeyHint: publicKey ? `${publicKey.slice(0, 6)}…${publicKey.slice(-4)}` : null,
   }

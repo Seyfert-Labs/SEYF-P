@@ -16,6 +16,7 @@ import {
   assetSymbolForPlan,
 } from "@/lib/defindex/vaults";
 import { signAndSubmitDefindexXdr } from "@/lib/defindex/sign-and-submit";
+import { pollStellarBalance } from "@/lib/seyf/stellar-balance-refresh";
 import { fundStellarWallet } from "@/lib/seyf/use-ensure-stellar-funding";
 import type { VaultLimits } from "@/lib/chain";
 
@@ -209,7 +210,7 @@ export function useStellarVaults(address?: string) {
           onchainBalCache.set(`${publicKey}:${planId}`, { bal: nextBal, ts: now });
         }
 
-        await refreshBalance(publicKey);
+        await pollStellarBalance(refreshBalance, publicKey);
         await reload();
         return hash;
       } finally {

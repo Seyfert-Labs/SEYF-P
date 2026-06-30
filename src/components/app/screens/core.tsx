@@ -171,14 +171,12 @@ export function ScreenHome({ go }: { go: Go }) {
     pend.reconcile(homeTxns.txns);
   }, [homeTxns.txns, pend.reconcile]);
 
-  // Saldo XLM (gas Stellar / DeFindex) en la wallet Pollar.
-  useEffect(() => {
-    if (stellar.authenticated && stellar.publicKey) {
-      void stellar.refreshBalance();
-    }
-  }, [stellar.authenticated, stellar.publicKey]);
-
   const realData = wallet.enabled && wallet.authenticated;
+
+  // Al entrar al inicio, fuerza lectura fresca de saldos Stellar (XLM, USDC, CETES…).
+  useEffect(() => {
+    if (stellar.authenticated) void stellar.refreshBalance();
+  }, [stellar.authenticated, stellar.refreshBalance]);
   const showStellarAssets = STELLAR_VAULTS_ENABLED && stellar.enabled && stellar.authenticated;
   // Todos los activos de la wallet Stellar con saldo (XLM, CETES, USDC, …).
   const stellarAssets = showStellarAssets
@@ -363,8 +361,8 @@ export function ScreenHome({ go }: { go: Go }) {
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalance(); }} /></Portal>}
-      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalance(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
+      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} /></Portal>}
+      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
       {modal === "advance" && (
         <Portal>
           <LiquidityAdvanceModal
