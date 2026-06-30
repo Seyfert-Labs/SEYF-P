@@ -2,53 +2,36 @@
 
 # SEYF
 
-### La super app de finanzas para ahorrar, invertir y gastar sin fronteras
+### La super app de ahorro e inversión sobre Stellar
 
-Pesos digitales que rinden · Bonos de gobierno de 4 países · Bóvedas de ahorro · Tarjeta multi-divisa
-Construida sobre **MXNB** (Bitso Business / Juno), wallets sociales sin seed phrase y transacciones con gas patrocinado.
+Bóvedas de rendimiento real (CETES, USDC, XLM) · KYC integrado · On-ramp SPEI · Wallet embebida sin seed phrase
+Construida sobre **Stellar/Soroban**, **DeFindex**, **Etherfuse**, **Pollar** y **Soroswap**.
 
 <br/>
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs)
-![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Privy](https://img.shields.io/badge/Privy-Auth%20%2B%20Smart%20Wallets-6A4BFF?style=for-the-badge)
-![ZeroDev](https://img.shields.io/badge/ZeroDev-Paymaster-7C3AED?style=for-the-badge)
-![Arbitrum](https://img.shields.io/badge/Arbitrum-Sepolia-28A0F0?style=for-the-badge&logo=arbitrum)
-![MXNB](https://img.shields.io/badge/MXNB-Bitso%20Business%20·%20Juno-C8FF4D?style=for-the-badge&labelColor=0A0A0F)
+![Stellar](https://img.shields.io/badge/Stellar-Soroban-7C3AED?style=for-the-badge&logo=stellar&logoColor=white)
+![DeFindex](https://img.shields.io/badge/DeFindex-Yield_Vaults-5BD6C0?style=for-the-badge)
+![Etherfuse](https://img.shields.io/badge/Etherfuse-KYC_+_Bonds-FF6B35?style=for-the-badge)
+![Pollar](https://img.shields.io/badge/Pollar-Wallet_Stellar-6A4BFF?style=for-the-badge)
+![Soroswap](https://img.shields.io/badge/Soroswap-DEX-28A0F0?style=for-the-badge)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
 </div>
 
 ---
 
-## Capturas
-
-<div align="center">
-
-| Inicio | Invertir | Landing |
-|:------:|:--------:|:-------:|
-| <img src="docs/screenshots/home.png" width="240" alt="Inicio"/> | <img src="docs/screenshots/bonds.png" width="240" alt="Invertir"/> | <img src="docs/screenshots/landing.png" width="240" alt="Landing"/> |
-
-</div>
-
-> Las imágenes viven en [`docs/screenshots/`](docs/screenshots). Coloca ahí `home.png`, `bonds.png` y `landing.png`.
-
----
-
 ## Tabla de contenidos
 
 - [Qué es SEYF](#qué-es-seyf)
-- [Tecnologías](#tecnologías)
 - [Arquitectura](#arquitectura)
-- [Flujos](#flujos)
-- [Funcionalidades](#funcionalidades)
+- [Tecnologías](#tecnologías)
+- [Flujos principales](#flujos-principales)
+- [Estrategias DeFindex](#estrategias-defindex)
 - [API (endpoints)](#api-endpoints)
-- [Rutas](#rutas)
-- [Configuración (Juno · Privy · ZeroDev)](#configuración-juno--privy--zerodev)
 - [Variables de entorno](#variables-de-entorno)
 - [Arranque](#arranque)
-- [Estructura](#estructura)
+- [Estructura del proyecto](#estructura-del-proyecto)
 - [Seguridad](#seguridad)
 - [Roadmap](#roadmap)
 
@@ -56,33 +39,17 @@ Construida sobre **MXNB** (Bitso Business / Juno), wallets sociales sin seed phr
 
 ## Qué es SEYF
 
-SEYF es una wallet de finanzas personales que une tres mundos en una sola app:
+SEYF es una plataforma de ahorro e inversión para México que combina la experiencia de un neobank (SPEI, pesos, copy simple) con infraestructura DeFi sobre Stellar que el usuario nunca ve:
 
 | | |
 |---|---|
-| **Fiat ↔ Cripto sin fricción** | Depósitos y retiros (SPEI) se convierten a **MXNB** (stablecoin MXN) vía **Bitso Business / Juno**. |
-| **Onboarding sin seed phrase** | El usuario entra con **correo** y obtiene una **smart wallet** en Arbitrum, sin extensiones ni frases semilla. |
-| **Sin gas, sin firmas** | Las transacciones on-chain del usuario son **patrocinadas** (account abstraction ERC-4337 + paymaster). |
-| **Ahorro inteligente** | Cuestionario de perfil de riesgo · 4 estrategias de bóvedas · comparativo vs AFORE tradicional. |
+| **Bóvedas de rendimiento real** | Depósitos en vaults DeFindex (Soroban) con estrategias CETES (~10.5% APY), USDC (~4.5%) y XLM (~2.8%). El saldo y rendimiento son on-chain. |
+| **Wallet sin seed phrase** | El usuario entra con correo (Privy) y firma en Stellar con **Pollar** (passkeys/OTP). Sin extensiones ni frases semilla. |
+| **KYC integrado** | Verificación de identidad (CURP, INE, selfie) dentro de la app vía **Etherfuse**. El usuario nunca sale de SEYF. |
+| **On-ramp SPEI** | Depósitos en pesos por transferencia bancaria. CLABE individual por usuario. |
+| **Conversión de divisas** | MXN ↔ USDT/EUR/BRL vía Bitso (actual). Soroswap on-chain (roadmap). |
 
-Cada usuario tiene **saldo real on-chain**, **historial real** (transferencias MXNB), su **CLABE de depósito** propia y un **perfil persistido en Supabase** (multi-dispositivo). Diseño dark glassmorphism, responsive (móvil y escritorio).
-
----
-
-## Tecnologías
-
-| Capa | Tecnología | Rol |
-|------|-----------|-----|
-| **Framework** | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 5 | UI + API routes en un solo proyecto |
-| **Estilos** | Tailwind v4 + design tokens (CSS vars) | Tema dark glassmorphism (lima/violeta) |
-| **Identidad / wallets** | [Privy](https://privy.io) (`@privy-io/react-auth`) | Login social (Email OTP) + wallet embebida (EOA) sin seed phrase |
-| **Account abstraction** | ERC-4337 · Kernel (smart account) | La wallet del usuario es una cuenta inteligente |
-| **Paymaster (gas)** | [ZeroDev](https://zerodev.app) | Patrocina el gas de las transacciones del usuario |
-| **Bundler** | [Pimlico](https://pimlico.io) | Empaqueta y envía las UserOperations |
-| **On-chain** | [viem](https://viem.sh) · `permissionless` | Lectura de saldo/eventos ERC-20 y transfers |
-| **Rieles fiat** | [Juno / Bitso Business](https://docs.bitso.com/juno) | Issuance/redeem de **MXNB**, CLABEs, SPEI (HMAC-SHA256) |
-| **Persistencia** | [Supabase](https://supabase.com) (Postgres) | Perfiles, CLABEs, cuentas bancarias, bóvedas, conversiones FX, límites mensuales y bono |
-| **Red / activo** | Arbitrum Sepolia · **MXNB** (ERC-20, 6 decimales) | Donde vive y se mueve el dinero del usuario |
+Cada usuario tiene **saldo real on-chain en Stellar**, bóvedas con rendimiento verificable, KYC persistido y un perfil multi-dispositivo en Supabase.
 
 ---
 
@@ -91,399 +58,335 @@ Cada usuario tiene **saldo real on-chain**, **historial real** (transferencias M
 ```mermaid
 flowchart TB
     subgraph Client["Cliente · Next.js 16 + React 19"]
-        Landing["Landing /"]
         App["App /app"]
-        Hooks["Hooks\nuseWallet · useOnchainTxns\nusePendingTxns · useVaults · useUserClabe"]
+        Hooks["Hooks\nuseStellarVaults · useDefindexStrategies\nuseDefindexPositions · useKycStatus"]
         Store["store.ts\nSupabase ↔ localStorage"]
     end
 
-    subgraph Auth["Identidad y cuentas · Privy"]
-        Login["Login social\n(Email OTP)"]
-        Embedded["Wallet embebida\n(EOA · sin seed phrase)"]
-        Smart["Smart Wallet\nERC-4337 · Kernel"]
+    subgraph Auth["Identidad"]
+        Privy["Privy\nLogin social (Email OTP)"]
+        Pollar["Pollar\nWallet Stellar (passkeys/OTP)"]
     end
 
-    subgraph AA["Account Abstraction · gas patrocinado"]
-        Bundler["Bundler\nPimlico"]
-        Paymaster["Paymaster\nZeroDev"]
+    subgraph Yield["Motor de rendimiento · Stellar/Soroban"]
+        DeFindex[("DeFindex SDK\nVaults: CETES · USDC · XLM")]
+        Soroban[("Soroban\nContratos de vault")]
     end
 
-    subgraph Server["Servidor · Route Handlers (Next.js)"]
-        APIJuno["/api/juno/*\nfirma HMAC-SHA256"]
-        APIDB["/api/db/*\nservice_role Supabase"]
+    subgraph KYC["Verificación · Etherfuse"]
+        EtherfuseAPI[("Etherfuse API\nKYC + Stablebonds")]
     end
 
-    subgraph Rails["Rieles financieros"]
-        Juno[("Juno / Bitso Business\nMXNB issuance · redeem · CLABE")]
-        Arb[("Arbitrum Sepolia\nMXNB ERC-20")]
-        SB[("Supabase\nPostgres")]
+    subgraph FX["Conversión de divisas"]
+        Bitso[("Bitso\nÓrdenes de mercado")]
+        Soroswap[("Soroswap\nDEX on-chain (roadmap)")]
     end
 
-    Landing -->|Iniciar| App
+    subgraph Server["Servidor · Route Handlers"]
+        APIDefindex["/api/defindex/*\ndeposit · withdraw · balance"]
+        APISeyf["/api/seyf/*\nKYC · ramp · stellar-fund"]
+        APIConvert["/api/convert\nFX pooled+ledger"]
+        APIDB["/api/db/*\nSupabase"]
+    end
+
+    subgraph Infra["Persistencia"]
+        SB[("Supabase\nPerfiles · vaults · ledger · KYC")]
+    end
+
     App --> Hooks
     App --> Store
-    Login --> Embedded --> Smart
-    Hooks --> Login
-    Smart -->|UserOperation| Bundler --> Paymaster -->|sponsor gas| Arb
-    Hooks -->|fetch /api/juno/*| APIJuno -->|HMAC| Juno
-    Juno -->|mint · transfer on-chain| Arb
-    Hooks -->|viem readContract / getLogs| Arb
-    Store -->|fetch /api/db/*| APIDB --> SB
+    Privy -->|auth| App
+    Pollar -->|firma Stellar| Hooks
+    Hooks -->|fetch| APIDefindex -->|SDK| DeFindex --> Soroban
+    Hooks -->|fetch| APISeyf --> EtherfuseAPI
+    Hooks -->|fetch| APIConvert --> Bitso
+    Store -->|fetch| APIDB --> SB
 
-    classDef chain fill:#28A0F0,stroke:#fff,color:#fff;
-    classDef juno fill:#0A0A0F,stroke:#C8FF4D,color:#C8FF4D;
-    classDef aa fill:#2B1769,stroke:#A78BFA,color:#fff;
+    classDef stellar fill:#7C3AED,stroke:#fff,color:#fff;
+    classDef defi fill:#0A2E1C,stroke:#5BD6C0,color:#5BD6C0;
+    classDef eth fill:#1A0A0F,stroke:#FF6B35,color:#FF6B35;
     classDef db fill:#1C1C1C,stroke:#3ECF8E,color:#3ECF8E;
-    class Arb chain
-    class Juno juno
-    class Bundler,Paymaster aa
+    class Soroban,DeFindex stellar
+    class Bitso,Soroswap defi
+    class EtherfuseAPI eth
     class SB db
 ```
 
-**Principios de diseño**
+**Principios de diseño:**
 
-- Los **secretos de Juno viven solo en el servidor** (los route handlers firman HMAC). El frontend nunca firma ni ve credenciales.
-- El **saldo por usuario** se lee on-chain de su smart wallet (no del balance de negocio de Juno).
-- El **gas** lo paga el paymaster de ZeroDev: el usuario no firma popups ni paga comisiones de red.
-- La capa **`store.ts`** es el único lugar que decide Supabase vs localStorage — si `NEXT_PUBLIC_USE_SUPABASE=true` persiste en Postgres (multi-dispositivo), si no cae a localStorage (modo demo).
+- **Secrets en el servidor** — API keys de DeFindex, Etherfuse, Bitso nunca llegan al navegador.
+- **Saldo real on-chain** — El balance del usuario se lee de la vault DeFindex en Stellar, no de una base de datos.
+- **Firma del usuario** — Cada depósito/retiro requiere que el usuario autorice con OTP o passkey (Pollar).
+- **Money timer** — El saldo crece en pantalla en tiempo real, anclado al `updated_at` de Supabase y el APY de la estrategia.
 
 ---
 
-## Flujos
+## Tecnologías
 
-### Onboarding + smart wallet (sin seed phrase)
+| Capa | Tecnología | Rol |
+|------|-----------|-----|
+| **Framework** | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 5 | UI + API routes |
+| **Blockchain** | Stellar (Soroban) · Testnet/Mainnet | Red donde viven los fondos |
+| **Yield vaults** | [DeFindex](https://defindex.io) (`@defindex/sdk`) | Vaults de rendimiento (CETES, USDC, XLM) |
+| **DEX** | [Soroswap](https://soroswap.finance) | Swaps on-chain en Stellar (roadmap) |
+| **Wallet Stellar** | [Pollar](https://pollar.xyz) (`@pollar/core`, `@pollar/react`) | Wallet embebida con passkeys/OTP headless |
+| **Auth** | [Privy](https://privy.io) (`@privy-io/react-auth`) | Login social (Email OTP) |
+| **KYC + Bonos** | [Etherfuse](https://etherfuse.com) | Verificación de identidad + CETES tokenizados |
+| **On-ramp fiat** | SPEI (Juno / Dynerox) | Depósitos y retiros en pesos mexicanos |
+| **FX** | Bitso REST API | Conversiones MXN ↔ divisas (pooled+ledger) |
+| **Persistencia** | [Supabase](https://supabase.com) (Postgres) | Perfiles, vaults, ledger, KYC, rate limits |
+
+---
+
+## Flujos principales
+
+### Onboarding + wallet Stellar
 
 ```mermaid
 sequenceDiagram
     actor U as Usuario
     participant App
     participant Privy
+    participant Pollar
     participant SB as Supabase
-    participant Arb as Arbitrum
-    U->>App: Abrir /app y "Crear mi cuenta"
+    U->>App: Abrir /app
     App->>Privy: login (Email OTP)
     Privy-->>U: código al correo
     U->>Privy: ingresa código
-    Privy->>Privy: crea wallet embebida (EOA) sin seed phrase
-    Privy->>Privy: deriva smart wallet ERC-4337 (Kernel)
-    Privy-->>App: authenticated + smartAddress
-    App->>SB: upsertProfile (wallet, email, did)
-    App->>SB: syncRiskProfile ← risk_profile guardado
-    App->>Arb: readMXNBBalance(smartAddress)
-    Arb-->>App: saldo real on-chain
+    Privy-->>App: authenticated + email
+    App->>Pollar: sendCode(email) — OTP headless
+    Pollar-->>U: código de verificación Stellar al correo
+    U->>App: ingresa código Pollar
+    Pollar-->>App: wallet Stellar creada (publicKey G...)
+    App->>SB: upsertProfile(wallet, email)
 ```
 
-### Cuestionario de perfil de riesgo
+### Depósito en bóveda DeFindex
 
 ```mermaid
 sequenceDiagram
     actor U as Usuario
     participant App
-    participant SB as Supabase
-    U->>App: Responde 5 preguntas (Typeform-style)
-    App->>App: suma puntaje → recommendPlan()
-    App->>App: guarda perfil en localStorage
-    App->>SB: POST /api/db/profile {riskProfile}
-    App-->>U: muestra plan (Conservador/Moderado/Balanceado/Crecimiento)
-    Note over U,SB: el perfil se sincroniza entre dispositivos desde Supabase
+    participant API as /api/defindex/deposit
+    participant SDK as DeFindex SDK
+    participant Pollar
+    participant Stellar
+    U->>App: Abonar $500 a bóveda CETES
+    App->>API: POST {caller, amount, planId}
+    API->>SDK: depositToVault(vault, params, network)
+    SDK-->>API: XDR sin firmar
+    API-->>App: {xdr}
+    App->>Pollar: signAndSubmitTx(xdr)
+    Pollar->>Stellar: tx firmada y enviada
+    Stellar-->>App: tx confirmada
+    App->>SB: persistir saldo + updatedAt (money timer)
 ```
 
-### Depósito (fondear la wallet del usuario) con UI optimista
+### Retiro de bóveda
 
 ```mermaid
 sequenceDiagram
     actor U as Usuario
     participant App
-    participant API as /api/juno/fund-wallet
-    participant Juno
-    participant Arb as Arbitrum
-    U->>App: Agregar $500
-    App->>API: POST {address, amount}
-    API->>Juno: withdrawal MXNB → address (HMAC, idempotente)
-    Juno-->>App: aceptado
-    App->>App: agrega movimiento "Pendiente" y cierra el loader
-    Juno->>Arb: transfiere MXNB on-chain
-    App->>Arb: getLogs(Transfer) detecta la confirmación
-    App->>App: el movimiento pasa de "Pendiente" a confirmado
+    participant API as /api/defindex/withdraw
+    participant SDK as DeFindex SDK
+    participant Pollar
+    participant Stellar
+    U->>App: Retirar $200
+    App->>API: POST {caller, amount, planId}
+    API->>SDK: withdrawFromVault(vault, params, network)
+    SDK-->>API: XDR sin firmar
+    API-->>App: {xdr}
+    App->>Pollar: signAndSubmitTx(xdr)
+    Pollar->>Stellar: tx firmada
+    Stellar-->>App: confirmación
+    App->>SB: actualizar saldo
 ```
 
-### Envío on-chain gasless (account abstraction)
+### KYC (Etherfuse)
 
 ```mermaid
 sequenceDiagram
     actor U as Usuario
     participant App
-    participant SW as Smart Wallet
-    participant PM as Paymaster (ZeroDev)
-    participant BN as Bundler (Pimlico)
-    participant Arb as Arbitrum
-    U->>App: Enviar MXNB a 0x...
-    App->>SW: sendTransaction(transfer)
-    SW->>PM: solicita patrocinio de gas
-    PM-->>SW: UserOp patrocinada
-    SW->>BN: envía UserOperation
-    BN->>Arb: ejecuta (gas pagado por el paymaster)
-    Arb-->>App: se resta del saldo del usuario
-```
-
-### Redención (MXNB → MXN por SPEI)
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario
-    participant App
-    participant API as /api/juno/redeem
-    participant Juno
-    participant Bank as Banco (CLABE)
-    U->>App: Redimir a pesos
-    App->>API: register-bank → redeem
-    API->>Juno: redemption MXNB → MXN (idempotente)
-    Juno->>Bank: transferencia SPEI
-    Juno-->>App: REDEMPTION en progreso
-```
-
-### CLABE de depósito por usuario
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario
-    participant App
-    participant API as /api/juno/create-clabe
-    participant Juno
-    participant SB as Supabase
-    U->>App: "Crear mi CLABE"
-    App->>API: POST
-    API->>Juno: create CLABE (AUTO_PAYMENT)
-    Juno-->>App: { clabe, type }
-    App->>SB: POST /api/db/clabe {wallet, clabe}
-    App->>App: muestra la tarjeta de depósito
-    Note over U,Juno: en producción, el webhook de Juno acredita los depósitos a su wallet
+    participant API as /api/seyf/kyc/*
+    participant Etherfuse
+    U->>App: Verificar identidad
+    App->>API: POST /submit {nombre, CURP, INE, selfie}
+    API->>Etherfuse: crear customer + subir docs
+    Etherfuse-->>API: KYC en proceso
+    API-->>App: status: pending
+    Note over U,Etherfuse: Etherfuse verifica (async)
+    Etherfuse-->>API: webhook: approved
+    App-->>U: ✓ Cuenta verificada
 ```
 
 ---
 
-## Funcionalidades
+## Estrategias DeFindex
 
-| Módulo | Descripción | Estado |
-|--------|-------------|:------:|
-| Landing | Hero animado, contadores, marquee, bento, FAQ, tilt 3D — CTA Iniciar → /app | Listo |
-| Login social (Privy) | Email OTP, wallet embebida sin seed phrase | Listo |
-| Account abstraction | Smart wallet ERC-4337 (Kernel) + paymaster (ZeroDev) + bundler (Pimlico) | Listo |
-| Saldo on-chain real | Lectura de MXNB (ERC-20) de la wallet del usuario (viem), refresco cada 20 s | Listo |
-| Agregar (depósito) | Fondea la wallet del usuario con MXNB; UI optimista (pendiente → confirmado) | Listo |
-| Enviar | Transferencia MXNB on-chain gasless; se resta del saldo del usuario | Listo* |
-| Historial | Transferencias MXNB reales on-chain + pendientes (viem getLogs) | Listo |
-| CLABE de depósito | CLABE única por usuario + tarjeta de depósito (SPEI → MXNB) | Listo |
-| Redeem | MXNB → MXN por SPEI a una CLABE registrada | Listo |
-| Bóvedas | Metas de ahorro reales por usuario (crear/abonar/retirar) + Supabase | Listo |
-| Convertir | Calculadora multi-activo + acción real para el par MXNB ↔ MXN; historial en Supabase | Listo |
-| Bono de bienvenida | 1,500 MXNB on-chain a usuarios nuevos (testnet) | Listo |
-| Perfil de riesgo | Cuestionario 5 preguntas Typeform-style → Conservador / Moderado / Balanceado / Crecimiento | Listo |
-| Planes de ahorro | 4 estrategias de bóveda + producto AFORE · comparativo vs comisiones AFORE tradicional | Listo |
-| Perfil persistido | Upsert de perfil (wallet, email, DID, risk_profile) en Supabase; sync multi-dispositivo | Listo |
-| Límites mensuales | Control de uso de depósito/retiro por período (Supabase o localStorage) | Listo |
+| Estrategia | Plan | Vault (testnet) | Asset | APY ref. | Riesgo |
+|------------|------|-----------------|-------|----------|--------|
+| **CETES** | Conservador | `CBIS5TEM...NLF2P` | CETES (7 dec) | ~10.5% | Bajo |
+| **USDC** | Moderado | `CBMVK2JK...DWHN` | USDC (7 dec) | ~4.5% | Bajo |
+| **XLM** | Balanceado | `CCLV4H7W...GFSF6` | XLM (7 dec) | ~2.8% | Medio |
 
-\* El envío gasless requiere una política de patrocinio activa en ZeroDev (ver [Configuración](#configuración-juno--privy--zerodev)).
+Contratos de estrategia (Blend):
+- CETES: `CCP4RBDWPRNO2LWO23XFU4BBLGA73J5N3BK7EHRJUHVN33YEMMFB2MBE`
+- USDC: `CALLOM5I7XLQPPOPQMYAHUWW4N7O3JKT42KQ4ASEEVBXDJQNJOALFSUY`
+- XLM: `CDVLOSPJPQOTB6ZCWO5VSGTOLGMKTXSFWYTUP572GTPNOWX4F76X3HPM`
+
+Factory DeFindex: `CDSCWE4GLNBYYTES2OCYDFQA2LLY4RBIAX6ZI32VSUXD7GO6HRPO4A32`
 
 ---
 
 ## API (endpoints)
 
-### `/api/juno/*` — Rieles fiat (HMAC-SHA256, server-side)
+### `/api/defindex/*` — Bóvedas de rendimiento (DeFindex SDK, server-side)
 
 | Método | Ruta | Función |
 |:------:|------|---------|
-| `GET`  | `/api/juno/health` | Estado + si hay credenciales |
-| `GET`  | `/api/juno/account-details` | CLABEs de depósito del negocio |
-| `POST` | `/api/juno/create-clabe` | Crear CLABE única (por usuario) |
-| `POST` | `/api/juno/mock-deposit` | Issuance (SPEI test → MXNB al negocio) |
-| `POST` | `/api/juno/fund-wallet` | Enviar MXNB on-chain a la wallet del usuario (depósito) |
-| `GET`  | `/api/juno/balance` | Balances del negocio (MXNB) |
-| `GET`  | `/api/juno/transactions` | Historial del negocio |
-| `GET`  | `/api/juno/bank-accounts` | Cuentas registradas |
-| `POST` | `/api/juno/register-bank` | Registrar CLABE destino |
-| `POST` | `/api/juno/redeem` | Redemption (MXNB → MXN) |
-| `POST` | `/api/juno/withdrawal` | Retiro on-chain de MXNB |
-| `POST` | `/api/juno/welcome-bonus` | Bono de bienvenida (1,500 MXNB) |
-| `POST` | `/api/juno/webhook` | Eventos async (firma verificada) |
+| `POST` | `/api/defindex/deposit` | Construye XDR de depósito |
+| `POST` | `/api/defindex/withdraw` | Construye XDR de retiro |
+| `GET` | `/api/defindex/balance` | Saldo del usuario en vault |
+| `GET` | `/api/defindex/vault-info` | Info de la vault (APY, TVL) |
+| `GET` | `/api/defindex/strategies` | Estrategias disponibles con APY en vivo |
+| `GET` | `/api/defindex/positions` | Posiciones on-chain del usuario |
+| `POST` | `/api/defindex/prepare` | Re-simula y prepara XDR Soroban |
 
-### `/api/db/*` — Persistencia Supabase (service_role, server-side)
+### `/api/seyf/*` — KYC, ramp y Stellar (Etherfuse + Pollar)
 
 | Método | Ruta | Función |
 |:------:|------|---------|
-| `GET` / `POST` | `/api/db/profile` | Leer / upsert perfil de usuario (wallet, email, DID, risk_profile, fullName, phone) |
-| `GET` / `POST` | `/api/db/clabe` | Leer / guardar CLABE de depósito del usuario |
-| `GET` / `POST` / `DELETE` | `/api/db/banks` | Listar / agregar / eliminar cuentas bancarias de retiro |
-| `GET` / `POST` / `DELETE` | `/api/db/vaults` | Listar / upsert / eliminar bóvedas de ahorro |
-| `GET` / `POST` | `/api/db/conversions` | Listar / registrar conversiones FX |
-| `GET` / `POST` | `/api/db/limits` | Consultar / acumular uso mensual (depósito/retiro) |
-| `GET` / `POST` | `/api/db/bonus` | Leer / marcar bono de bienvenida como reclamado |
+| `POST` | `/api/seyf/kyc/submit` | Enviar datos de identidad |
+| `POST` | `/api/seyf/kyc/documents` | Subir INE + selfie |
+| `POST` | `/api/seyf/kyc/agreements` | Aceptar términos |
+| `GET` | `/api/seyf/kyc/status` | Estado de verificación |
+| `POST` | `/api/seyf/stellar-fund` | Fondear wallet testnet (Friendbot) |
+| `GET` | `/api/seyf/etherfuse/readiness` | Preparación para on-ramp |
+| `POST` | `/api/seyf/etherfuse/order/onramp` | Crear orden de compra |
+| `GET` | `/api/seyf/etherfuse/quote/onramp` | Cotización SPEI→asset |
 
----
+### `/api/db/*` — Persistencia (Supabase)
 
-## Rutas
+| Método | Ruta | Función |
+|:------:|------|---------|
+| `GET/POST` | `/api/db/profile` | Perfil del usuario |
+| `GET/POST/DELETE` | `/api/db/vaults` | Bóvedas de ahorro |
+| `GET/POST` | `/api/db/conversions` | Conversiones FX |
+| `GET/POST` | `/api/db/limits` | Límites mensuales |
 
-| Ruta | Pantalla |
-|------|----------|
-| `/` | Landing — primera pantalla, CTA Iniciar / Iniciar ahora → /app |
-| `/app` | App — onboarding (login + quiz perfil) → Inicio · Wallet · Bonos · Bóvedas · Tarjeta · Perfil |
+### `/api/convert` — Conversión FX (Bitso, pooled+ledger)
 
----
-
-## Configuración (Juno · Privy · ZeroDev)
-
-**1. Juno / Bitso Business** — genera un par de llaves de API en el dashboard de stage (`stage.buildwithjuno.com`) y ponlas en `.env.local` (`BITSO_APIKEY`, `BITSO_SECRET_APIKEY`). Sin restricción de IP, o whitelistea la tuya.
-
-**2. Privy** — crea una app en [dashboard.privy.io](https://dashboard.privy.io):
-- Activa **Email** como método de login.
-- En **App settings → Allowed origins**, agrega `http://localhost:3000`.
-- En **Smart wallets**, activa Kernel en **Arbitrum Sepolia** y configura el **bundler (Pimlico)** y **paymaster (ZeroDev)**.
-- Copia el **App ID** a `NEXT_PUBLIC_PRIVY_APP_ID`.
-
-**3. ZeroDev** — en [dashboard.zerodev.app](https://dashboard.zerodev.app), en tu proyecto:
-- Ve a **Gas Policies** y crea una política de **patrocinio** para **Arbitrum Sepolia** (p. ej. "sponsor all", o limitada al contrato MXNB y método `transfer`).
-- Sin esta política, el envío gasless falla con `userOp did not match any gas sponsoring policies`.
-
-**4. Supabase** — crea un proyecto en [supabase.com](https://supabase.com):
-- Copia la **URL del proyecto** a `SUPABASE_URL` y la **service_role key** a `SUPABASE_SERVICE_ROLE_KEY`.
-- Activa `NEXT_PUBLIC_USE_SUPABASE=true` para habilitar la persistencia real (sin él la app usa localStorage).
-- Las tablas necesarias: `profiles`, `deposit_clabes`, `bank_accounts`, `vaults`, `bonus_claims`, `conversions`, `monthly_limits`.
+| Método | Ruta | Función |
+|:------:|------|---------|
+| `POST` | `/api/convert` | Orden de mercado MXN ↔ divisa |
 
 ---
 
 ## Variables de entorno
 
-Ver [`.env.example`](.env.example).
-
-| Variable | Lado | Req. | Descripción |
-|----------|:----:|:----:|-------------|
-| `BITSO_APIKEY` | server | sí | API key de Juno (stage) |
-| `BITSO_SECRET_APIKEY` | server | sí | API secret de Juno (stage) |
-| `JUNO_BASE_URL` | server | no | Default `https://stage.buildwithjuno.com` |
-| `JUNO_WITHDRAWAL_ASSET` | server | no | Default `mxnbj` |
-| `JUNO_BLOCKCHAIN` | server | no | Default `arbitrum` |
-| `WELCOME_BONUS_AMOUNT` | server | no | Default `1500` |
-| `JUNO_WEBHOOK_SECRET` | server | no | Verificación de webhooks |
-| `SUPABASE_URL` | server | sí* | URL del proyecto Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | server | sí* | Solo en server (route handlers) |
-| `NEXT_PUBLIC_PRIVY_APP_ID` | cliente | sí† | App ID de Privy (sin él → modo demo) |
-| `NEXT_PUBLIC_USE_SUPABASE` | cliente | no | `"true"` activa persistencia real en Supabase |
-| `NEXT_PUBLIC_CHAIN` | cliente | no | `arbitrum-sepolia` (default) o `arbitrum` |
-| `NEXT_PUBLIC_MXNB_ADDRESS` | cliente | no | Contrato MXNB (autodetecta por red) |
-| `NEXT_PUBLIC_SEYF_VAULTS_ADDRESS` | cliente | no | Contrato SeyfVaults; sin él, las bóvedas usan `store` |
-| `NEXT_PUBLIC_SEYF_ADVANCE_ADDRESS` | cliente | no | Contrato SeyfAdvance; requiere `SEYF_VAULTS_ADDRESS` |
-| `NEXT_PUBLIC_TREASURY_ADDRESS` | cliente | no | Tesorería on-chain para conversión pooled+ledger |
-| `NEXT_PUBLIC_ARBITRUM_RPC` | cliente | no | RPC custom de Arbitrum |
-| `NEXT_PUBLIC_BACKEND_URL` | cliente | no | Solo si el backend está en otro origen |
-
-\* Requerido solo si `NEXT_PUBLIC_USE_SUPABASE=true`.  
-† Sin él la app corre en modo demo con localStorage.
-
-Las llaves de Juno nunca van con prefijo `NEXT_PUBLIC_`.
-
-**Contratos MXNB (oficiales):** Sepolia `0x82B9e52b26A2954E113F94Ff26647754d5a4247D` · Mainnet `0xF197FFC28c23E0309B5559e7a166f2c6164C80aA` (6 decimales).
-
-### Contratos SEYF desplegados (Arbitrum Sepolia · testnet)
-
-| Contrato | Dirección | Función |
-|----------|-----------|---------|
-| **SeyfVaults** | `0x0212d50490FE5D7183B5B3A403d5C44937a44cF1` | Bóvedas de ahorro on-chain (abrir/abonar/retirar MXNB) |
-| **SeyfAdvance** | `0x6C9b17C9C28cDE1378CFC88f9e48c6900a6F7654` | Adelanto de liquidez 0% contra el rendimiento futuro |
-| **Tesorería** | `0xae0AEAd08f5984E6CD00aB4Fd4e9c569D11b2eaF` | Destino on-chain del MXNB al convertir a divisa (pooled+ledger) |
-
-Código y guía de despliegue en [`contracts/README.md`](contracts/README.md).
+| Variable | Lado | Descripción |
+|----------|:----:|-------------|
+| `NEXT_PUBLIC_STELLAR_VAULTS` | cliente | `true` para activar el riel Stellar/DeFindex |
+| `DEFINDEX_API_KEY` | server | API key del SDK DeFindex (`sk_...`) |
+| `DEFINDEX_BASE_URL` | server | Default `https://api.defindex.io` |
+| `NEXT_PUBLIC_DEFINDEX_VAULT_ADDRESS` | cliente | Vault principal (CETES) |
+| `NEXT_PUBLIC_POLLAR_API_KEY` | cliente | Publishable key de Pollar |
+| `NEXT_PUBLIC_POLLAR_STELLAR_NETWORK` | cliente | `testnet` o `pubnet` |
+| `ETHERFUSE_API_KEY` | server | API key de Etherfuse |
+| `ETHERFUSE_API_BASE_URL` | server | URL base Etherfuse |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | cliente | App ID de Privy (login) |
+| `SUPABASE_URL` | server | URL del proyecto Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | server | Service role key |
+| `NEXT_PUBLIC_USE_SUPABASE` | cliente | `true` para persistencia real |
+| `BITSO_APIKEY` | server | API key de Bitso (FX) |
+| `BITSO_SECRET_APIKEY` | server | Secret de Bitso |
 
 ---
 
 ## Arranque
 
 ```bash
-cp .env.example .env.local      # Juno keys + NEXT_PUBLIC_PRIVY_APP_ID
+cp .env.example .env.local    # Completar las keys
 npm install
-npm run dev                     # http://localhost:3000
+npm run dev                   # http://localhost:3000
 ```
 
-Probar los rieles fiat de Juno:
-
-```bash
-curl -s localhost:3000/api/juno/account-details          # CLABE del negocio
-curl -s -X POST localhost:3000/api/juno/mock-deposit \
-  -H 'content-type: application/json' \
-  -d '{"amount":"2000","receiver_clabe":"<CLABE>","receiver_name":"SEYF","sender_name":"Test"}'
-curl -s localhost:3000/api/juno/balance                  # confirma MXNB
-```
-
-En la app: entra con tu correo, completa el quiz de perfil de riesgo, reclama el bono, agrega fondos y envía MXNB on-chain (sin gas).
+**Requisitos para testnet:**
+1. API key de DeFindex (crear en `api.defindex.io`)
+2. API key de Pollar (crear en `dashboard.pollar.xyz`, modo testnet)
+3. Wallet fondeada con el asset de la vault (USDC/CETES en Stellar testnet)
+4. App de Privy configurada con Email como método de login
 
 ---
 
-## Estructura
+## Estructura del proyecto
 
 ```
 src/
   app/
-    page.tsx                 # Landing (/)
-    landing.css              # estilos landing (scoped .lp)
-    app/
-      layout.tsx             # Providers (Privy) solo en /app
-      page.tsx               # App (/app)
-    layout.tsx · globals.css
     api/
-      juno/*/route.ts        # 13 endpoints (HMAC-SHA256 → Juno)
-      db/*/route.ts          # 7 endpoints (service_role → Supabase)
+      defindex/          # 7 endpoints (DeFindex SDK)
+      seyf/              # KYC + ramp + stellar-fund
+      db/                # Persistencia Supabase
+      convert/           # FX via Bitso
+      juno/              # On-ramp SPEI (legacy)
   components/
-    landing/Landing.tsx      # landing portada
-    Providers.tsx            # PrivyProvider + SmartWalletsProvider
-    wallet/                  # WalletContext + PrivyBridge (auth · saldo · gasless · profile sync)
     app/
-      SeyfApp.tsx            # shell + router + tabbar
-      data.ts                # mock data + VaultPlan + RISK_QUESTIONS + helpers (projectSavings, aforeVsSeyf…)
-      RiskQuiz.tsx           # OnboardingQuiz (Typeform) + RiskQuizBanner + RiskQuizModal
-      screens/               # core · invest · account
-      modals/                # Deposit · Redeem · SendOnchain
-      ClabeCard.tsx          # tarjeta de depósito (CLABE)
-      WelcomeBonus.tsx       # bono de bienvenida
-  hooks/                     # useJuno · useOnchain · usePendingTxns · useVaults · useUserClabe
-  services/junoService.ts    # cliente tipado
+      SeyfApp.tsx        # Shell + router + tabbar
+      VaultCarousel.tsx  # Carrusel de bóvedas
+      StellarConnectGate.tsx  # Gate OTP para firmar
+      screens/           # core · invest · kyc · account
+      modals/            # Deposit · Redeem · Send
+    landing/             # Landing portada
+    providers/
+      SeyfPollarProvider.tsx  # Pollar SDK wrapper
+  hooks/
+    useStellarVaults.ts       # Bóvedas Stellar (principal)
+    useDefindexStrategies.ts  # APY en vivo
+    useDefindexPositions.ts   # Posiciones on-chain
+    useKycStatus.ts           # Estado KYC
   lib/
-    juno/                    # firma HMAC + cliente server-side
-    supabase/
-      server.ts              # cliente Supabase con service_role
-      db.ts                  # helpers: profiles · clabes · banks · vaults · conversions · limits · bonus
-    chain.ts                 # viem · MXNB · readBalance · readTransfers
-    store.ts                 # capa storage: /api/db/* (Supabase) o localStorage
-  types/juno.ts
-docs/screenshots/            # capturas del README
+    defindex/            # SDK client, catalog, vaults config
+    seyf/                # Guards, KYC, ramp, wallet Pollar
+    pollar/              # Session, client-api, sign
+    etherfuse/           # KYC, orders, webhook
+    bitso/               # FX orders
+    supabase/            # DB helpers
+    store.ts             # Capa storage (Supabase ↔ localStorage)
 ```
 
 ---
 
 ## Seguridad
 
-- Secretos de Juno solo en el servidor; el cliente nunca ve credenciales ni firma HMAC.
-- `SUPABASE_SERVICE_ROLE_KEY` solo en route handlers server-side; nunca expuesto como `NEXT_PUBLIC_*`.
-- Sin seed phrase: wallets embebidas/inteligentes de Privy; acceso con correo.
-- Idempotencia (`X-Idempotency-Key`) en redeem, withdrawal y fund-wallet.
-- Webhook con verificación de firma (`timingSafeEqual`).
-- `mock-deposit` restringido al endpoint de pruebas de stage.
+- **API keys en servidor** — DeFindex, Etherfuse, Bitso, Supabase service_role nunca expuestas al cliente.
+- **Firma del usuario** — Cada transacción Stellar requiere OTP o passkey vía Pollar.
+- **Idempotencia** — Conversiones FX y órdenes de ramp con key única.
+- **Webhook verificado** — Etherfuse webhooks con validación de firma.
+- **Rate limiting** — Protección contra abuso en endpoints sensibles (Supabase-backed).
+- **Sin seed phrase** — Las llaves las gestiona Pollar (passkeys del dispositivo).
 
 ---
 
 ## Roadmap
 
-- Verificación de usuario en el backend (Privy `server-auth` + App Secret) para atar issuance/redeem y `/api/db/*` al usuario logueado (hoy se scopea por dirección de wallet).
-- Redeem no custodial (que el cash-out reste del saldo on-chain del usuario).
-- Integración con Etherfuse para comprar bonos de gobierno tokenizados con MXNB.
-- Webhooks de Juno → actualización de saldos e historial en tiempo real.
-- Pantalla de Mercado (lista de activos/bonos) — rutas activas, oculta del tab bar por decisión de negocio.
+| Prioridad | Feature | Detalle |
+|:---------:|---------|---------|
+| 🔴 | **Mainnet** | Migrar vaults DeFindex a pubnet, Pollar mainnet, Etherfuse producción |
+| 🔴 | **Soroswap** | Swaps MXN↔USDC↔XLM on-chain via Soroswap (reemplaza Bitso para pares Stellar) |
+| 🟡 | **Revenue** | Spread en FX + performance fee en vaults (fee_receiver DeFindex) |
+| 🟡 | **On-ramp directo** | SPEI → vault en un paso (Dynerox → Stellar → DeFindex deposit) |
+| 🟡 | **Blend lending** | Adelanto de liquidez 0% sobre la posición en vault (Blend protocol) |
+| 🟢 | **Auditoría** | Smart contract audit antes de mainnet con fondos reales |
+| 🟢 | **Multi-país** | Expansión a Colombia / Argentina |
 
 ---
 
-## Documentación
-
-- [`INTEGRATION.md`](./INTEGRATION.md) — integración Juno/Bitso + Privy (endpoints, env, flujos, changelog).
-
 <div align="center">
 <br/>
-Hecho para EthMex 2026 · MXNB · Arbitrum · Privy · ZeroDev · Juno · Supabase
+
+Construido sobre **Stellar** · DeFindex · Soroswap · Etherfuse · Pollar · Supabase
+
 </div>
