@@ -95,8 +95,9 @@ export function soroswapQuote(input: SoroswapQuoteInput): Promise<SoroswapQuote>
     tradeType: input.tradeType ?? 'EXACT_IN',
     protocols: DEFAULT_PROTOCOLS,
     slippageBps: input.slippageBps ?? 50, // 50 bps = 0.5 %
-    // Crea automáticamente el trustline del activo de salida si la wallet no lo tiene.
-    gaslessTrustline: 'create',
+    // NO usamos gaslessTrustline: la API solo lo soporta con SDEX, y SDEX se
+    // excluye para smart wallets (Pollar). Los tokens SAC de Soroban no requieren
+    // trustline clásico, así que el swap funciona sin ese flag.
   })
 }
 

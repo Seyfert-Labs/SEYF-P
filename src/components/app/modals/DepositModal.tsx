@@ -1,8 +1,7 @@
 "use client";
 
 /* Modal de recepción de fondos.
-   Dos métodos: SPEI (CLABE) y Cuenta SEYF (dirección on-chain).
-   El bloque "Simular depósito" solo aparece fuera de producción. */
+   Único método: SPEI (CLABE). El bloque "Simular depósito" solo aparece fuera de producción. */
 import React, { useState } from "react";
 import { Icon } from "../ui";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -11,12 +10,9 @@ import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
 import { ClabeCard } from "../ClabeCard";
 import { FMT } from "../data";
-import { explorerBase } from "@/lib/chain";
 import { MoneyInput } from "../MoneyInput";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
-
-type Tab = "spei" | "cuenta";
 
 export function DepositModal({
   onClose,
@@ -28,21 +24,11 @@ export function DepositModal({
   const wallet = useWallet();
   const pending = usePendingTxns(wallet.address);
   const limits = useMonthlyLimits(wallet.address);
-  const [tab, setTab] = useState<Tab>("spei");
-  const [addrCopied, setAddrCopied] = useState(false);
 
   // Dev-only
   const [devAmt, setDevAmt] = useState("");
   const [devStatus, setDevStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [devError, setDevError] = useState<string | null>(null);
-
-  const copyAddress = () => {
-    if (!wallet.address) return;
-    navigator.clipboard?.writeText(wallet.address).then(() => {
-      setAddrCopied(true);
-      setTimeout(() => setAddrCopied(false), 1500);
-    }).catch(() => {});
-  };
 
   const simulateDeposit = async () => {
     const n = Number(devAmt);
@@ -73,68 +59,15 @@ export function DepositModal({
         <div className="modal-grab" />
         <p className="modal-title">Agregar dinero</p>
 
-        <div className="seg" style={{ marginBottom: 20 }}>
-          <button className={tab === "spei" ? "on" : ""} onClick={() => setTab("spei")}>SPEI</button>
-          <button className={tab === "cuenta" ? "on" : ""} onClick={() => setTab("cuenta")}>Cuenta SEYF</button>
+        {/* ── SPEI (CLABE) — único método de depósito ── */}
+        <ClabeCard />
+        <p className="modal-sub" style={{ marginTop: 12, marginBottom: 0 }}>
+          Transfiere desde cualquier banco mexicano. El dinero se acredita automáticamente.
+        </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <span className="chip"><Icon name="clock" size={12} /> ~15 minutos</span>
+          <span className="chip"><Icon name="info" size={12} /> Mínimo $500 MXN</span>
         </div>
-
-        {/* ── SPEI ── */}
-        {tab === "spei" && (
-          <>
-            <ClabeCard />
-            <p className="modal-sub" style={{ marginTop: 12, marginBottom: 0 }}>
-              Transfiere desde cualquier banco mexicano. El dinero se acredita automáticamente.
-            </p>
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <span className="chip"><Icon name="clock" size={12} /> ~15 minutos</span>
-              <span className="chip"><Icon name="info" size={12} /> Mínimo $500 MXN</span>
-            </div>
-          </>
-        )}
-
-        {/* ── Cuenta SEYF ── */}
-        {tab === "cuenta" && (
-          <>
-            <div className="deposit-card">
-              <div className="dc-glow" />
-              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <p className="eyebrow">Cuenta SEYF</p>
-                  <p style={{ margin: "4px 0 0", fontSize: "var(--t-xs)", fontWeight: 800, color: "var(--accent)" }}>
-                    Red Arbitrum · MXN
-                  </p>
-                </div>
-                <span className="pos-pill"><Icon name="shield" size={11} /> ERC-4337</span>
-              </div>
-              <p className="num dc-clabe" style={{ marginTop: 18, fontSize: 13, letterSpacing: "0.04em", wordBreak: "break-all", lineHeight: 1.7 }}>
-                {wallet.address ?? "—"}
-              </p>
-              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-                {wallet.address ? (
-                  <a
-                    className="chip"
-                    href={`${explorerBase}/address/${wallet.address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: "none" }}
-                  >
-                    <Icon name="arrowR" size={12} /> Explorador
-                  </a>
-                ) : <span />}
-                <button className="icon-btn" onClick={copyAddress} aria-label="Copiar dirección">
-                  <Icon name={addrCopied ? "check" : "copy"} size={18} color={addrCopied ? "var(--accent)" : "var(--txt)"} />
-                </button>
-              </div>
-            </div>
-
-            <div className="card" style={{ marginTop: 12, background: "var(--accent-2-soft)", border: "none", display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ flexShrink: 0, marginTop: 1, display: "flex" }}><Icon name="info" size={16} color="var(--accent-2)" /></span>
-              <p style={{ margin: 0, fontSize: "var(--t-xs)", color: "var(--txt-muted)", lineHeight: 1.55 }}>
-                Solo envía <b style={{ color: "var(--txt)" }}>MXN (Arbitrum)</b> a esta dirección. Otros tokens o redes pueden resultar en pérdida de fondos.
-              </p>
-            </div>
-          </>
-        )}
 
         {/* ── Dev: simular depósito ── */}
         {IS_DEV && (
