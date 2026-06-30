@@ -31,17 +31,21 @@ export interface DefindexStrategyConfig {
 }
 
 // Direcciones de vault DeFindex (testnet), una por bóveda SEYF (CETES, USDC, XLM).
-// En este deploy cada estrategia Blend se maneja directamente como vault de depósito.
-// Configurables por env (NEXT_PUBLIC_DEFINDEX_VAULT_*); el fallback es el deploy actual.
+// IMPORTANTE: deben ser VAULTS, no estrategias. La API DeFindex (GET /vault/{addr},
+// POST /vault/{addr}/deposit) rechaza direcciones de estrategia (→ 500/502).
+// Cada estrategia Blend (strategyAddress) va envuelta en su vault.
+// Configurables por env (NEXT_PUBLIC_DEFINDEX_VAULT_*) → pon ahí TUS vaults cuando los
+// crees en app.defindex.io. El fallback son los vaults de paltalabs que envuelven estas
+// mismas estrategias (funcionan, para no romper prod mientras tanto).
 const VAULT_XLM =
   process.env.NEXT_PUBLIC_DEFINDEX_VAULT_XLM?.trim() ||
-  'CDVLOSPJPQOTB6ZCWO5VSGTOLGMKTXSFWYTUP572GTPNOWX4F76X3HPM'
+  'CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6'
 const VAULT_CETES =
   process.env.NEXT_PUBLIC_DEFINDEX_VAULT_CETES?.trim() ||
-  'CCP4RBDWPRNO2LWO23XFU4BBLGA73J5N3BK7EHRJUHVN33YEMMFB2MBE'
+  'CBIS5TEMTNNOTBE3WXPQUAGUEDYZZVIWAKTXEQCOUJ34OJJ3FJ5NLF2P'
 const VAULT_USDC =
   process.env.NEXT_PUBLIC_DEFINDEX_VAULT_USDC?.trim() ||
-  'CALLOM5I7XLQPPOPQMYAHUWW4N7O3JKT42KQ4ASEEVBXDJQNJOALFSUY'
+  'CBMVK2JK6NTOT2O4HNQAIQFJY232BHKGLIMXDVQVHIIZKDACXDFZDWHN'
 
 // XLM va primero: el usuario tiene XLM (fondeado por Friendbot), así que es la
 // bóveda con la que sí puede depositar de inmediato → preferencia en UI y default.
