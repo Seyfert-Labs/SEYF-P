@@ -7,17 +7,12 @@ import { SubHeader, TxnRow, AvatarButton } from "../shared";
 import { CARD_TXNS, FMT } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
-import { explorerBase } from "@/lib/chain";
 import { ClabeCard } from "../ClabeCard";
 import { useUserBanks } from "@/hooks/useUserBanks";
 import { AddBankModal } from "../modals/AddBankModal";
 import { Portal } from "../Portal";
 import { useKycStatus } from "@/hooks/useKycStatus";
 import { RiskProfileSection } from "../RiskQuiz";
-
-function shortAddr(a?: string) {
-  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
-}
 
 /* Ondas de pago sin contacto */
 function Contactless({ size = 22, color = "var(--txt-muted)" }: { size?: number; color?: string }) {
@@ -166,9 +161,6 @@ export function ScreenProfile({ go }: { go: Go }) {
   const { list: banks, remove: removeBank, reload: reloadBanks } = useUserBanks(wallet.address);
   const [showAddBank, setShowAddBank] = useState(false);
 
-  const copyAddr = () => {
-    if (wallet.address) navigator.clipboard?.writeText(wallet.address).catch(() => {});
-  };
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
@@ -225,24 +217,6 @@ export function ScreenProfile({ go }: { go: Go }) {
         {/* Perfil de ahorrador (movido aquí desde el Home). */}
         <RiskProfileSection go={go} />
 
-        {wallet.enabled && wallet.authenticated && wallet.address && (
-          <div className="card" style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p className="eyebrow">Mi cuenta SEYF</p>
-              <span className="pos-pill" style={{ background: "var(--accent-2-soft)", color: "var(--accent-2)" }}>Activa</span>
-            </div>
-            <div className="clabe-box" style={{ marginTop: 10 }}>
-              <span className="clabe-val" style={{ fontSize: 15 }}>{shortAddr(wallet.address)}</span>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="icon-btn" onClick={copyAddr} aria-label="Copiar dirección"><Icon name="copy" size={18} /></button>
-                <a className="icon-btn" href={`${explorerBase}/address/${wallet.address}`} target="_blank" rel="noopener noreferrer" aria-label="Ver en explorador"><Icon name="arrowR" size={18} /></a>
-              </div>
-            </div>
-            <p style={{ margin: "10px 2px 0", fontSize: 12, color: "var(--txt-dim)" }}>
-              Tu cuenta se creó con tu acceso. No necesitas contraseñas ni pasos extra.
-            </p>
-          </div>
-        )}
 
         {wallet.enabled && wallet.authenticated && (
           <>

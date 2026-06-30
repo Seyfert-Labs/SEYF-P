@@ -29,7 +29,7 @@ import { motion } from "motion/react";
 import { SeyfWordmark } from "@/components/brand/SeyfLogo";
 import { OnboardingHero } from "../OnboardingHero";
 import { CurrencyTicker } from "../CurrencyTicker";
-import { explorerBase, SEYF_VAULTS_ADDRESS, SEYF_ADVANCE_ADDRESS } from "@/lib/chain";
+import { SEYF_VAULTS_ADDRESS, SEYF_ADVANCE_ADDRESS } from "@/lib/chain";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
 
@@ -219,7 +219,7 @@ export function ScreenHome({ go }: { go: Go }) {
         {/* ── 1. HERO: balance + quick row ── */}
         <div className="card glow" style={{ padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <p className="eyebrow">{hasVault ? "Patrimonio total" : "Saldo disponible · MXNB"}</p>
+            <p className="eyebrow">{hasVault ? "Patrimonio total" : "Saldo disponible · MXN"}</p>
             <button className="icon-btn" style={{ width: 24, height: 24, background: "none", border: "none" }} onClick={() => setHide(!hide)}>
               <Icon name="eye" size={16} color="var(--txt-dim)" />
             </button>
@@ -680,7 +680,6 @@ export function DepositOnboarding({ onDone }: { onDone: () => void }) {
 /* ---------------- DETALLE DE MOVIMIENTO ---------------- */
 export function ScreenTxnDetail({ go, ctx }: { go: Go; ctx: unknown }) {
   const t = ctx as (import("../data").Txn | null);
-  const [copied, setCopied] = useState(false);
 
   if (!t) {
     // fallback: sin contexto, volver al inicio
@@ -698,13 +697,6 @@ export function ScreenTxnDetail({ go, ctx }: { go: Go; ctx: unknown }) {
   const pos = t.amt > 0;
   const absAmt = Math.abs(t.amt);
   const cur = t.cur || "MXN";
-  const copyHash = () => {
-    if (t.hash) {
-      navigator.clipboard?.writeText(t.hash).catch(() => {});
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   return (
     <div className="screen screen-enter">
@@ -768,33 +760,6 @@ export function ScreenTxnDetail({ go, ctx }: { go: Go; ctx: unknown }) {
           );
         })()}
 
-        {/* ── Hash on-chain ── */}
-        {t.hash && (
-          <>
-            <p className="eyebrow" style={{ margin: "22px 0 10px" }}>Transacción on-chain</p>
-            <div className="card" style={{ padding: "14px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <p className="num" style={{ flex: 1, fontSize: 12, color: "var(--txt-muted)", wordBreak: "break-all", margin: 0, lineHeight: 1.5 }}>
-                  {t.hash}
-                </p>
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                  <button className="icon-btn" onClick={copyHash} aria-label="Copiar hash">
-                    <Icon name={copied ? "check" : "copy"} size={18} color={copied ? "var(--accent)" : "currentColor"} />
-                  </button>
-                  <a
-                    className="icon-btn"
-                    href={`${explorerBase}/tx/${t.hash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Ver en explorador"
-                  >
-                    <Icon name="arrowR" size={18} />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
       </div>
       <div className="scroll-bottom" />
     </div>
