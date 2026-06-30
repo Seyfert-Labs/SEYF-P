@@ -61,10 +61,14 @@ async function soroswapRequest<T = unknown>(
 
   const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>
   if (!res.ok) {
-    const msg =
+    const baseMsg =
       (raw?.message as string) ||
       (typeof raw?.error === 'string' ? (raw.error as string) : '') ||
       `Soroswap respondió HTTP ${res.status}`
+    // Adjunta el payload completo: Soroswap a veces solo manda "Quote Failed" en
+    // `message` y el detalle real (reason/path/liquidity) vive en otros campos.
+    const detail = JSON.stringify(raw)
+    const msg = detail && detail !== '{}' ? `${baseMsg} · ${detail.slice(0, 400)}` : baseMsg
     throw new SoroswapApiError(msg, res.status, raw)
   }
   return raw as T
