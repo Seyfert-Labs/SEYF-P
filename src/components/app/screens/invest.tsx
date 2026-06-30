@@ -3,7 +3,7 @@
 /* Pantallas de ahorro: Bóvedas, detalle de bóveda y conversión FX */
 import React, { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Icon, Flag } from "../ui";
+import { Icon } from "../ui";
 import { Celebration } from "../Celebration";
 import { SubHeader, AvatarButton } from "../shared";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
@@ -20,16 +20,11 @@ import { useStellarConnect } from "../StellarConnectGate";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
 import { useAdvance } from "@/hooks/useAdvance";
-import { useBitsoRates, useBitsoBalances } from "@/hooks/useBitsoRates";
-import { useConversions } from "@/hooks/useConversions";
-import { usePendingTxns } from "@/hooks/usePendingTxns";
-import { BITSO_ASSETS, assetByCode } from "@/lib/bitso/assets";
-import { TREASURY_ADDRESS, TREASURY_ENABLED, ADVANCE_ONCHAIN, explorerBase } from "@/lib/chain";
+import { explorerBase } from "@/lib/chain";
 import { stellarTxExplorerUrl } from "@/lib/etherfuse/stellar-tx-url";
-
-// Con Supabase, el ledger de conversiones lo escribe /api/convert (servidor);
-// sin él, el cliente lo persiste localmente con la capa `store`.
-const USE_SUPABASE = process.env.NEXT_PUBLIC_USE_SUPABASE === "true";
+import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { tradableSoroswapAssets, soroswapAssetByCode, type SoroswapAsset } from "@/lib/soroswap/assets";
+import { quoteSoroswap, executeSoroswapSwap } from "@/lib/soroswap/swap";
 
 function fmtApy(apy: number | null | undefined): string {
   return apy != null && Number.isFinite(apy) ? `${FMT(apy, 1)}%` : "—";
@@ -947,15 +942,14 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   );
 }
 
-/* ---------------- CONVERTIR (FX real con Bitso · MXNB ↔ divisas) ---------------- */
-function ConvAssetBadge({ flag }: { flag: string | null }) {
-  if (flag) return <Flag code={flag} cls="sm" />;
+/* ---------------- CONVERTIR (swap on-chain Stellar · Soroswap) ---------------- */
+function SwapAssetBadge({ emoji }: { emoji: string }) {
   return (
-    <span className="num" style={{ width: 40, height: 40, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>$</span>
+    <span style={{ width: 40, height: 40, borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{emoji}</span>
   );
 }
 
-function ConvSelect({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude?: string }) {
+function SwapSelect({ value, onChange, exclude, assets }: { value: string; onChange: (v: string) => void; exclude?: string; assets: SoroswapAsset[] }) {
   return (
     <select
       className="chip"
@@ -963,7 +957,7 @@ function ConvSelect({ value, onChange, exclude }: { value: string; onChange: (v:
       onChange={(e) => onChange(e.target.value)}
       style={{ appearance: "none", WebkitAppearance: "none", cursor: "pointer", color: "var(--txt)", fontWeight: 700 }}
     >
-      {BITSO_ASSETS.filter((a) => a.code !== exclude).map((a) => (
+      {assets.filter((a) => a.code !== exclude).map((a) => (
         <option key={a.code} value={a.code} style={{ color: "#000" }}>{a.code}</option>
       ))}
     </select>
@@ -971,153 +965,96 @@ function ConvSelect({ value, onChange, exclude }: { value: string; onChange: (v:
 }
 
 export function ScreenConvert({ go }: { go: Go }) {
-  const { loading, error, quote, mxnPriceOf } = useBitsoRates();
-  const wallet = useWallet();
-  const { add: addConversion, balances: localBalances, reload: reloadConversions } = useConversions(wallet.address);
-  const pending = usePendingTxns(wallet.address);
-  const { balances: liveBalances, refresh: refreshBalances } = useBitsoBalances();
-  const [fromCode, setFromCode] = useState("MXN");
-  const [toCode, setToCode] = useState("USDT");
-  const [amount, setAmount] = useState("1000");
+  const stellar = useSeyfStellarWallet();
+  const { ensureConnected } = useStellarConnect();
+  const assets = tradableSoroswapAssets();
+  const fallbackCode = assets[0]?.code ?? "XLM";
+  const [fromCode, setFromCode] = useState<string>(() => assets.find((a) => a.code === "XLM")?.code ?? fallbackCode);
+  const [toCode, setToCode] = useState<string>(
+    () => assets.find((a) => a.code === "USDC")?.code ?? assets.find((a) => a.code !== "XLM")?.code ?? fallbackCode,
+  );
+  const [amount, setAmount] = useState("10");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
+  const [quoteOut, setQuoteOut] = useState<number | null>(null);
+  const [quoting, setQuoting] = useState(false);
+  const [quoteErr, setQuoteErr] = useState<string | null>(null);
   const [doneInfo, setDoneInfo] = useState<
-    { fwd: boolean; received: number; recCode: string; spent: number; spentCode: string } | null
+    { received: number; recCode: string; spent: number; spentCode: string; txHash?: string } | null
   >(null);
 
-  const from = assetByCode(fromCode)!;
-  const to = assetByCode(toCode)!;
+  const from = soroswapAssetByCode(fromCode) ?? assets[0];
+  const to = soroswapAssetByCode(toCode) ?? assets[1] ?? assets[0];
   const amt = Number(amount) || 0;
-  const result = quote(fromCode, toCode, amt);
-  const unitRate = quote(fromCode, toCode, 1);
-  const oneSideIsMXN = fromCode === "MXN" || toCode === "MXN";
+  const sameAsset = fromCode === toCode;
+
+  // Saldo del activo origen leído de la wallet Pollar (XLM, USDC, …).
+  const balanceOf = (code: string) =>
+    Number(stellar.assetBalances.find((b) => (b.code || "").toUpperCase() === code.toUpperCase())?.balance ?? 0);
+  const availableFrom = balanceOf(fromCode);
 
   const swap = () => { setFromCode(toCode); setToCode(fromCode); setStatus("idle"); };
-
-  // Flujo soportado on-chain: MXNB → divisa. El usuario transfiere su MXNB a la
-  // tesorería del negocio (baja su saldo on-chain), el swap se ejecuta en Bitso
-  // (pool del negocio) y el USDT se atribuye al usuario en el ledger.
-  const sellingMXNB = fromCode === "MXN";
-
-  // Saldo disponible del lado origen: MXNB on-chain (forward) o divisa del ledger (inverse).
-  const availableFrom = sellingMXNB ? wallet.balance : localBalances[fromCode] ?? 0;
   const setPct = (p: number) => {
     const v = availableFrom * (p / 100);
-    setAmount(v > 0 ? String(Number(v.toFixed(from.dec))) : "0");
+    setAmount(v > 0 ? String(Number(v.toFixed(from?.decimals ?? 7))) : "0");
     setStatus("idle");
   };
 
-  const doConvert = async () => {
-    if (!oneSideIsMXN || amt <= 0 || result == null) return;
-    if (!wallet.address) {
+  // Cotización en vivo (debounced) vía Soroswap. Todos los setState viven dentro
+  // del timeout (no en el cuerpo del effect) para no disparar renders en cascada.
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      if (amt <= 0 || sameAsset) {
+        if (!cancelled) { setQuoteOut(null); setQuoteErr(null); setQuoting(false); }
+        return;
+      }
+      setQuoting(true);
+      setQuoteErr(null);
+      try {
+        const r = await quoteSoroswap(fromCode, toCode, amt);
+        if (!cancelled) setQuoteOut(r.amountOut);
+      } catch (e) {
+        if (!cancelled) { setQuoteOut(null); setQuoteErr(e instanceof Error ? e.message : "Sin cotización"); }
+      } finally {
+        if (!cancelled) setQuoting(false);
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [fromCode, toCode, amt, sameAsset]);
+
+  const result = quoteOut;
+  const unitRate = quoteOut != null && amt > 0 ? quoteOut / amt : null;
+
+  const doSwap = async () => {
+    if (amt <= 0 || sameAsset) return;
+    if (availableFrom + 1e-9 < amt) {
       setStatus("error");
-      setMsg("Conecta tu wallet para convertir.");
+      setMsg(`Saldo insuficiente de ${fromCode}. Disponible: ${FMT(availableFrom, from?.decimals ?? 7)}.`);
       return;
     }
+    // Conecta la wallet Stellar (Pollar) justo antes de firmar, si hace falta.
+    if (!(await ensureConnected("convertir tus activos"))) return;
     setStatus("sending");
     setDoneInfo(null);
     try {
-      // Validación previa según el sentido.
-      if (sellingMXNB) {
-        // FORWARD MXN→divisa: mueve el MXNB del usuario a la tesorería on-chain
-        // (baja su saldo real). Lo firma su smart wallet, no puede ir al servidor.
-        if (TREASURY_ENABLED) {
-          if (wallet.balance < amt) {
-            setStatus("error");
-            setMsg(`Saldo insuficiente. Disponible: ${FMT(wallet.balance, 2)} MXN.`);
-            return;
-          }
-          await wallet.sendMXNB(TREASURY_ADDRESS, String(amt));
-        }
-      } else {
-        // INVERSE divisa→MXN: valida el saldo del usuario en el ledger.
-        const have = localBalances[fromCode] ?? 0;
-        if (have + 1e-9 < amt) {
-          setStatus("error");
-          setMsg(`Saldo insuficiente de ${fromCode}. Disponible: ${FMT(have, from.dec)}.`);
-          return;
-        }
-      }
-
-      // Orquestación server-side, atómica e idempotente por `key`:
-      // orden Bitso + (inverso) emisión MXNB a la wallet + liquidación del ledger.
-      const key = crypto.randomUUID();
-      const res = await fetch("/api/convert", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          wallet: wallet.address,
-          address: wallet.address,
-          from: fromCode,
-          to: toCode,
-          amount: amt,
-          key,
-          quotedFrom: amt,
-          quotedTo: result,
-        }),
+      const res = await executeSoroswapSwap({
+        from: fromCode,
+        to: toCode,
+        amount: amt,
+        getClient: stellar.getClient,
       });
-      const d = (await res.json()) as {
-        ok?: boolean;
-        error?: string;
-        oid?: string;
-        filledFrom?: number;
-        filledTo?: number;
-      };
-      if (!d.ok) {
-        setStatus("error");
-        setMsg(
-          sellingMXNB && TREASURY_ENABLED
-            ? `Tu MXN quedó en tesorería; la conversión no se completó (${d.error || "error"}).`
-            : d.error || "No se pudo ejecutar la conversión.",
-        );
-        return;
-      }
-
-      // Refleja el ledger: con Supabase el servidor ya escribió la fila → recargar;
-      // sin Supabase (modo local) la persistimos en el store con los montos reales.
-      if (USE_SUPABASE) {
-        await reloadConversions();
-      } else {
-        await addConversion({
-          from: fromCode,
-          to: toCode,
-          amountFrom: d.filledFrom ?? amt,
-          amountTo: d.filledTo ?? result,
-          oid: d.oid,
-        });
-      }
-
-      // Reflejar el resultado y refrescar saldos.
-      void refreshBalances();
-      wallet.refreshBalance();
-      // Loader pendiente en el historial (igual que depósito): se confirma al
-      // detectar la tx on-chain — forward = MXNB out (a tesorería), inverse =
-      // MXNB in (withdrawal). `ref` deduplica la fila normal mientras tanto.
-      pending.add("convert", sellingMXNB ? amt : d.filledTo ?? result ?? 0, {
-        dir: sellingMXNB ? "out" : "in",
-        ref: key,
-      });
-      setDoneInfo({
-        fwd: sellingMXNB,
-        received: d.filledTo ?? result ?? 0,
-        recCode: sellingMXNB ? toCode : "MXN",
-        spent: d.filledFrom ?? amt,
-        spentCode: fromCode,
-      });
+      void stellar.refreshBalance();
+      setDoneInfo({ received: res.amountOut, recCode: toCode, spent: res.amountIn, spentCode: fromCode, txHash: res.txHash });
       setMsg("");
-      // Pop-up de confirmación breve (~4s) y se cierra solo (solo si sigue en done).
+      // Pop-up de confirmación breve (~5s) y se cierra solo (solo si sigue en done).
       setStatus("done");
-      setTimeout(() => setStatus((s) => (s === "done" ? "idle" : s)), 4000);
+      setTimeout(() => setStatus((s) => (s === "done" ? "idle" : s)), 5000);
     } catch (e) {
       setStatus("error");
-      setMsg(e instanceof Error ? e.message : "No se pudo completar la conversión.");
+      setMsg(e instanceof Error ? e.message : "No se pudo ejecutar el swap.");
     }
   };
-
-  // Divisas con saldo: derivado local por-usuario, confirmado con el live de Bitso.
-  const divisaCodes = Array.from(
-    new Set([...Object.keys(localBalances), ...Object.keys(liveBalances).filter((c) => c !== "MXN")]),
-  );
 
   return (
     <div className="screen screen-enter">
@@ -1126,9 +1063,9 @@ export function ScreenConvert({ go }: { go: Go }) {
       <div className="screen-pad">
         <div style={{ position: "relative" }}>
           <div className="conv-field">
-            <ConvAssetBadge flag={from.flag} />
+            <SwapAssetBadge emoji={from?.flag ?? "🪙"} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{from.name}</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{from?.name}</p>
               <MoneyInput
                 className="big num"
                 value={amount}
@@ -1136,23 +1073,23 @@ export function ScreenConvert({ go }: { go: Go }) {
                 style={{ background: "none", border: "none", outline: "none", color: "var(--txt)", width: "100%", padding: 0, margin: "2px 0 0" }}
               />
             </div>
-            <ConvSelect value={fromCode} onChange={(v) => { setFromCode(v); setStatus("idle"); }} exclude={toCode} />
+            <SwapSelect value={fromCode} onChange={(v) => { setFromCode(v); setStatus("idle"); }} exclude={toCode} assets={assets} />
           </div>
           <div className="conv-swap" onClick={swap} style={{ cursor: "pointer" }}><Icon name="swap" size={20} /></div>
           <div className="conv-field">
-            <ConvAssetBadge flag={to.flag} />
+            <SwapAssetBadge emoji={to?.flag ?? "🪙"} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{to.name}</p>
-              <p className="big num" style={{ margin: "2px 0 0" }}>{result == null ? "—" : FMT(result, to.dec)}</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)" }}>{to?.name}</p>
+              <p className="big num" style={{ margin: "2px 0 0" }}>{quoting ? "…" : result == null ? "—" : FMT(result, to?.decimals ?? 7)}</p>
             </div>
-            <ConvSelect value={toCode} onChange={(v) => { setToCode(v); setStatus("idle"); }} exclude={fromCode} />
+            <SwapSelect value={toCode} onChange={(v) => { setToCode(v); setStatus("idle"); }} exclude={fromCode} assets={assets} />
           </div>
         </div>
 
         {/* % del balance a convertir */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "12px 4px 8px" }}>
           <span style={{ fontSize: 12, color: "var(--txt-dim)" }}>
-            Disponible: <b className="num" style={{ color: "var(--txt-muted)" }}>{FMT(availableFrom, from.dec)} {from.code}</b>
+            Disponible: <b className="num" style={{ color: "var(--txt-muted)" }}>{FMT(availableFrom, from?.decimals ?? 7)} {from?.code}</b>
           </span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -1171,23 +1108,25 @@ export function ScreenConvert({ go }: { go: Go }) {
 
         <div className="card" style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div className="gmatch">
-            <Icon name="globe" size={16} color="var(--accent)" /> 1 {from.code} = <b>{unitRate == null ? "—" : FMT(unitRate, 4)} {to.code}</b>
+            <Icon name="globe" size={16} color="var(--accent)" /> 1 {from?.code} = <b>{unitRate == null ? "—" : FMT(unitRate, 6)} {to?.code}</b>
           </div>
-          <span className="pos-pill">{loading ? "Bitso…" : "Tipo Bitso"}</span>
+          <span className="pos-pill">{quoting ? "Soroswap…" : "Soroswap"}</span>
         </div>
 
         <button
           className="btn btn-primary"
           style={{ marginTop: 14 }}
-          disabled={!oneSideIsMXN || amt <= 0 || status === "sending" || result == null}
-          onClick={doConvert}
+          disabled={sameAsset || amt <= 0 || status === "sending" || availableFrom <= 0 || result == null}
+          onClick={doSwap}
         >
-          {status === "sending" ? <span className="spin" /> : <><Icon name="swap" size={18} /> Convertir {amt > 0 ? `${FMT(amt, from.dec)} ${from.code}` : ""}</>}
+          {status === "sending" ? <span className="spin" /> : <><Icon name="swap" size={18} /> Convertir {amt > 0 ? `${FMT(amt, from?.decimals ?? 7)} ${from?.code}` : ""}</>}
         </button>
 
-        {!oneSideIsMXN && (
-          <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0" }}>Una de las divisas debe ser MXN para ejecutar la conversión.</p>
-        )}
+        {sameAsset ? (
+          <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "10px 4px 0" }}>Elige dos activos distintos para convertir.</p>
+        ) : quoteErr ? (
+          <p style={{ fontSize: 12, color: "var(--neg)", margin: "10px 4px 0" }}>{quoteErr}</p>
+        ) : null}
         {/* Pop-up de estado: "en camino" (loader) → completado / error */}
         {status !== "idle" && (
           <Portal>
@@ -1216,11 +1155,20 @@ export function ScreenConvert({ go }: { go: Go }) {
                     </div>
                     <h3 style={{ margin: "18px 0 0", fontSize: 19, fontWeight: 800 }}>¡Cambio completado!</h3>
                     <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "var(--txt-muted)", lineHeight: 1.55 }}>
-                      Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(doneInfo.received, doneInfo.fwd ? to.dec : 2)} {doneInfo.recCode}</b>
-                      {doneInfo.fwd ? " en tu saldo en divisas." : " en tu wallet."}
+                      Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(doneInfo.received, 6)} {doneInfo.recCode}</b> en tu wallet Stellar.
                       <br />
-                      Se descontó <b className="num" style={{ color: "var(--txt)" }}>{FMT(doneInfo.spent, doneInfo.fwd ? 2 : assetByCode(doneInfo.spentCode)?.dec ?? 2)} {doneInfo.fwd ? "MXN" : doneInfo.spentCode}</b> de tu saldo.
+                      Se descontó <b className="num" style={{ color: "var(--txt)" }}>{FMT(doneInfo.spent, 6)} {doneInfo.spentCode}</b>.
                     </p>
+                    {doneInfo.txHash && (
+                      <a
+                        href={stellarTxExplorerUrl(doneInfo.txHash) || undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "inline-block", marginTop: 10, fontSize: 12.5, color: "var(--accent)", fontWeight: 700 }}
+                      >
+                        Ver en el explorador ↗
+                      </a>
+                    )}
                     <button className="btn btn-primary" style={{ marginTop: 22 }} onClick={() => setStatus("idle")}>Listo</button>
                   </>
                 )}
@@ -1239,25 +1187,21 @@ export function ScreenConvert({ go }: { go: Go }) {
           </Portal>
         )}
 
-        {/* Tus divisas: tarjetas horizontales (saldo por-usuario derivado de tus conversiones) */}
-        {divisaCodes.length > 0 && (
+        {/* Tus activos Stellar: saldos reales de la wallet Pollar (XLM, USDC, …) */}
+        {stellar.assetBalances.length > 0 && (
           <>
-            <div className="sec-head"><h3>Tus divisas</h3></div>
+            <div className="sec-head"><h3>Tus activos</h3></div>
             <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
-              {divisaCodes.map((code) => {
-                const a = assetByCode(code);
-                const bal = localBalances[code] ?? 0;
-                const live = liveBalances[code]?.available;
+              {stellar.assetBalances.map((b) => {
+                const code = (b.code || "").toUpperCase();
+                const meta = soroswapAssetByCode(code);
                 return (
                   <div key={code} className="card" style={{ flex: "0 0 auto", minWidth: 130, padding: 14 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Flag code={a?.flag || "us"} cls="sm" />
+                      <span style={{ fontSize: 18 }}>{meta?.flag ?? "🪙"}</span>
                       <span style={{ fontWeight: 800, fontSize: 14 }}>{code}</span>
                     </div>
-                    <p className="num" style={{ margin: "10px 0 0", fontWeight: 800, fontSize: 20 }}>{FMT(bal, a?.dec ?? 2)}</p>
-                    {live != null && (
-                      <p className="num" style={{ margin: "2px 0 0", fontSize: 11, color: "var(--txt-dim)" }}>Bitso: {FMT(live, a?.dec ?? 2)}</p>
-                    )}
+                    <p className="num" style={{ margin: "10px 0 0", fontWeight: 800, fontSize: 20 }}>{FMT(Number(b.balance ?? 0), 4)}</p>
                   </div>
                 );
               })}
@@ -1266,28 +1210,8 @@ export function ScreenConvert({ go }: { go: Go }) {
         )}
 
         <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "14px 4px 0", lineHeight: 1.5 }}>
-          Tasas y ejecución vía <b style={{ color: "var(--txt)" }}>Bitso</b> en tiempo real. USDC no opera contra MXN en Bitso; el dólar digital disponible es USDT.
+          Swap on-chain en <b style={{ color: "var(--txt)" }}>Soroswap</b> (Stellar), firmado con tu wallet. Las tasas vienen del pool en vivo; CETES aún no tiene pool en testnet.
         </p>
-
-        <div className="sec-head"><h3>Tipos de cambio (Bitso)</h3>{error && <span className="link" style={{ color: "var(--neg)" }}>sin conexión</span>}</div>
-        <div className="card" style={{ padding: "4px 18px" }}>
-          {BITSO_ASSETS.filter((a) => a.book).map((a) => {
-            const price = mxnPriceOf(a.code);
-            return (
-              <div className="fx-row" key={a.code}>
-                <Flag code={a.flag || "us"} cls="sm" />
-                <div>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{a.code}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{a.name}</p>
-                </div>
-                <div className="fx-rate">
-                  <div className="r num">{price == null ? "—" : `$${FMT(price, 4)}`}</div>
-                  <div className="num" style={{ fontSize: 11, color: "var(--txt-dim)" }}>MXN</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
       <div className="scroll-bottom" />
     </div>
