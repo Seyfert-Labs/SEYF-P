@@ -276,6 +276,14 @@ Factory DeFindex: `CDSCWE4GLNBYYTES2OCYDFQA2LLY4RBIAX6ZI32VSUXD7GO6HRPO4A32`
 | `GET/POST` | `/api/db/conversions` | Conversiones FX |
 | `GET/POST` | `/api/db/limits` | Límites mensuales |
 
+### `/api/sdex/*` — Conversión XLM↔USDC (Stellar DEX / Horizon)
+
+| Método | Ruta | Función |
+|:------:|------|---------|
+| `POST` | `/api/sdex/quote` | Cotiza path payment en SDEX |
+| `POST` | `/api/sdex/build` | Construye XDR sin firmar |
+| `POST` | `/api/sdex/send` | Envía XDR firmado a Horizon |
+
 ### `/api/convert` — Conversión FX (Bitso, pooled+ledger)
 
 | Método | Ruta | Función |
