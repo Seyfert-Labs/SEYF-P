@@ -5,7 +5,7 @@
 ### La super app de ahorro e inversión sobre Stellar
 
 Bóvedas de rendimiento real (CETES, USDC, XLM) · KYC integrado · On-ramp SPEI · Wallet embebida sin seed phrase
-Construida sobre **Stellar/Soroban**, **DeFindex**, **Etherfuse**, **Pollar** y **Soroswap**.
+Construida sobre **Stellar/Soroban**, **DeFindex**, **Etherfuse** y **Pollar**.
 
 <br/>
 
@@ -14,7 +14,7 @@ Construida sobre **Stellar/Soroban**, **DeFindex**, **Etherfuse**, **Pollar** y 
 ![DeFindex](https://img.shields.io/badge/DeFindex-Yield_Vaults-5BD6C0?style=for-the-badge)
 ![Etherfuse](https://img.shields.io/badge/Etherfuse-KYC_+_Bonds-FF6B35?style=for-the-badge)
 ![Pollar](https://img.shields.io/badge/Pollar-Wallet_Stellar-6A4BFF?style=for-the-badge)
-![Soroswap](https://img.shields.io/badge/Soroswap-DEX-28A0F0?style=for-the-badge)
+![Stellar DEX](https://img.shields.io/badge/Stellar-SDEX-28A0F0?style=for-the-badge&logo=stellar&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
 </div>
@@ -47,7 +47,7 @@ SEYF es una plataforma de ahorro e inversión para México que combina la experi
 | **Wallet sin seed phrase** | El usuario entra con correo (Privy) y firma en Stellar con **Pollar** (passkeys/OTP). Sin extensiones ni frases semilla. |
 | **KYC integrado** | Verificación de identidad (CURP, INE, selfie) dentro de la app vía **Etherfuse**. El usuario nunca sale de SEYF. |
 | **On-ramp SPEI** | Depósitos en pesos por transferencia bancaria. CLABE individual por usuario. |
-| **Conversión de divisas** | MXN ↔ USDT/EUR/BRL vía Bitso (actual). Soroswap on-chain (roadmap). |
+| **Conversión de divisas** | XLM ↔ USDC vía SDEX (Stellar DEX). MXN ↔ fiat vía Bitso. |
 
 Cada usuario tiene **saldo real on-chain en Stellar**, bóvedas con rendimiento verificable, KYC persistido y un perfil multi-dispositivo en Supabase.
 
@@ -79,7 +79,7 @@ flowchart TB
 
     subgraph FX["Conversión de divisas"]
         Bitso[("Bitso\nÓrdenes de mercado")]
-        Soroswap[("Soroswap\nDEX on-chain (roadmap)")]
+        SDEX[("SDEX\nStellar DEX · Horizon")]
     end
 
     subgraph Server["Servidor · Route Handlers"]
@@ -107,7 +107,7 @@ flowchart TB
     classDef eth fill:#1A0A0F,stroke:#FF6B35,color:#FF6B35;
     classDef db fill:#1C1C1C,stroke:#3ECF8E,color:#3ECF8E;
     class Soroban,DeFindex stellar
-    class Bitso,Soroswap defi
+    class Bitso,SDEX defi
     class EtherfuseAPI eth
     class SB db
 ```
@@ -128,7 +128,7 @@ flowchart TB
 | **Framework** | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 5 | UI + API routes |
 | **Blockchain** | Stellar (Soroban) · Testnet/Mainnet | Red donde viven los fondos |
 | **Yield vaults** | [DeFindex](https://defindex.io) (`@defindex/sdk`) | Vaults de rendimiento (CETES, USDC, XLM) |
-| **DEX** | [Soroswap](https://soroswap.finance) | Swaps on-chain en Stellar (roadmap) |
+| **DEX** | Stellar SDEX (Horizon path payments) | XLM ↔ USDC on-chain |
 | **Wallet Stellar** | [Pollar](https://pollar.xyz) (`@pollar/core`, `@pollar/react`) | Wallet embebida con passkeys/OTP headless |
 | **Auth** | [Privy](https://privy.io) (`@privy-io/react-auth`) | Login social (Email OTP) |
 | **KYC + Bonos** | [Etherfuse](https://etherfuse.com) | Verificación de identidad + CETES tokenizados |
@@ -375,7 +375,7 @@ src/
 | Prioridad | Feature | Detalle |
 |:---------:|---------|---------|
 | 🔴 | **Mainnet** | Migrar vaults DeFindex a pubnet, Pollar mainnet, Etherfuse producción |
-| 🔴 | **Soroswap** | Swaps MXN↔USDC↔XLM on-chain via Soroswap (reemplaza Bitso para pares Stellar) |
+| 🟢 | **SDEX** | XLM↔USDC vía Stellar DEX (path payments) — activo |
 | 🟡 | **Revenue** | Spread en FX + performance fee en vaults (fee_receiver DeFindex) |
 | 🟡 | **On-ramp directo** | SPEI → vault en un paso (Dynerox → Stellar → DeFindex deposit) |
 | 🟡 | **Blend lending** | Adelanto de liquidez 0% sobre la posición en vault (Blend protocol) |
@@ -387,6 +387,6 @@ src/
 <div align="center">
 <br/>
 
-Construido sobre **Stellar** · DeFindex · Soroswap · Etherfuse · Pollar · Supabase
+Construido sobre **Stellar** · DeFindex · SDEX · Etherfuse · Pollar · Supabase
 
 </div>

@@ -23,8 +23,8 @@ import { useAdvance } from "@/hooks/useAdvance";
 import { explorerBase } from "@/lib/chain";
 import { stellarTxExplorerUrl } from "@/lib/etherfuse/stellar-tx-url";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
-import { tradableSoroswapAssets, soroswapAssetByCode, type SoroswapAsset } from "@/lib/soroswap/assets";
-import { quoteSoroswap, executeSoroswapSwap } from "@/lib/soroswap/swap";
+import { tradableSdexAssets, sdexAssetByCode, type SdexAsset } from "@/lib/sdex/assets";
+import { quoteSdexSwap, executeSdexSwap } from "@/lib/sdex/swap";
 
 function fmtApy(apy: number | null | undefined): string {
   return apy != null && Number.isFinite(apy) ? `${FMT(apy, 1)}%` : "—";
@@ -942,14 +942,14 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   );
 }
 
-/* ---------------- CONVERTIR (swap on-chain Stellar · Soroswap) ---------------- */
+/* ---------------- CONVERTIR (SDEX · Stellar DEX) ---------------- */
 function SwapAssetBadge({ emoji }: { emoji: string }) {
   return (
     <span style={{ width: 40, height: 40, borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{emoji}</span>
   );
 }
 
-function SwapSelect({ value, onChange, exclude, assets }: { value: string; onChange: (v: string) => void; exclude?: string; assets: SoroswapAsset[] }) {
+function SwapSelect({ value, onChange, exclude, assets }: { value: string; onChange: (v: string) => void; exclude?: string; assets: SdexAsset[] }) {
   return (
     <select
       className="chip"
@@ -967,7 +967,7 @@ function SwapSelect({ value, onChange, exclude, assets }: { value: string; onCha
 export function ScreenConvert({ go }: { go: Go }) {
   const stellar = useSeyfStellarWallet();
   const { ensureConnected } = useStellarConnect();
-  const assets = tradableSoroswapAssets();
+  const assets = tradableSdexAssets();
   const fallbackCode = assets[0]?.code ?? "XLM";
   const [fromCode, setFromCode] = useState<string>(() => assets.find((a) => a.code === "XLM")?.code ?? fallbackCode);
   const [toCode, setToCode] = useState<string>(
@@ -983,8 +983,8 @@ export function ScreenConvert({ go }: { go: Go }) {
     { received: number; recCode: string; spent: number; spentCode: string; txHash?: string } | null
   >(null);
 
-  const from = soroswapAssetByCode(fromCode) ?? assets[0];
-  const to = soroswapAssetByCode(toCode) ?? assets[1] ?? assets[0];
+  const from = sdexAssetByCode(fromCode) ?? assets[0];
+  const to = sdexAssetByCode(toCode) ?? assets[1] ?? assets[0];
   const amt = Number(amount) || 0;
   const sameAsset = fromCode === toCode;
 
@@ -1000,8 +1000,7 @@ export function ScreenConvert({ go }: { go: Go }) {
     setStatus("idle");
   };
 
-  // Cotización en vivo (debounced) vía Soroswap. Todos los setState viven dentro
-  // del timeout (no en el cuerpo del effect) para no disparar renders en cascada.
+  // Cotización en vivo (debounced) vía SDEX de Stellar.
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
@@ -1012,7 +1011,7 @@ export function ScreenConvert({ go }: { go: Go }) {
       setQuoting(true);
       setQuoteErr(null);
       try {
-        const r = await quoteSoroswap(fromCode, toCode, amt);
+        const r = await quoteSdexSwap(fromCode, toCode, amt);
         if (!cancelled) setQuoteOut(r.amountOut);
       } catch (e) {
         if (!cancelled) { setQuoteOut(null); setQuoteErr(e instanceof Error ? e.message : "Sin cotización"); }
@@ -1038,7 +1037,7 @@ export function ScreenConvert({ go }: { go: Go }) {
     setStatus("sending");
     setDoneInfo(null);
     try {
-      const res = await executeSoroswapSwap({
+      const res = await executeSdexSwap({
         from: fromCode,
         to: toCode,
         amount: amt,
@@ -1110,7 +1109,7 @@ export function ScreenConvert({ go }: { go: Go }) {
           <div className="gmatch">
             <Icon name="globe" size={16} color="var(--accent)" /> 1 {from?.code} = <b>{unitRate == null ? "—" : FMT(unitRate, 6)} {to?.code}</b>
           </div>
-          <span className="pos-pill">{quoting ? "Soroswap…" : "Soroswap"}</span>
+          <span className="pos-pill">{quoting ? "SDEX…" : "Stellar DEX"}</span>
         </div>
 
         <button
@@ -1194,7 +1193,7 @@ export function ScreenConvert({ go }: { go: Go }) {
             <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
               {stellar.assetBalances.map((b) => {
                 const code = (b.code || "").toUpperCase();
-                const meta = soroswapAssetByCode(code);
+                const meta = sdexAssetByCode(code);
                 return (
                   <div key={code} className="card" style={{ flex: "0 0 auto", minWidth: 130, padding: 14 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1210,7 +1209,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         )}
 
         <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "14px 4px 0", lineHeight: 1.5 }}>
-          Conversión on-chain en Stellar (Soroswap o SDEX). Las tasas vienen del mercado en vivo; en testnet XLM↔USDC usa el libro de órdenes clásico.
+          Conversión on-chain en el <b style={{ color: "var(--txt)" }}>SDEX de Stellar</b> (libro de órdenes descentralizado). Las tasas vienen del mercado en vivo.
         </p>
       </div>
       <div className="scroll-bottom" />

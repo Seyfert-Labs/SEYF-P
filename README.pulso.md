@@ -78,7 +78,7 @@ NEXT_PUBLIC_POLLAR_STELLAR_NETWORK=testnet
 ## Pendiente / siguiente
 
 - **Blend** → adelanto de liquidez (préstamo sobre-colateralizado) sobre la posición de la bóveda.
-- **Soroswap** → conversión de divisas on-chain (hoy la sección "Convertir" usa Bitso).
+- **SDEX** → conversión XLM↔USDC on-chain (Stellar DEX vía Horizon).
 - Conectar el on-ramp SPEI→Stellar directamente al depósito en la vault.
 - UI: el copy de la pantalla aún dice "MXN"; al usar un asset distinto (USDC) conviene
   mostrar el símbolo del asset subyacente.

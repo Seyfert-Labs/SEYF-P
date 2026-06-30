@@ -5,7 +5,7 @@
 ### The savings & investment super app on Stellar
 
 Real-yield vaults (CETES, USDC, XLM) · Integrated KYC · SPEI on-ramp · Embedded wallet with no seed phrase
-Built on **Stellar/Soroban**, **DeFindex**, **Etherfuse**, **Pollar**, and **Soroswap**.
+Built on **Stellar/Soroban**, **DeFindex**, **Etherfuse**, and **Pollar**.
 
 <br/>
 
@@ -14,7 +14,7 @@ Built on **Stellar/Soroban**, **DeFindex**, **Etherfuse**, **Pollar**, and **Sor
 ![DeFindex](https://img.shields.io/badge/DeFindex-Yield_Vaults-5BD6C0?style=for-the-badge)
 ![Etherfuse](https://img.shields.io/badge/Etherfuse-KYC_+_Bonds-FF6B35?style=for-the-badge)
 ![Pollar](https://img.shields.io/badge/Pollar-Stellar_Wallet-6A4BFF?style=for-the-badge)
-![Soroswap](https://img.shields.io/badge/Soroswap-DEX-28A0F0?style=for-the-badge)
+![Stellar DEX](https://img.shields.io/badge/Stellar-SDEX-28A0F0?style=for-the-badge&logo=stellar&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
 </div>
@@ -47,8 +47,8 @@ A single Next.js application with three layers:
 3. **Identity & sovereign bonds (Etherfuse)**
    In-app KYC flow (CURP, INE, selfie) via Etherfuse. Access to tokenized Mexican government bonds (CETES) on Stellar.
 
-4. **FX conversion (Bitso → Soroswap)**
-   MXN ↔ USD/EUR/BRL via Bitso market orders today. Soroswap (Stellar DEX) integration on roadmap for on-chain swaps.
+4. **FX conversion**
+   XLM ↔ USDC via Stellar SDEX (path payments). MXN ↔ fiat via Bitso.
 
 ---
 
@@ -78,7 +78,7 @@ flowchart TB
 
     subgraph FX["Currency conversion"]
         Bitso[("Bitso\nMarket orders")]
-        Soroswap[("Soroswap\nOn-chain DEX (roadmap)")]
+        SDEX[("SDEX\nStellar DEX")]
     end
 
     subgraph Server["Server · Route Handlers"]
@@ -133,7 +133,7 @@ DeFindex Factory: `CDSCWE4GLNBYYTES2OCYDFQA2LLY4RBIAX6ZI32VSUXD7GO6HRPO4A32`
 | **Framework** | Next.js 16, React 19, TypeScript 5 | UI + API routes |
 | **Blockchain** | Stellar (Soroban) | Where funds live |
 | **Yield** | [DeFindex](https://defindex.io) | Vault infrastructure |
-| **DEX** | [Soroswap](https://soroswap.finance) | On-chain swaps (roadmap) |
+| **DEX** | Stellar SDEX (Horizon path payments) | XLM ↔ USDC on-chain |
 | **Wallet** | [Pollar](https://pollar.xyz) | Embedded Stellar wallet |
 | **Auth** | [Privy](https://privy.io) | Social login |
 | **KYC + Bonds** | [Etherfuse](https://etherfuse.com) | Identity + sovereign bonds |
@@ -174,7 +174,7 @@ npm run dev    # http://localhost:3000
 | Priority | Feature | Detail |
 |:--------:|---------|--------|
 | 🔴 | **Mainnet launch** | DeFindex vaults on pubnet, Pollar mainnet, Etherfuse production |
-| 🔴 | **Soroswap integration** | On-chain MXN↔USDC↔XLM swaps replacing Bitso for Stellar pairs |
+| 🟢 | **SDEX** | XLM↔USDC via Stellar DEX path payments — live |
 | 🟡 | **Revenue model** | FX spread + vault performance fee (DeFindex fee_receiver) |
 | 🟡 | **Direct on-ramp** | SPEI → vault in one step (Dynerox → Stellar → DeFindex) |
 | 🟡 | **Blend lending** | 0% liquidity advance against vault position |
@@ -198,6 +198,6 @@ Not a token project. SEYF is the UX and orchestration layer over existing Stella
 <div align="center">
 <br/>
 
-Built on **Stellar** · DeFindex · Soroswap · Etherfuse · Pollar · Supabase
+Built on **Stellar** · DeFindex · SDEX · Etherfuse · Pollar · Supabase
 
 </div>

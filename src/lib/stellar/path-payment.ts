@@ -8,7 +8,7 @@ import {
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
 import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
-import { toStroops } from '@/lib/soroswap/assets'
+import { toStroops } from '@/lib/sdex/assets'
 
 /** USDC de Circle en Stellar testnet (activo clásico, liquidez en SDEX). */
 export const USDC_ISSUER_TESTNET = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
@@ -91,10 +91,6 @@ export function isSdexSwapPair(from: string, to: string): boolean {
   return (f === 'XLM' && t === 'USDC') || (f === 'USDC' && t === 'XLM')
 }
 
-export function isNoPathSoroswapError(message: string): boolean {
-  const m = message.toLowerCase()
-  return m.includes('no path found') || m.includes('path not found') || m.includes('quote failed')
-}
 
 async function fetchBestPath(
   from: SdexSwapCode,
@@ -239,13 +235,4 @@ export async function submitSignedStellarXdr(signedXdr: string): Promise<string>
 
 export function isSdexQuote(quote: Record<string, unknown>): quote is SdexPathQuote & Record<string, unknown> {
   return quote._provider === 'sdex'
-}
-
-export function inferSwapProvider(
-  provider: string | undefined,
-  quote?: Record<string, unknown>,
-): 'sdex' | 'soroswap' {
-  if (provider === 'sdex' || provider === 'soroswap') return provider
-  if (quote && isSdexQuote(quote)) return 'sdex'
-  return 'soroswap'
 }
