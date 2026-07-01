@@ -31,7 +31,8 @@ export function WelcomeBonus() {
   // --- Friendbot bonus state ---
   const [fbStatus, setFbStatus] = useState<FriendbotStatus>("idle");
   const [fbError, setFbError] = useState<string | null>(null);
-  const [fbClaimed, setFbClaimed] = useState<boolean>(false);
+  const [fbXlm, setFbXlm] = useState<number | null>(null);
+  const fbClaimed = fbXlm !== null && fbXlm >= 1;
 
   const address = wallet.address ?? stellar.publicKey ?? null;
   const pk = stellar.publicKey ?? null;
@@ -46,29 +47,24 @@ export function WelcomeBonus() {
     return () => { active = false; };
   }, [address]);
 
-  // Checa si la wallet ya tiene XLM on-chain (friendbot ya aplicado)
-  useEffect(() => {
-    if (!pk) { setFbClaimed(false); return; }
-    let active = true;
-    const horizonBase = process.env.NEXT_PUBLIC_POLLAR_STELLAR_NETWORK === "mainnet"
-      ? "https://horizon.stellar.org"
-      : "https://horizon-testnet.stellar.org";
-    (async () => {
-      try {
-        const res = await fetch(`${horizonBase}/accounts/${pk}`);
-        if (!active) return;
-        if (res.ok) {
-          const data = await res.json();
-          const native = (data.balances as Array<{ asset_type: string; balance: string }>)
-            ?.find((b) => b.asset_type === "native");
-          setFbClaimed(native ? Number(native.balance) >= 1 : false);
-        } else {
-          setFbClaimed(false);
-        }
-      } catch { if (active) setFbClaimed(false); }
-    })();
-    return () => { active = false; };
+  // Checa saldo XLM on-chain
+  const checkXlm = useCallback(async () => {
+    if (!pk) { setFbXlm(null); return; }
+    const horizonBase = "https://horizon-testnet.stellar.org";
+    try {
+      const res = await fetch(`${horizonBase}/accounts/${pk}`);
+      if (res.ok) {
+        const data = await res.json();
+        const native = (data.balances as Array<{ asset_type: string; balance: string }>)
+          ?.find((b) => b.asset_type === "native");
+        setFbXlm(native ? Number(native.balance) : 0);
+      } else {
+        setFbXlm(null);
+      }
+    } catch { setFbXlm(null); }
   }, [pk]);
+
+  useEffect(() => { void checkXlm(); }, [checkXlm]);
 
   // --- CETES claim ---
   const claimCetes = useCallback(async () => {
@@ -121,13 +117,14 @@ export function WelcomeBonus() {
     try {
       const result = await fundStellarWallet(pk);
       if (!result.ok) throw new Error(result.error);
-      setFbClaimed(true);
+      // Refrescar saldo para que se muestre "activado"
+      await checkXlm();
       setFbStatus("done");
     } catch (e) {
       setFbError(e instanceof Error ? e.message : "No se pudo fondear");
       setFbStatus("error");
     }
-  }, [pk]);
+  }, [pk, checkXlm]);
 
   const canClaimCetes =
     wallet.enabled &&
@@ -139,12 +136,6 @@ export function WelcomeBonus() {
     !kyc.loading &&
     kyc.verified &&
     cetesClaimed === false;
-
-  const canClaimFriendbot =
-    stellar.enabled &&
-    stellar.authenticated &&
-    !!pk &&
-    !fbClaimed;
 
   // Mostrar sección si hay stellar autenticado O wallet autenticado
   const hasAuth = (stellar.enabled && stellar.authenticated && !!pk) || wallet.authenticated;
