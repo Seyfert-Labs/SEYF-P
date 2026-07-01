@@ -40,6 +40,12 @@ function fmtCountdown(ms: number): string {
   return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
 }
 
+/** Formatea el saldo XLM real (ej. 9,999.99). */
+function fmtXlm(xlm: number | null): string {
+  if (xlm == null) return "0";
+  return xlm.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
 export function WelcomeBonus() {
   const wallet = useWallet();
   const stellar = useSeyfStellarWallet();
@@ -61,6 +67,7 @@ export function WelcomeBonus() {
   const [fbStatus, setFbStatus] = useState<FriendbotStatus>("idle");
   const [fbError, setFbError] = useState<string | null>(null);
   const [fbXlm, setFbXlm] = useState<number | null>(null);
+  const [fbRefreshing, setFbRefreshing] = useState(false);
   const fbClaimed = fbXlm !== null && fbXlm >= 1;
 
   const address = wallet.address ?? stellar.publicKey ?? null;
@@ -200,6 +207,18 @@ export function WelcomeBonus() {
     }
   }, [pk, checkXlm]);
 
+  // Refresca el saldo XLM real desde Horizon. El friendbot no puede re-fondear una
+  // cuenta ya creada (da 10,000 XLM una sola vez), así que "reactivar" no aplica:
+  // solo actualizamos el saldo mostrado.
+  const refreshFbXlm = useCallback(async () => {
+    setFbRefreshing(true);
+    try {
+      await checkXlm();
+    } finally {
+      setFbRefreshing(false);
+    }
+  }, [checkXlm]);
+
   // Mostrar sección si hay stellar autenticado O wallet autenticado
   const hasAuth = (stellar.enabled && stellar.authenticated && !!pk) || wallet.authenticated;
   if (!hasAuth) return null;
@@ -283,18 +302,21 @@ export function WelcomeBonus() {
                 <Icon name="check" size={22} />
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>10,000 XLM activado</p>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>
+                  <span className="num">{fmtXlm(fbXlm)}</span> XLM disponibles
+                </p>
                 <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-                  Tu wallet fue fondeada con XLM de testnet para operar.
+                  Tu wallet Stellar está lista para operar en testnet.
                 </p>
               </div>
-              {/* Prueba: reintenta el fondeo Friendbot (idempotente; no re-crea cuentas ya existentes). */}
+              {/* Friendbot solo fondea cuentas nuevas (una vez): aquí solo refrescamos el saldo real. */}
               <button
-                onClick={() => void claimFriendbot()}
-                disabled={fbStatus === "funding"}
-                style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 10, background: "var(--surface-2)", color: "var(--txt-muted)", border: "1px solid var(--line)", fontWeight: 700, fontSize: 12, cursor: fbStatus === "funding" ? "default" : "pointer" }}
+                onClick={() => void refreshFbXlm()}
+                disabled={fbRefreshing}
+                aria-label="Actualizar saldo XLM"
+                style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 10, background: "var(--surface-2)", color: "var(--txt-muted)", border: "1px solid var(--line)", fontWeight: 700, fontSize: 12, cursor: fbRefreshing ? "default" : "pointer" }}
               >
-                {fbStatus === "funding" ? <span className="spin" style={{ width: 14, height: 14 }} /> : "Reactivar"}
+                {fbRefreshing ? <span className="spin" style={{ width: 14, height: 14 }} /> : "Actualizar"}
               </button>
             </div>
           ) : (
