@@ -121,18 +121,18 @@ function normalizeKycStatus(s: string | undefined | null): EtherfuseKycStatus {
 }
 
 /**
- * GET /ramp/customer/{customer_id}/kyc/{pubkey}
+ * GET /ramp/customer/{customer_id}/kyc
  * @see https://docs.etherfuse.com/api-reference/kyc/get-kyc-status
  */
 export async function fetchEtherfuseKycStatus(
   customerId: string,
-  walletPublicKey: string,
+  _walletPublicKey: string,
 ): Promise<
   | { ok: true; data: EtherfuseKycSnapshot }
   | { ok: false; reason: "not_found" }
   | { ok: false; reason: "invalid_body" }
 > {
-  const path = `/ramp/customer/${encodeURIComponent(customerId)}/kyc/${encodeURIComponent(walletPublicKey)}`;
+  const path = `/ramp/customer/${encodeURIComponent(customerId)}/kyc`;
   const res = await etherfuseFetch(path, { method: "GET" });
   const { json, text } = await etherfuseReadBody<KycApiBody>(res);
 
@@ -151,14 +151,13 @@ export async function fetchEtherfuseKycStatus(
   if (typeof statusRaw !== "string") {
     return { ok: false, reason: "invalid_body" };
   }
-  // Normalizar "compliant" (sandbox) antes de validar
   const normalizedStatusRaw = normalizeKycStatus(statusRaw)
   if (!isKycStatus(normalizedStatusRaw)) {
     return { ok: false, reason: "invalid_body" };
   }
   const cid = json.customerId;
-  const wpk = json.walletPublicKey;
-  if (typeof cid !== "string" || typeof wpk !== "string") {
+  const wpk = json.walletPublicKey ?? _walletPublicKey;
+  if (typeof cid !== "string") {
     return { ok: false, reason: "invalid_body" };
   }
   const asRecord = json as Record<string, unknown>;
@@ -166,7 +165,7 @@ export async function fetchEtherfuseKycStatus(
     ok: true,
     data: {
       customerId: cid,
-      walletPublicKey: wpk,
+      walletPublicKey: typeof wpk === "string" ? wpk : _walletPublicKey,
       status: normalizedStatusRaw,
       approvedAt:
         json.approvedAt === null || json.approvedAt === undefined

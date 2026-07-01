@@ -14,6 +14,7 @@ import { Portal } from "../Portal";
 import { useKycStatus } from "@/hooks/useKycStatus";
 import { RiskProfileSection } from "../RiskQuiz";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { WelcomeBonus } from "../WelcomeBonus";
 
 /* Ondas de pago sin contacto */
 function Contactless({ size = 22, color = "var(--txt-muted)" }: { size?: number; color?: string }) {
@@ -220,6 +221,8 @@ export function ScreenProfile({ go }: { go: Go }) {
         {/* Perfil de ahorrador (movido aquí desde el Home). */}
         <RiskProfileSection go={go} />
 
+        {/* Bono de bienvenida – siempre visible (reclamado o no) */}
+        <WelcomeBonus />
 
         {wallet.enabled && wallet.authenticated && (
           <>

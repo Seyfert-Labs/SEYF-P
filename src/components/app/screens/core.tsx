@@ -18,7 +18,6 @@ import type { OnchainTransfer } from "@/lib/chain";
 import { DepositModal } from "../modals/DepositModal";
 import { SendModal } from "../modals/SendModal";
 import { MoreSheet } from "../modals/MoreSheet";
-import { WelcomeBonus } from "../WelcomeBonus";
 import { OnboardingQuiz } from "../RiskQuiz";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { loadRiskProfile, planById } from "../data";
@@ -316,7 +315,6 @@ export function ScreenHome({ go }: { go: Go }) {
           </>
         )}
 
-        <WelcomeBonus />
 
         {/* ── 2. MOVIMIENTOS ── */}
         <div className="sec-head" style={{ marginTop: 22 }}>

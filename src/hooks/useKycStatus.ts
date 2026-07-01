@@ -75,7 +75,8 @@ export function useKycStatus() {
 
     setLoading(true);
     try {
-      const r = await fetch("/api/seyf/kyc/status");
+      const qs = stellar.publicKey ? `?wallet=${encodeURIComponent(stellar.publicKey)}` : "";
+      const r = await fetch(`/api/seyf/kyc/status${qs}`);
       const j = await r.json().catch(() => ({}));
       const status = j?.kyc?.status as string | undefined;
       setVerified((!!status && VERIFIED.has(status)) || readKycDoneLocal(stellar.publicKey));

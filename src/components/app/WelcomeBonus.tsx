@@ -1,8 +1,9 @@
 "use client";
 
 /* Bono de bienvenida: $300 MXN en CETES depositados a la bóveda del usuario
-   nuevo vía Etherfuse onramp (MXN → CETES Stellar). El bono se activa una sola
-   vez; si el usuario ya lo reclamó queda oculto permanentemente. */
+   vía Etherfuse onramp (MXN → CETES Stellar). Visible siempre en Perfil:
+   - Si ya se reclamó: muestra badge "Bono activado"
+   - Si no se ha reclamado y cumple requisitos: botón "Activar" */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -12,9 +13,8 @@ import { store } from "@/lib/store";
 import { Portal } from "./Portal";
 
 const BONUS_AMOUNT = 300;
-const DISMISS_KEY = "seyf_bonus_dismissed";
 
-type Status = "idle" | "quoting" | "ordering" | "processing" | "done" | "slow" | "error";
+type Status = "idle" | "quoting" | "ordering" | "processing" | "done" | "error";
 
 export function WelcomeBonus() {
   const wallet = useWallet();
@@ -22,26 +22,17 @@ export function WelcomeBonus() {
   const kyc = useKycStatus();
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [alreadyClaimed, setAlreadyClaimed] = useState(true);
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(DISMISS_KEY) === "1";
-  });
+  const [claimed, setClaimed] = useState<boolean | null>(null);
   const claimStarted = useRef(false);
-
-  const dismiss = () => {
-    try { window.localStorage.setItem(DISMISS_KEY, "1"); } catch {}
-    setDismissed(true);
-  };
 
   const address = wallet.address ?? stellar.publicKey ?? null;
 
   useEffect(() => {
     let active = true;
     (async () => {
-      if (!address) return;
-      const claimed = await store.getBonus(address);
-      if (active) setAlreadyClaimed(claimed);
+      if (!address) { setClaimed(null); return; }
+      const done = await store.getBonus(address);
+      if (active) setClaimed(done);
     })();
     return () => { active = false; };
   }, [address]);
@@ -82,12 +73,8 @@ export function WelcomeBonus() {
       }
 
       await store.setBonus(address, BONUS_AMOUNT, orderData?.orderId);
-      setAlreadyClaimed(true);
-      setStatus("processing");
-
-      // Etherfuse procesa la orden en segundo plano (fiat simulado en sandbox,
-      // SPEI real en prod). Mostramos "procesando" con timeout.
-      setTimeout(() => setStatus((s) => (s === "processing" ? "done" : s)), 8000);
+      setClaimed(true);
+      setStatus("done");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo reclamar el bono");
       setStatus("error");
@@ -95,8 +82,7 @@ export function WelcomeBonus() {
     }
   }, [address, stellar.publicKey]);
 
-  // Solo mostrar si: autenticado, wallet Stellar activa, KYC aprobado, no reclamó antes.
-  const showBanner =
+  const canClaim =
     wallet.enabled &&
     wallet.authenticated &&
     stellar.enabled &&
@@ -105,61 +91,92 @@ export function WelcomeBonus() {
     kyc.enabled &&
     !kyc.loading &&
     kyc.verified &&
-    !alreadyClaimed &&
-    !dismissed &&
-    status === "idle";
+    claimed === false;
+
+  const showClaimed = claimed === true;
+
+  // No renderizar nada hasta saber el estado del bono
+  if (claimed === null && !wallet.authenticated) return null;
 
   return (
     <>
-      {showBanner && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 12,
-          marginTop: 14, padding: "12px 14px",
-          background: "var(--accent-soft)", borderRadius: 14,
-          border: "1px solid var(--accent)",
+      <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Bono de bienvenida</p>
+
+      {showClaimed && (
+        <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{
+            width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+            background: "var(--accent-soft)", color: "var(--accent)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Icon name="check" size={22} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>Bono activado</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+              $300 MXN en CETES se depositaron a tu bóveda de ahorro.
+            </p>
+          </div>
+          <span className="pos-pill"><Icon name="leaf" size={12} /> CETES</span>
+        </div>
+      )}
+
+      {canClaim && (
+        <div className="card" style={{
+          display: "flex", alignItems: "center", gap: 14,
+          border: "1px solid var(--accent)", background: "var(--accent-soft)",
         }}>
           <span style={{
-            width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+            width: 44, height: 44, borderRadius: 13, flexShrink: 0,
             background: "var(--accent)", color: "var(--on-accent)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <Icon name="leaf" size={20} />
+            <Icon name="leaf" size={22} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "var(--txt)", lineHeight: 1.3 }}>
-              Obtén $300 en tu bóveda
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>
+              Obtén $300 en tu bóveda de ahorro
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-              Sin costo. Se acreditarán en CETES a tu ahorro.
+              Sin costo. Se depositarán en CETES a tu ahorro.
             </p>
           </div>
           <button
             onClick={claim}
+            disabled={status !== "idle"}
             style={{
-              flexShrink: 0, padding: "8px 16px", borderRadius: 11,
+              flexShrink: 0, padding: "9px 18px", borderRadius: 11,
               background: "var(--accent)", color: "var(--on-accent)",
-              border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer",
+              border: "none", fontWeight: 800, fontSize: 13,
+              cursor: status === "idle" ? "pointer" : "default",
+              opacity: status === "idle" ? 1 : 0.6,
             }}
           >
             Activar
           </button>
-          <button
-            onClick={dismiss}
-            aria-label="En otro momento"
-            style={{
-              flexShrink: 0, width: 28, height: 28, borderRadius: 8,
-              background: "none", border: "none", cursor: "pointer",
-              fontSize: 18, lineHeight: 1, color: "var(--txt-muted)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            ×
-          </button>
         </div>
       )}
 
-      {status !== "idle" && (
-        <Portal><div className="modal-overlay" onClick={() => (status === "done" || status === "error" || status === "slow") && setStatus("idle")}>
+      {!showClaimed && !canClaim && claimed === false && (
+        <div className="card" style={{ display: "flex", alignItems: "center", gap: 14, opacity: 0.7 }}>
+          <span style={{
+            width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+            background: "var(--surface-2)", border: "1px solid var(--line)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Icon name="lock" size={20} color="var(--txt-muted)" />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>$300 en CETES gratis</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+              Verifica tu identidad para activar tu bono de bienvenida.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {status !== "idle" && status !== "done" && (
+        <Portal><div className="modal-overlay" onClick={() => status === "error" && setStatus("idle")}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", paddingBottom: 30 }}>
             <div className="modal-grab" />
 
@@ -175,8 +192,8 @@ export function WelcomeBonus() {
                   {status === "quoting"
                     ? "Cotizando $300 MXN en CETES para tu bóveda."
                     : status === "ordering"
-                      ? "Estamos reservando tu bono."
-                      : "Tus CETES se están depositando en tu bóveda de ahorro. Puede tomar unos minutos."}
+                      ? "Reservando tus CETES."
+                      : "Tus CETES se están depositando en tu bóveda de ahorro."}
                 </p>
                 <div style={{ display: "flex", justifyContent: "center", margin: "20px 0 4px" }}>
                   <span className="spin" style={{ width: 26, height: 26, color: "var(--accent)" }} />
@@ -184,27 +201,28 @@ export function WelcomeBonus() {
               </>
             )}
 
-            {status === "done" && (
-              <>
-                <div style={{ fontSize: 52, margin: "6px 0 4px" }}>🎉</div>
-                <p className="modal-title" style={{ textAlign: "center" }}>
-                  ¡Bono activado!
-                </p>
-                <p className="modal-sub" style={{ textAlign: "center" }}>
-                  <b style={{ color: "var(--accent)" }}>$300 MXN</b> en CETES se están depositando a tu bóveda de ahorro. Aparecerán en tu saldo de bóveda una vez que Etherfuse confirme la operación.
-                </p>
-                <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setStatus("idle")}>Listo</button>
-              </>
-            )}
-
             {status === "error" && (
               <>
                 <div style={{ fontSize: 44, margin: "6px 0 4px" }}>⚠️</div>
-                <p className="modal-title" style={{ textAlign: "center" }}>No se pudo activar el bono</p>
+                <p className="modal-title" style={{ textAlign: "center" }}>No se pudo activar</p>
                 <div className="alert alert-error" style={{ textAlign: "left" }}>{error}</div>
                 <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setStatus("idle"); claimStarted.current = false; }}>Cerrar</button>
               </>
             )}
+          </div>
+        </div></Portal>
+      )}
+
+      {status === "done" && (
+        <Portal><div className="modal-overlay" onClick={() => setStatus("idle")}>
+          <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", paddingBottom: 30 }}>
+            <div className="modal-grab" />
+            <div style={{ fontSize: 52, margin: "6px 0 4px" }}>🎉</div>
+            <p className="modal-title" style={{ textAlign: "center" }}>¡Bono activado!</p>
+            <p className="modal-sub" style={{ textAlign: "center" }}>
+              <b style={{ color: "var(--accent)" }}>$300 MXN</b> en CETES se depositarán a tu bóveda de ahorro. Aparecerán cuando Etherfuse confirme la operación.
+            </p>
+            <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setStatus("idle")}>Listo</button>
           </div>
         </div></Portal>
       )}

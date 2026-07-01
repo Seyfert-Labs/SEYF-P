@@ -8,9 +8,11 @@ import { toErrorResponse } from '@/lib/seyf/api-error'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const session = await getEtherfuseOnboardingSession()
+    const url = new URL(req.url)
+    const walletHint = url.searchParams.get('wallet') ?? undefined
+    const session = await getEtherfuseOnboardingSession(walletHint)
     if (!session) {
       return NextResponse.json({ ok: true, kyc: null }, { headers: { 'Cache-Control': 'no-store' } })
     }
