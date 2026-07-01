@@ -5,11 +5,11 @@ Esta carpeta es **autocontenida** para migrar TODA la base a nuevos servers Post
 
 ## Qué desplegar
 
-- **`schema.sql`** — script **único e idempotente** con TODAS las tablas, índices, RLS y
-  comentarios. Es lo único que necesitas correr en el server nuevo. Se puede ejecutar
-  varias veces sin romper nada (usa `create table if not exists` / `add column if not exists`).
-- **`migrations/`** — historial incremental por fecha (referencia). Para un server nuevo
-  **no** las necesitas: basta con `schema.sql`.
+**Un solo archivo: [`schema.sql`](./schema.sql).** No hay que correr nada más — es el
+esquema COMPLETO (las 15 tablas, índices, RLS y comentarios) en un único script
+**idempotente** (se puede ejecutar varias veces sin romper nada, usa
+`create table if not exists` / `add column if not exists`). No existen "migraciones
+sueltas" que aplicar por separado: `schema.sql` ya las contiene a todas.
 
 ### Pasos (server nuevo)
 
