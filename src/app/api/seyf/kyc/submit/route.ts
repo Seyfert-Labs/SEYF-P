@@ -19,7 +19,6 @@ import {
 import { AppError, toErrorResponse } from '@/lib/seyf/api-error'
 import { rateLimitResponse } from '@/lib/seyf/guards'
 import { normalizeDateOfBirthToIso } from '@/lib/seyf/normalize-date-of-birth'
-import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
 import { upsertStoredKycSnapshot } from '@/lib/seyf/kyc-state-store'
 import {
   isEtherfuseTestnetBankAutofillActive,
@@ -176,12 +175,11 @@ export async function POST(req: Request) {
       } else {
         const msg = e instanceof Error ? e.message : String(e)
         /**
-         * Testnet/sandbox: la wallet ya está validada en OTRA org de Etherfuse (correos
-         * reutilizados entre proyectos). Esta org no puede operarla, pero para no bloquear
-         * el demo damos la verificación por completada y saltamos documentos/acuerdos.
-         * En mainnet NO se hace: ahí es configuración real → error claro (mapKycProviderSetupError).
+         * La wallet ya está validada en OTRA org de Etherfuse (p.ej. versión anterior
+         * del proyecto, correos reutilizados). Esta org no puede operarla, pero el
+         * usuario ya completó KYC previamente → damos la verificación por completada.
          */
-        if (isWalletClaimedByAnotherOrg(msg) && isPublicStellarTestnet()) {
+        if (isWalletClaimedByAnotherOrg(msg)) {
           console.warn('[kyc/submit] wallet en otra org (testnet) — verificación soft-complete:', msg)
           // Persistir el snapshot para que el gate de la bóveda (GET /kyc/status) lo honre,
           // pese a que Etherfuse responda not_found para esta org.

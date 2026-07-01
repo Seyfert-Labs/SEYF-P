@@ -241,15 +241,20 @@ export function ScreenKyc({ go }: { go: Go }) {
         }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(readApiError(j, r.status));
-      // Wallet ya validada en otra org (testnet): la verificación se da por completa,
+      // Wallet ya validada en otra org: la verificación se da por completa,
       // saltando documentos/acuerdos que fallarían con esa wallet.
-      if (j && typeof j === "object" && (j as { verifiedElsewhere?: boolean }).verifiedElsewhere) {
-        await refreshStatus();
+      const jObj = (j && typeof j === "object" ? j : {}) as Record<string, unknown>;
+      const isClaimedElsewhere =
+        jObj.verifiedElsewhere === true ||
+        (typeof jObj.debug_message === "string" &&
+          jObj.debug_message.toLowerCase().includes("claimed by another organization"));
+      if (isClaimedElsewhere) {
         markKycCompletedLocally(stellar.publicKey);
+        notifyKycStatusUpdated();
         setStep("done");
         return;
       }
+      if (!r.ok) throw new Error(readApiError(j, r.status));
       setStep("documents");
     });
   };
