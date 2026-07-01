@@ -70,11 +70,11 @@ function deserializeAsset(a: SdexPathQuote['sendAsset']): Asset {
   return new Asset(a.code, a.issuer)
 }
 
-/** Horizon devuelve montos de path con 7 decimales implícitos (ej. 49498600 = 4.9498600 USDC). */
+/** Horizon strictSendPaths devuelve `destination_amount` como string en unidades
+ *  humanas (ej. "516.8000000" = 516.8 XLM). Solo parseamos el número. */
 export function horizonAmountToHuman(raw: string | number): number {
   const n = Number(raw)
   if (!Number.isFinite(n) || n <= 0) return 0
-  if (n >= 1_000_000) return n / 1e7
   return n
 }
 
@@ -113,8 +113,9 @@ async function fetchBestPath(
   const server = horizonServer()
   const sendAsset = from === 'XLM' ? Asset.native() : usdcAsset()
   const destAsset = to === 'XLM' ? Asset.native() : usdcAsset()
-  const amount = toStroops(amountHuman)
-  if (Number(amount) <= 0) {
+  // Horizon strictSendPaths espera el monto en unidades humanas (ej. "500.0000000"), NO en stroops.
+  const amount = amountHuman.toFixed(7)
+  if (amountHuman <= 0) {
     throw new Error('El monto es demasiado pequeño para cotizar en el SDEX.')
   }
 
