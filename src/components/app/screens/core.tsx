@@ -10,6 +10,7 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useConversions, type Conversion } from "@/hooks/useConversions";
+import { useBitsoRates } from "@/hooks/useBitsoRates";
 import { useStellarTxns, type StellarOperation } from "@/hooks/useStellarTxns";
 import { assetByCode } from "@/lib/bitso/assets";
 import { useVaultsRail } from "@/hooks/useVaultsRail";
@@ -156,6 +157,7 @@ export function ScreenHome({ go }: { go: Go }) {
   // con el saldo real reconciliado de la pantalla de Ahorro (mismo hook, misma fuente).
   const { vaults, totalSaved, onchain } = useVaultsRail(wallet.address);
   const kyc = useKycStatus();
+  const { mxnPriceOf } = useBitsoRates();
   const refreshBal = wallet.refreshBalance;
 
   // Rendimiento promedio ponderado del ahorro (para el adelanto de liquidez).
@@ -186,8 +188,24 @@ export function ScreenHome({ go }: { go: Go }) {
         .map((b) => ({ code: (b.code || "").toUpperCase(), bal: Number(b.balance ?? 0) }))
         .filter((a) => a.code && a.bal > 0)
     : [];
-  // Spot: saldo MXNB on-chain. Las bóvedas se muestran en la pantalla de Ahorro.
-  const pesos = realData ? wallet.balance : 48250.4;
+  // Valor en MXN de los activos de la wallet Stellar (XLM + USDC + CETES). Antes el
+  // hero usaba wallet.balance (MXNB en Arbitrum); ahora refleja solo lo que hay en
+  // Stellar. USD/MXN se lee de Bitso en vivo; precios de XLM/CETES por env (con default).
+  const usdMxn = mxnPriceOf("USD") ?? mxnPriceOf("USDT") ?? 18;
+  const XLM_USD = Number(process.env.NEXT_PUBLIC_XLM_USD_PRICE) || 0.3;
+  const CETES_MXN = Number(process.env.NEXT_PUBLIC_CETES_MXN_PRICE) || 1.14;
+  const stellarAssetMxn = (code: string, bal: number): number => {
+    const c = code.toUpperCase();
+    if (c === "XLM") return bal * XLM_USD * usdMxn;
+    if (c === "CETES") return bal * CETES_MXN;
+    if (c === "USDC" || c === "USDT" || c === "USD" || c === "DAI") return bal * usdMxn;
+    if (c === "MXN" || c === "MXNB") return bal;
+    const p = mxnPriceOf(c);
+    return p != null ? bal * p : 0;
+  };
+  const stellarMxn = stellarAssets.reduce((s, a) => s + stellarAssetMxn(a.code, a.bal), 0);
+  // "Disponible" del hero = valor en MXN de los activos Stellar (no el MXNB de Arbitrum).
+  const pesos = realData ? stellarMxn : 48250.4;
   // Patrimonio = un solo dinero en dos estados: Disponible (líquido, no rinde) +
   // En bóveda (invertido, rinde). Co-denominados en MXN, por eso se suman aquí;
   // las divisas/activos Stellar viven aparte en "Otros activos" (otras unidades).
