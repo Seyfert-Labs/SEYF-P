@@ -20,7 +20,7 @@ const CETES_ANNUAL_RATE = 0.102;
 const CETES_STAGES = [
   { icon: "bank", title: "Depositando por SPEI", detail: "Recibiendo $300.00 MXN a tu CLABE" },
   { icon: "leaf", title: "Comprando CETES", detail: "Bonos soberanos · tasa ~10.2% anual" },
-  { icon: "vault", title: "Depositando en tu bóveda", detail: "Acreditando en tu ahorro" },
+  { icon: "bag", title: "Acreditando tus CETES", detail: "Quedan disponibles para tu bóveda" },
 ] as const;
 type CetesStatus = "idle" | "simulating" | "done" | "error";
 type FriendbotStatus = "idle" | "funding" | "done" | "error";
@@ -220,9 +220,9 @@ export function WelcomeBonus() {
               <Icon name="check" size={22} />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>$300 CETES activado</p>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>$300 en CETES disponibles</p>
               <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-                Se depositaron $300 MXN en CETES a tu bóveda.
+                Acreditados en tu cuenta, listos para tu bóveda.
               </p>
             </div>
             {/* Cuenta regresiva hasta que el bono vuelve a estar disponible */}
@@ -439,9 +439,9 @@ export function WelcomeBonus() {
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", paddingBottom: 30 }}>
             <div className="modal-grab" />
             <div style={{ fontSize: 52, margin: "6px 0 4px" }}>🎉</div>
-            <p className="modal-title" style={{ textAlign: "center" }}>¡Bono activado!</p>
+            <p className="modal-title" style={{ textAlign: "center" }}>¡CETES acreditados!</p>
             <p className="modal-sub" style={{ textAlign: "center" }}>
-              Se depositaron <b style={{ color: "var(--accent)" }}>$300.00 MXN</b> en CETES a tu bóveda de ahorro.
+              Tienes <b style={{ color: "var(--accent)" }}>$300.00 MXN</b> en CETES disponibles. Deposítalos en la bóveda que quieras cuando estés listo.
             </p>
             {/* Proyectado anual atractivo */}
             <div style={{
@@ -451,7 +451,7 @@ export function WelcomeBonus() {
             }}>
               <Icon name="trend" size={16} color="var(--accent)" />
               <span style={{ fontSize: 13, color: "var(--txt-muted)" }}>
-                Ganarás ~<b className="num" style={{ color: "var(--accent)" }}>${(BONUS_AMOUNT * CETES_ANNUAL_RATE).toFixed(2)}</b> al año <span style={{ opacity: .7 }}>(~10.2%)</span>
+                En tu bóveda ganarían ~<b className="num" style={{ color: "var(--accent)" }}>${(BONUS_AMOUNT * CETES_ANNUAL_RATE).toFixed(2)}</b> al año <span style={{ opacity: .7 }}>(~10.2%)</span>
               </span>
             </div>
             <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setCetesStatus("idle")}>Listo</button>
