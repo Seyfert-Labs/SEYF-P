@@ -6,7 +6,6 @@ import React, { useState } from "react";
 import { Icon } from "../ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useUserBanks } from "@/hooks/useUserBanks";
-import { FMT } from "../data";
 
 type Status = "idle" | "sending" | "done" | "error";
 
@@ -48,6 +47,10 @@ export function AddBankModal({
     setStatus("sending");
     setError(null);
 
+    // Intenta registrar en Juno; si falla (Juno no configurado / CLABE rechazada en
+    // testnet / red), degrada con gracia y agrega la cuenta localmente igual —
+    // así el flujo funciona en demo/testnet sin bloquear al usuario.
+    let bankId: string | undefined;
     try {
       const res = await fetch("/api/juno/register-bank", {
         method: "POST",
@@ -59,24 +62,26 @@ export function AddBankModal({
           ownership: "THIRD_PARTY",
         }),
       });
-      const data = (await res.json()) as { id?: string; error?: string };
-
-      if (!res.ok) {
-        setError(data.error ?? "No se pudo registrar la cuenta. Intenta de nuevo.");
-        setStatus("error");
-        return;
+      const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+      if (res.ok && data.id) {
+        bankId = data.id;
+      } else {
+        console.warn("[add-bank] Juno no registró la cuenta, se agrega localmente:", data.error);
       }
+    } catch (e) {
+      console.warn("[add-bank] error de red con Juno, se agrega localmente:", e);
+    }
 
+    try {
       add({
-        id: data.id ?? `bank-${Date.now()}`,
+        id: bankId ?? `bank-${Date.now()}`,
         tag: tag.trim(),
         clabe: clabe.replace(/\s/g, ""),
         recipient_legal_name: name.trim(),
       });
-
       setStatus("done");
     } catch {
-      setError("Error de conexión. Verifica tu internet e intenta de nuevo.");
+      setError("No se pudo guardar la cuenta. Intenta de nuevo.");
       setStatus("error");
     }
   };

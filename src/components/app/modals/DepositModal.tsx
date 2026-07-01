@@ -4,13 +4,9 @@
    Único método: SPEI (CLABE). El bloque "Simular depósito" solo aparece fuera de producción. */
 import React, { useState } from "react";
 import { Icon } from "../ui";
-import { useWallet } from "@/components/wallet/WalletContext";
-import { junoService } from "@/services/junoService";
-import { usePendingTxns } from "@/hooks/usePendingTxns";
-import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
+import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { ClabeCard } from "../ClabeCard";
 import { StellarAccountCard } from "../StellarAccountCard";
-import { FMT } from "../data";
 import { MoneyInput } from "../MoneyInput";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
@@ -22,29 +18,49 @@ export function DepositModal({
   onClose: () => void;
   onSuccess?: () => void;
 }) {
-  const wallet = useWallet();
-  const pending = usePendingTxns(wallet.address);
-  const limits = useMonthlyLimits(wallet.address);
+  const stellar = useSeyfStellarWallet();
+  const pk = stellar.publicKey ?? null;
 
   // Dev-only
   const [devAmt, setDevAmt] = useState("");
   const [devStatus, setDevStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [devError, setDevError] = useState<string | null>(null);
 
+  // Simula un depósito MXN → CETES vía el onramp de Etherfuse (no MXNB de Juno).
   const simulateDeposit = async () => {
     const n = Number(devAmt);
-    if (!wallet.address || n <= 0) return;
-    if (!limits.canDo("deposit", n)) {
-      setDevError(`Límite mensual alcanzado. Disponible: $${FMT(limits.remaining("deposit"), 2)}`);
+    if (n <= 0) return;
+    if (!pk) {
+      setDevError("Activa tu Cuenta Digital Stellar arriba para simular el depósito.");
       setDevStatus("error");
       return;
     }
     setDevStatus("sending");
     setDevError(null);
     try {
-      await junoService.fundWallet(wallet.address, n);
-      await limits.record("deposit", n);
-      pending.add("deposit", n);
+      const quoteRes = await fetch("/api/seyf/etherfuse/quote/onramp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceAmount: String(n), wallet: pk }),
+      });
+      const quoteData = await quoteRes.json().catch(() => ({}));
+      if (!quoteRes.ok) {
+        throw new Error(quoteData?.error?.message_es ?? quoteData?.error ?? "No se pudo cotizar el depósito");
+      }
+      const quoteId = quoteData?.quote?.quoteId ?? quoteData?.quote?.quote_id;
+      if (!quoteId) throw new Error("Etherfuse no devolvió quoteId");
+
+      const orderRes = await fetch("/api/seyf/etherfuse/order/onramp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quoteId, wallet: pk }),
+      });
+      const orderData = await orderRes.json().catch(() => ({}));
+      if (!orderRes.ok) {
+        const msg = orderData?.error?.message_es ?? orderData?.error ?? "No se pudo crear la orden";
+        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+      }
+
       onSuccess?.();
       setDevStatus("done");
       setTimeout(onClose, 1500);
@@ -77,7 +93,10 @@ export function DepositModal({
         {IS_DEV && (
           <>
             <div className="divider" style={{ marginTop: 22 }} />
-            <p className="eyebrow" style={{ marginBottom: 10 }}>Dev · Simular depósito</p>
+            <p className="eyebrow" style={{ marginBottom: 4 }}>Dev · Simular depósito (Etherfuse)</p>
+            <p style={{ margin: "0 0 10px", fontSize: 11, color: "var(--txt-dim)", lineHeight: 1.45 }}>
+              Corre el onramp de Etherfuse: MXN → compra de CETES a tu cuenta.
+            </p>
             <div style={{ display: "flex", gap: 8 }}>
               <MoneyInput
                 className="input num-input"
