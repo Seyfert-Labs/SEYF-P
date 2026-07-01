@@ -219,6 +219,44 @@ export async function fetchOrderDetails(orderId: string): Promise<unknown> {
   return json;
 }
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * SANDBOX: POST /ramp/order/fiat_received — simula la recepción del depósito MXN
+ * para que la orden onramp pase de `Unfunded` → procesada → completada y entregue
+ * los CETES on-chain. En producción NO existe (el pago SPEI real dispara el flujo).
+ *
+ * etherfuseFetch lanza en !res.ok; tratamos "already/funded/invalid status" como
+ * éxito idempotente (la orden ya fue procesada). Devuelve true si quedó confirmada.
+ * @see https://docs.etherfuse.com/sandbox-api/fiat-received
+ */
+export async function simulateFiatReceived(orderId: string): Promise<boolean> {
+  const attempts = 3;
+  for (let i = 0; i < attempts; i++) {
+    // Espera inicial para que Etherfuse registre la orden antes de simular el pago.
+    await sleep(i === 0 ? 1500 : 1000 * i);
+    try {
+      await etherfuseFetch("/ramp/order/fiat_received", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+        retryable: false,
+      });
+      return true;
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : String(e)).toLowerCase();
+      if (msg.includes("already") || msg.includes("funded") || msg.includes("invalid status")) {
+        return true; // ya procesada — idempotente
+      }
+      if (i === attempts - 1) {
+        console.warn("[etherfuse] fiat_received no completó:", msg.slice(0, 200));
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * POST /ramp/order/{order_id}/cancel — solo status `created`
  * @see https://docs.etherfuse.com/api-reference/orders/cancel-an-order

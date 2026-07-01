@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { extractOrderIdFromCreateOrderResponse } from "@/lib/etherfuse/order-create-response";
+import { simulateFiatReceived } from "@/lib/etherfuse/orders-api";
+import { isSandboxFiatReceivedProxyEnabled } from "@/lib/seyf/etherfuse-dev-panel";
 import { createMxOnrampOrderStellarResilient } from "@/lib/etherfuse/ramp-api";
 import { resolveMvpPartnerCryptoWalletId } from "@/lib/etherfuse/partner-accounts";
 import { acceptAllEtherfuseAgreements } from "@/lib/etherfuse/agreements";
@@ -148,9 +150,20 @@ export async function POST(req: Request) {
       }
     }
     const orderId = extractOrderIdFromCreateOrderResponse(order);
+
+    // Sandbox: simula la recepción del depósito MXN para que la orden pase de
+    // "Unfunded" → procesada → completada y entregue los CETES on-chain. En
+    // producción no aplica (el SPEI real dispara el flujo). Si falla, la orden
+    // queda creada y se puede reintentar.
+    let fiatConfirmed = false;
+    if (orderId && isSandboxFiatReceivedProxyEnabled()) {
+      fiatConfirmed = await simulateFiatReceived(orderId).catch(() => false);
+    }
+
     return NextResponse.json({
       order,
       ...(orderId ? { orderId } : {}),
+      fiatConfirmed,
       contextSource: ctx.source,
     });
   } catch (e) {
