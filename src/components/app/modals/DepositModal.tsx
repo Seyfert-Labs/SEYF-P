@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { Icon } from "../ui";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { useKycStatus } from "@/hooks/useKycStatus";
 import { ClabeCard } from "../ClabeCard";
 import { StellarAccountCard } from "../StellarAccountCard";
 import { MoneyInput } from "../MoneyInput";
@@ -19,6 +20,7 @@ export function DepositModal({
   onSuccess?: () => void;
 }) {
   const stellar = useSeyfStellarWallet();
+  const kyc = useKycStatus();
   const pk = stellar.publicKey ?? null;
 
   // Dev-only
@@ -38,27 +40,31 @@ export function DepositModal({
     setDevStatus("sending");
     setDevError(null);
     try {
-      const quoteRes = await fetch("/api/seyf/etherfuse/quote/onramp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceAmount: String(n), wallet: pk }),
-      });
-      const quoteData = await quoteRes.json().catch(() => ({}));
-      if (!quoteRes.ok) {
-        throw new Error(quoteData?.error?.message_es ?? quoteData?.error ?? "No se pudo cotizar el depósito");
-      }
-      const quoteId = quoteData?.quote?.quoteId ?? quoteData?.quote?.quote_id;
-      if (!quoteId) throw new Error("Etherfuse no devolvió quoteId");
+      // Onramp real de Etherfuse SOLO si el KYC está verificado (si no, el endpoint
+      // responde 403 "No encontramos tu verificación KYC"). Sin KYC → simulación pura.
+      if (kyc.verified) {
+        const quoteRes = await fetch("/api/seyf/etherfuse/quote/onramp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceAmount: String(n), wallet: pk }),
+        });
+        const quoteData = await quoteRes.json().catch(() => ({}));
+        if (!quoteRes.ok) {
+          throw new Error(quoteData?.error?.message_es ?? quoteData?.error ?? "No se pudo cotizar el depósito");
+        }
+        const quoteId = quoteData?.quote?.quoteId ?? quoteData?.quote?.quote_id;
+        if (!quoteId) throw new Error("Etherfuse no devolvió quoteId");
 
-      const orderRes = await fetch("/api/seyf/etherfuse/order/onramp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quoteId, wallet: pk }),
-      });
-      const orderData = await orderRes.json().catch(() => ({}));
-      if (!orderRes.ok) {
-        const msg = orderData?.error?.message_es ?? orderData?.error ?? "No se pudo crear la orden";
-        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+        const orderRes = await fetch("/api/seyf/etherfuse/order/onramp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quoteId, wallet: pk }),
+        });
+        const orderData = await orderRes.json().catch(() => ({}));
+        if (!orderRes.ok) {
+          const msg = orderData?.error?.message_es ?? orderData?.error ?? "No se pudo crear la orden";
+          throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+        }
       }
 
       onSuccess?.();
