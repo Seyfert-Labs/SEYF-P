@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { useKycStatus } from "@/hooks/useKycStatus";
 import { store } from "@/lib/store";
 import { Portal } from "./Portal";
 import { fundStellarWallet } from "@/lib/seyf/use-ensure-stellar-funding";
@@ -42,6 +43,7 @@ function fmtCountdown(ms: number): string {
 export function WelcomeBonus() {
   const wallet = useWallet();
   const stellar = useSeyfStellarWallet();
+  const kyc = useKycStatus();
 
   // --- CETES bonus state ---
   const [cetesStatus, setCetesStatus] = useState<CetesStatus>("idle");
@@ -146,7 +148,10 @@ export function WelcomeBonus() {
     setCetesStatus("simulating");
 
     // Dispara la compra real de Etherfuse en segundo plano (no bloquea la animación).
-    const realOrderPromise = pk ? runRealOnramp(pk) : Promise.resolve<string | undefined>(undefined);
+    // Solo si el KYC está verificado: sin eso el endpoint responde 403 y Chrome lo
+    // imprimiría en consola. Si no hay KYC, es simulación pura (igual queda activo).
+    const realOrderPromise =
+      pk && kyc.verified ? runRealOnramp(pk) : Promise.resolve<string | undefined>(undefined);
 
     try {
       // Recorre las etapas con un ritmo agradable. cetesStep = índice de la etapa
@@ -176,7 +181,7 @@ export function WelcomeBonus() {
     } finally {
       cetesStarted.current = false;
     }
-  }, [address, pk, cooldownUntil, runRealOnramp]);
+  }, [address, pk, cooldownUntil, kyc.verified, runRealOnramp]);
 
   // --- Friendbot claim ---
   const claimFriendbot = useCallback(async () => {
