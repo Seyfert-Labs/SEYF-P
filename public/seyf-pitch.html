@@ -76,7 +76,7 @@
     background:linear-gradient(160deg,rgba(139,92,246,.18),rgba(200,255,77,.10));
     border:1px solid var(--line-2);box-shadow:0 30px 80px -30px rgba(139,92,246,.6);
     animation:floaty 5s ease-in-out infinite}
-  .hero .mark svg{width:62px;height:auto}
+  .hero .mark svg,.hero .mark img{width:76px;height:auto}
   @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
   .hero h1{font-size:clamp(40px,8vw,100px);line-height:.98}
   .hero h1 .l1{color:var(--accent)} .hero h1 .l2{color:var(--txt)}
@@ -211,7 +211,7 @@
   .corner{position:fixed;top:22px;z-index:30;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
   .corner.l{left:30px} .corner.r{right:30px;font-weight:700}
   .corner .lg{display:flex;align-items:center;gap:9px;font-weight:800;color:var(--txt);font-size:16px}
-  .corner .lg svg{width:22px;height:auto}
+  .corner .lg svg,.corner .lg img{width:22px;height:auto}
   .dots{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:30;display:flex;gap:9px}
   .dots button{width:9px;height:9px;border-radius:50%;border:0;cursor:pointer;padding:0;background:var(--line-2);transition:all .3s}
   .dots button.on{background:var(--accent);width:24px;border-radius:6px;box-shadow:0 0 12px var(--accent-soft)}
@@ -237,7 +237,7 @@
   <div class="topbar"><div class="fill" id="fill"></div></div>
   <div class="corner l">
     <span class="lg">
-      <svg viewBox="0 0 344.5 396.0" aria-hidden="true"><g transform="translate(-94.6,-103.5)"><path fill="#8357F5" d="M168.0,475.1 L137.0,475.5 L130.0,474.3 L122.1,468.0 L118.7,458.0 L118.6,146.0 L120.0,139.0 L124.0,133.0 L129.0,129.6 L136.0,127.7 L182.0,127.5 L186.0,128.2 L187.6,130.0 L182.6,142.0 L181.5,149.0 L181.4,458.0 L180.3,464.0 L177.4,469.0 L173.0,473.0 L168.0,475.1 Z"/><path fill="#CDFC4A" d="M407.0,475.1 L356.0,475.4 L344.0,471.7 L331.7,459.0 L266.8,374.0 L262.0,371.7 L240.0,371.1 L233.0,366.4 L232.1,362.0 L235.0,356.6 L308.0,283.0 L313.0,283.1 L333.0,302.8 L337.0,303.7 L340.0,301.7 L341.5,294.0 L340.8,211.0 L338.0,205.1 L333.0,203.6 L244.0,204.4 L241.6,207.0 L242.1,211.0 L261.2,231.0 L262.6,234.0 L261.9,237.0 L206.4,293.0 L202.0,295.6 L197.0,294.7 L194.2,291.0 L193.5,286.0 L193.6,149.0 L196.6,139.0 L205.0,131.0 L218.0,127.6 L297.0,127.5 L313.0,128.9 L330.0,132.7 L351.0,141.3 L367.0,151.9 L379.0,162.7 L394.1,183.0 L404.5,206.0 L410.2,231.0 L411.3,253.0 L405.8,284.0 L397.2,306.0 L383.3,327.0 L367.0,343.2 L342.0,359.1 L339.9,363.0 L413.5,460.0 L415.1,465.0 L414.1,470.0 L411.6,473.0 L407.0,475.1 Z"/></g></svg>
+      <img src="/brand/seyf-symbol.svg" alt="SEYF" />
       SEYF
     </span>
     <span class="sub-h">· Lean Canvas</span>
@@ -250,7 +250,7 @@
     <section class="slide" data-name="Inicio">
       <div class="slide-inner hero">
         <div class="mark rv">
-          <svg viewBox="0 0 344.5 396.0" aria-hidden="true"><g transform="translate(-94.6,-103.5)"><path fill="#8357F5" d="M168.0,475.1 L137.0,475.5 L130.0,474.3 L122.1,468.0 L118.7,458.0 L118.6,146.0 L120.0,139.0 L124.0,133.0 L129.0,129.6 L136.0,127.7 L182.0,127.5 L186.0,128.2 L187.6,130.0 L182.6,142.0 L181.5,149.0 L181.4,458.0 L180.3,464.0 L177.4,469.0 L173.0,473.0 L168.0,475.1 Z"/><path fill="#CDFC4A" d="M407.0,475.1 L356.0,475.4 L344.0,471.7 L331.7,459.0 L266.8,374.0 L262.0,371.7 L240.0,371.1 L233.0,366.4 L232.1,362.0 L235.0,356.6 L308.0,283.0 L313.0,283.1 L333.0,302.8 L337.0,303.7 L340.0,301.7 L341.5,294.0 L340.8,211.0 L338.0,205.1 L333.0,203.6 L244.0,204.4 L241.6,207.0 L242.1,211.0 L261.2,231.0 L262.6,234.0 L261.9,237.0 L206.4,293.0 L202.0,295.6 L197.0,294.7 L194.2,291.0 L193.5,286.0 L193.6,149.0 L196.6,139.0 L205.0,131.0 L218.0,127.6 L297.0,127.5 L313.0,128.9 L330.0,132.7 L351.0,141.3 L367.0,151.9 L379.0,162.7 L394.1,183.0 L404.5,206.0 L410.2,231.0 L411.3,253.0 L405.8,284.0 L397.2,306.0 L383.3,327.0 L367.0,343.2 L342.0,359.1 L339.9,363.0 L413.5,460.0 L415.1,465.0 L414.1,470.0 L411.6,473.0 L407.0,475.1 Z"/></g></svg>
+          <img src="/brand/seyf-symbol.svg" alt="SEYF" />
         </div>
         <h1 class="display rv"><span class="l1">Cripto invisible.</span><br /><span class="l2">Banco de verdad.</span></h1>
         <p class="sub rv">Ahorro en pesos digitales que rinde — con la cara de tu app de banco.</p>
