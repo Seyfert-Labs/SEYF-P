@@ -37,34 +37,36 @@ export function DepositModal({
       setDevStatus("error");
       return;
     }
+    // Sin KYC no hay depósito: el onramp de Etherfuse lo exige.
+    if (!kyc.verified) {
+      setDevError("Completa tu verificación de identidad (KYC) en Perfil para depositar.");
+      setDevStatus("error");
+      return;
+    }
     setDevStatus("sending");
     setDevError(null);
     try {
-      // Onramp real de Etherfuse SOLO si el KYC está verificado (si no, el endpoint
-      // responde 403 "No encontramos tu verificación KYC"). Sin KYC → simulación pura.
-      if (kyc.verified) {
-        const quoteRes = await fetch("/api/seyf/etherfuse/quote/onramp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sourceAmount: String(n), wallet: pk }),
-        });
-        const quoteData = await quoteRes.json().catch(() => ({}));
-        if (!quoteRes.ok) {
-          throw new Error(quoteData?.error?.message_es ?? quoteData?.error ?? "No se pudo cotizar el depósito");
-        }
-        const quoteId = quoteData?.quote?.quoteId ?? quoteData?.quote?.quote_id;
-        if (!quoteId) throw new Error("Etherfuse no devolvió quoteId");
+      const quoteRes = await fetch("/api/seyf/etherfuse/quote/onramp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceAmount: String(n), wallet: pk }),
+      });
+      const quoteData = await quoteRes.json().catch(() => ({}));
+      if (!quoteRes.ok) {
+        throw new Error(quoteData?.error?.message_es ?? quoteData?.error ?? "No se pudo cotizar el depósito");
+      }
+      const quoteId = quoteData?.quote?.quoteId ?? quoteData?.quote?.quote_id;
+      if (!quoteId) throw new Error("Etherfuse no devolvió quoteId");
 
-        const orderRes = await fetch("/api/seyf/etherfuse/order/onramp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quoteId, wallet: pk }),
-        });
-        const orderData = await orderRes.json().catch(() => ({}));
-        if (!orderRes.ok) {
-          const msg = orderData?.error?.message_es ?? orderData?.error ?? "No se pudo crear la orden";
-          throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
-        }
+      const orderRes = await fetch("/api/seyf/etherfuse/order/onramp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quoteId, wallet: pk }),
+      });
+      const orderData = await orderRes.json().catch(() => ({}));
+      if (!orderRes.ok) {
+        const msg = orderData?.error?.message_es ?? orderData?.error ?? "No se pudo crear la orden";
+        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
 
       onSuccess?.();
