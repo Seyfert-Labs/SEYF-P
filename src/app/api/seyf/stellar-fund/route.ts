@@ -5,6 +5,8 @@ import { toErrorResponse } from '@/lib/seyf/api-error'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+// Friendbot puede reintentar + esperar propagación del ledger: damos margen.
+export const maxDuration = 30
 
 const bodySchema = z.object({
   publicKey: z.string().trim().min(56).max(56),

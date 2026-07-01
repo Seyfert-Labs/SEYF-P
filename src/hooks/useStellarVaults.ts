@@ -184,8 +184,15 @@ export function useStellarVaults(address?: string) {
       setBusy(true);
       try {
         // En testnet la wallet Pollar necesita XLM para pagar las fees de la firma.
-        // Idempotente: si ya tiene saldo, no vuelve a fondear.
-        await fundStellarWallet(publicKey);
+        // Idempotente: si ya tiene saldo, no vuelve a fondear. Si el fondeo falla
+        // (p. ej. friendbot rate-limited con muchas cuentas nuevas), abortamos con
+        // un mensaje claro en vez de dejar que DeFindex falle con "no fondos".
+        const funding = await fundStellarWallet(publicKey);
+        if (!funding.ok) {
+          throw new Error(
+            `No pudimos fondear tu wallet con XLM de prueba (${funding.error}). Espera unos segundos e intenta de nuevo.`,
+          );
+        }
 
         const url = delta > 0 ? "/api/defindex/deposit" : "/api/defindex/withdraw";
         const body =

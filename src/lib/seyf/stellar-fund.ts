@@ -68,9 +68,64 @@ export type FundResult = {
   message: string
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * Llama a Friendbot con reintentos. El friendbot oficial de testnet rate-limitea
+ * (429/503) cuando muchas cuentas nuevas lo golpean a la vez — típico al compartir
+ * la app para pruebas. Reintentamos con backoff en errores transitorios.
+ * Devuelve 'funded' | 'exists' (cuenta ya existía) | lanza en fallo definitivo.
+ */
+async function callFriendbot(friendbotUrl: string, publicKey: string): Promise<'funded' | 'exists'> {
+  const attempts = 3
+  let lastErr = ''
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`${friendbotUrl}/?addr=${encodeURIComponent(publicKey)}`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(9_000),
+      })
+      if (res.ok) return 'funded'
+      const body = await res.text().catch(() => '')
+      // La cuenta ya existe on-chain: no es un fallo real.
+      if (/op_already_exists|already.*funded|exists/i.test(body)) return 'exists'
+      // Rate limit / errores de servidor → transitorio, reintenta.
+      if (res.status === 429 || res.status >= 500) {
+        lastErr = `Friendbot ${res.status}`
+        await sleep(700 * (i + 1))
+        continue
+      }
+      throw new Error(`Friendbot respondió ${res.status}: ${body.slice(0, 200)}`)
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e)
+      if (i === attempts - 1) break
+      await sleep(700 * (i + 1))
+    }
+  }
+  throw new Error(`Friendbot no respondió tras ${attempts} intentos: ${lastErr}`)
+}
+
+/**
+ * Espera a que la cuenta propague en Horizon con XLM suficiente. Friendbot crea la
+ * cuenta pero el ledger puede tardar 1-2s en indexarla; sin esta espera, la
+ * simulación del depósito DeFindex corre contra una cuenta "inexistente" y falla
+ * con "no fondos" aunque acabe de fondearse.
+ */
+async function waitForFundedAccount(publicKey: string, timeoutMs = 9_000): Promise<number | null> {
+  const start = Date.now()
+  let xlm: number | null = null
+  while (Date.now() - start < timeoutMs) {
+    xlm = await getAccountXlm(publicKey).catch(() => null)
+    if (xlm != null && xlm >= MIN_XLM) return xlm
+    await sleep(1000)
+  }
+  return xlm
+}
+
 /**
  * Garantiza que la wallet Pollar tenga XLM para pagar fees.
- * - Cuenta inexistente en testnet → Friendbot la crea con 10,000 XLM.
+ * - Cuenta inexistente en testnet → Friendbot la crea con 10,000 XLM (con reintentos).
+ * - Tras fondear, espera a que propague en el ledger antes de devolver.
  * - Cuenta ya fondeada → no hace nada (idempotente).
  * - Mainnet → no aplica (Friendbot no existe).
  */
@@ -98,29 +153,24 @@ export async function ensureFunded(publicKey: string): Promise<FundResult> {
     }
   }
 
-  // Friendbot crea la cuenta (si no existe) con 10,000 XLM. Si ya existe pero con
-  // saldo bajo, devuelve op_already_exists — lo tratamos como no-fatal.
-  const res = await fetch(`${friendbotUrl}/?addr=${encodeURIComponent(publicKey)}`, {
-    method: 'GET',
-  })
+  const outcome = await callFriendbot(friendbotUrl, publicKey)
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    // Cuenta ya existente: Friendbot no puede re-crearla, pero no es un fallo real.
-    if (/op_already_exists|already.*funded|exists/i.test(body)) {
-      const xlm = await getAccountXlm(publicKey).catch(() => current)
-      return {
-        network,
-        funded: false,
-        alreadyFunded: true,
-        xlm,
-        message: 'La cuenta ya existe on-chain.',
-      }
+  if (outcome === 'exists') {
+    const xlm = await getAccountXlm(publicKey).catch(() => current)
+    return {
+      network,
+      funded: false,
+      alreadyFunded: true,
+      xlm,
+      message: 'La cuenta ya existe on-chain.',
     }
-    throw new Error(`Friendbot respondió ${res.status}: ${body.slice(0, 200)}`)
   }
 
-  const xlm = await getAccountXlm(publicKey).catch(() => null)
+  // Espera propagación para que operaciones posteriores (depósito) vean el saldo.
+  const xlm = await waitForFundedAccount(publicKey)
+  if (xlm == null || xlm < MIN_XLM) {
+    throw new Error('La wallet se fondeó pero el ledger aún no la refleja. Reintenta en unos segundos.')
+  }
   return {
     network,
     funded: true,
