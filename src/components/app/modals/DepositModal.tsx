@@ -9,6 +9,7 @@ import { junoService } from "@/services/junoService";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
 import { ClabeCard } from "../ClabeCard";
+import { StellarAccountCard } from "../StellarAccountCard";
 import { FMT } from "../data";
 import { MoneyInput } from "../MoneyInput";
 
@@ -68,6 +69,9 @@ export function DepositModal({
           <span className="chip"><Icon name="clock" size={12} /> ~15 minutos</span>
           <span className="chip"><Icon name="info" size={12} /> Mínimo $500 MXN</span>
         </div>
+
+        {/* ── Cuenta digital Stellar (recibir activos on-chain) ── */}
+        <StellarAccountCard />
 
         {/* ── Dev: simular depósito ── */}
         {IS_DEV && (

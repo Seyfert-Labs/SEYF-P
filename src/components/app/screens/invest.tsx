@@ -1119,7 +1119,7 @@ export function ScreenConvert({ go }: { go: Go }) {
         <button
           className="btn btn-primary"
           style={{ marginTop: 14 }}
-          disabled={sameAsset || amt <= 0 || status === "sending" || availableFrom <= 0 || result == null}
+          disabled={sameAsset || amt <= 0 || status === "sending" || quoting || availableFrom + 1e-9 < amt}
           onClick={doSwap}
         >
           {status === "sending" ? <span className="spin" /> : <><Icon name="swap" size={18} /> Convertir {amt > 0 ? `${FMT(amt, from?.decimals ?? 7)} ${from?.code}` : ""}</>}

@@ -44,6 +44,14 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
   const [activateError, setActivateError] = useState<string | null>(null);
   const resolverRef = useRef<((ok: boolean) => void) | null>(null);
   const activationDoneRef = useRef(false);
+  // Ref al hook Stellar para leer getClient en el momento de la activación sin
+  // meterlo en las deps del effect (su identidad cambia por render y disparaba
+  // el cleanup a mitad de la activación → quedaba pasmado en "Activando…").
+  const stellarRef = useRef(stellar);
+  // Sincroniza fuera de render (no se pueden escribir refs durante el render).
+  useEffect(() => {
+    stellarRef.current = stellar;
+  });
 
   const ensureConnected = useCallback(
     (label?: string): Promise<boolean> => {
@@ -66,6 +74,9 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
   );
 
   // Tras OTP: esperar token + wallet en Pollar antes de abrir el modal de abono.
+  // Deps SOLO [open, connected]: getClient se lee vía stellarRef y el publicKey se
+  // resuelve con waitForPollarSession, así ni la identidad de getClient ni la
+  // re-derivación de publicKey re-disparan el effect a mitad de la activación.
   useEffect(() => {
     if (!open || !connected || activationDoneRef.current) return;
     let cancelled = false;
@@ -75,33 +86,36 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         // Usa el publicKey que RESUELVE la sesión, no stellar.publicKey del hook:
-        // en cuentas nuevas el hook aún no re-derivó el publicKey en este render,
-        // y como activationDoneRef bloquea el re-run, el fondeo se saltaría y la
-        // cuenta nunca se crearía en el ledger (sin create_account → "no fondos").
-        const { publicKey } = await waitForPollarSession(stellar.getClient, { timeoutMs: 20_000 });
+        // en cuentas nuevas el hook aún no re-derivó el publicKey en este render.
+        const { publicKey } = await waitForPollarSession(stellarRef.current.getClient, { timeoutMs: 20_000 });
+        // Fondea la wallet con XLM (testnet) para pagar fees de firmas (trustline,
+        // depósitos). Idempotente y NO debe bloquear la activación: si friendbot
+        // tarda o falla, seguimos — el depósito reintenta el fondeo más adelante.
+        if (publicKey) {
+          await Promise.race([
+            fundStellarWallet(publicKey).catch(() => {}),
+            new Promise<void>((r) => setTimeout(r, 6_000)),
+          ]);
+        }
         if (cancelled) return;
-        // Fondea la wallet con XLM (testnet) para que pueda pagar las fees de las
-        // firmas (trustline, depósitos a bóvedas). Idempotente y no bloqueante:
-        // si falla, el depósito reintenta el fondeo más adelante.
-        if (publicKey) await fundStellarWallet(publicKey);
-        if (cancelled) return;
+        setActivating(false);
         resolverRef.current?.(true);
         resolverRef.current = null;
         setOpen(false);
       } catch (e) {
-        if (cancelled) return;
+        // Permite reintentar (el ref no queda trabado si algo falla).
         activationDoneRef.current = false;
+        if (cancelled) return;
+        setActivating(false);
         setActivateError(e instanceof Error ? e.message : "No se pudo activar tu wallet Stellar");
         resolverRef.current?.(false);
         resolverRef.current = null;
-      } finally {
-        if (!cancelled) setActivating(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, connected, stellar.getClient, stellar.publicKey]);
+  }, [open, connected]);
 
   const cancel = () => {
     resolverRef.current?.(false);

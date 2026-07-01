@@ -133,7 +133,9 @@ export async function fetchEtherfuseKycStatus(
   | { ok: false; reason: "invalid_body" }
 > {
   const path = `/ramp/customer/${encodeURIComponent(customerId)}/kyc`;
-  const res = await etherfuseFetch(path, { method: "GET" });
+  // throwOnError:false → recibimos la Response cruda para tratar 404 como "not found"
+  // (customer inexistente en esta org) sin que etherfuseFetch lance AppError.
+  const res = await etherfuseFetch(path, { method: "GET", throwOnError: false });
   const { json, text } = await etherfuseReadBody<KycApiBody>(res);
 
   if (res.status === 404) {
