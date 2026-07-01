@@ -74,6 +74,7 @@ export function WelcomeBonus() {
   const pk = stellar.publicKey ?? null;
 
   // Carga el cooldown persistido para esta wallet (si sigue vigente).
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!address) { setCooldownUntil(null); return; }
     try {
@@ -82,6 +83,7 @@ export function WelcomeBonus() {
       setCooldownUntil(Number.isFinite(ts) && ts > Date.now() ? ts : null);
     } catch { setCooldownUntil(null); }
   }, [address]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Ticker de 1s solo mientras hay cooldown activo; al expirar, el bono vuelve a estar disponible.
   useEffect(() => {
@@ -114,6 +116,7 @@ export function WelcomeBonus() {
     } catch { setFbXlm(null); }
   }, [pk]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void checkXlm(); }, [checkXlm]);
 
   // --- Onramp real de Etherfuse (best-effort, corre en segundo plano) ---
@@ -160,21 +163,28 @@ export function WelcomeBonus() {
     const realOrderPromise =
       pk && kyc.verified ? runRealOnramp(pk) : Promise.resolve<string | undefined>(undefined);
 
+    // El onramp real corre en segundo plano; cuando termine, guarda el orderId sin
+    // bloquear la UI. La animación NO debe esperar a Etherfuse (que ahora incluye
+    // fiat_received y puede tardar unos segundos aunque ya se aprobó el KYC).
+    void realOrderPromise
+      .then((orderId) => { if (orderId) return store.setBonus(address, BONUS_AMOUNT, orderId); })
+      .catch(() => {});
+
     try {
-      // Recorre las etapas con un ritmo agradable. cetesStep = índice de la etapa
-      // activa; una etapa i queda "completada" cuando cetesStep > i.
-      await wait(450);
+      // Recorre las etapas con un ritmo ágil. cetesStep = índice de la etapa activa;
+      // una etapa i queda "completada" cuando cetesStep > i.
+      await wait(350);
       for (let i = 0; i < CETES_STAGES.length; i++) {
         if (!mountedRef.current) return;
         setCetesStep(i);
-        await wait(i === CETES_STAGES.length - 1 ? 900 : 1250);
+        await wait(i === CETES_STAGES.length - 1 ? 650 : 850);
       }
       if (!mountedRef.current) return;
       setCetesStep(CETES_STAGES.length); // todas completadas
-      await wait(500);
+      await wait(350);
 
-      const orderId = await realOrderPromise; // ya suele estar resuelta; best-effort
-      await store.setBonus(address, BONUS_AMOUNT, orderId);
+      // Persiste y completa YA (no espera al onramp real de arriba).
+      await store.setBonus(address, BONUS_AMOUNT);
       if (!mountedRef.current) return;
       // Inicia el cooldown de 3 h (persistido por wallet).
       const until = Date.now() + CETES_COOLDOWN_MS;
