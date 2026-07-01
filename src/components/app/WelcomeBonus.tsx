@@ -8,7 +8,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "./ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
-import { useKycStatus } from "@/hooks/useKycStatus";
 import { store } from "@/lib/store";
 import { Portal } from "./Portal";
 import { fundStellarWallet } from "@/lib/seyf/use-ensure-stellar-funding";
@@ -25,17 +24,31 @@ const CETES_STAGES = [
 type CetesStatus = "idle" | "simulating" | "done" | "error";
 type FriendbotStatus = "idle" | "funding" | "done" | "error";
 
+/** El bono CETES siempre está disponible, pero con cooldown de 3 horas entre activaciones. */
+const CETES_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+const cetesCooldownKey = (addr: string) => `seyf_cetes_bonus_until_${addr}`;
+
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** "2h 59m 58s" a partir de milisegundos restantes. */
+function fmtCountdown(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+}
 
 export function WelcomeBonus() {
   const wallet = useWallet();
   const stellar = useSeyfStellarWallet();
-  const kyc = useKycStatus();
 
   // --- CETES bonus state ---
   const [cetesStatus, setCetesStatus] = useState<CetesStatus>("idle");
   const [cetesError, setCetesError] = useState<string | null>(null);
-  const [cetesClaimed, setCetesClaimed] = useState<boolean | null>(null);
+  // Cooldown: timestamp (ms) en que el bono vuelve a estar disponible; null = disponible ya.
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   // Etapa actual del simulador (0..CETES_STAGES.length). Igual a N = las N primeras completadas.
   const [cetesStep, setCetesStep] = useState(0);
   const cetesStarted = useRef(false);
@@ -51,15 +64,29 @@ export function WelcomeBonus() {
   const address = wallet.address ?? stellar.publicKey ?? null;
   const pk = stellar.publicKey ?? null;
 
+  // Carga el cooldown persistido para esta wallet (si sigue vigente).
   useEffect(() => {
-    let active = true;
-    (async () => {
-      if (!address) { setCetesClaimed(null); return; }
-      const done = await store.getBonus(address);
-      if (active) setCetesClaimed(done);
-    })();
-    return () => { active = false; };
+    if (!address) { setCooldownUntil(null); return; }
+    try {
+      const raw = localStorage.getItem(cetesCooldownKey(address));
+      const ts = raw ? Number(raw) : NaN;
+      setCooldownUntil(Number.isFinite(ts) && ts > Date.now() ? ts : null);
+    } catch { setCooldownUntil(null); }
   }, [address]);
+
+  // Ticker de 1s solo mientras hay cooldown activo; al expirar, el bono vuelve a estar disponible.
+  useEffect(() => {
+    if (cooldownUntil == null) return;
+    const id = setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      if (n >= cooldownUntil) setCooldownUntil(null);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldownUntil]);
+
+  const cetesRemaining = cooldownUntil != null ? Math.max(0, cooldownUntil - now) : 0;
+  const cetesInCooldown = cetesRemaining > 0;
 
   // Checa saldo XLM on-chain
   const checkXlm = useCallback(async () => {
@@ -111,6 +138,8 @@ export function WelcomeBonus() {
   // --- CETES claim: simulación visual por etapas + onramp real de fondo ---
   const claimCetes = useCallback(async () => {
     if (!address || cetesStarted.current) return;
+    // El bono siempre está activo, pero respeta el cooldown de 3 h.
+    if (cooldownUntil != null && cooldownUntil > Date.now()) return;
     cetesStarted.current = true;
     setCetesError(null);
     setCetesStep(0);
@@ -135,7 +164,10 @@ export function WelcomeBonus() {
       const orderId = await realOrderPromise; // ya suele estar resuelta; best-effort
       await store.setBonus(address, BONUS_AMOUNT, orderId);
       if (!mountedRef.current) return;
-      setCetesClaimed(true);
+      // Inicia el cooldown de 3 h (persistido por wallet).
+      const until = Date.now() + CETES_COOLDOWN_MS;
+      try { localStorage.setItem(cetesCooldownKey(address), String(until)); } catch {}
+      setCooldownUntil(until);
       setCetesStatus("done");
     } catch (e) {
       if (!mountedRef.current) return;
@@ -144,7 +176,7 @@ export function WelcomeBonus() {
     } finally {
       cetesStarted.current = false;
     }
-  }, [address, pk, runRealOnramp]);
+  }, [address, pk, cooldownUntil, runRealOnramp]);
 
   // --- Friendbot claim ---
   const claimFriendbot = useCallback(async () => {
@@ -163,17 +195,6 @@ export function WelcomeBonus() {
     }
   }, [pk, checkXlm]);
 
-  const canClaimCetes =
-    wallet.enabled &&
-    wallet.authenticated &&
-    stellar.enabled &&
-    stellar.authenticated &&
-    !!pk &&
-    kyc.enabled &&
-    !kyc.loading &&
-    kyc.verified &&
-    cetesClaimed === false;
-
   // Mostrar sección si hay stellar autenticado O wallet autenticado
   const hasAuth = (stellar.enabled && stellar.authenticated && !!pk) || wallet.authenticated;
   if (!hasAuth) return null;
@@ -183,8 +204,8 @@ export function WelcomeBonus() {
       <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Bonos de bienvenida</p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* ── Bono CETES $300 ── */}
-        {cetesClaimed ? (
+        {/* ── Bono CETES $300 — siempre disponible, con cooldown de 3 h ── */}
+        {cetesInCooldown ? (
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <span style={{
               width: 44, height: 44, borderRadius: 13, flexShrink: 0,
@@ -199,16 +220,19 @@ export function WelcomeBonus() {
                 Se depositaron $300 MXN en CETES a tu bóveda.
               </p>
             </div>
-            {/* Prueba: reactivar aunque ya esté reclamado (vuelve a correr el onramp Etherfuse). */}
-            <button
-              onClick={() => { cetesStarted.current = false; void claimCetes(); }}
-              disabled={cetesStatus !== "idle"}
-              style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 10, background: "var(--surface-2)", color: "var(--txt-muted)", border: "1px solid var(--line)", fontWeight: 700, fontSize: 12, cursor: cetesStatus === "idle" ? "pointer" : "default" }}
-            >
-              Reactivar
-            </button>
+            {/* Cuenta regresiva hasta que el bono vuelve a estar disponible */}
+            <span style={{
+              flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 11px", borderRadius: 10,
+              background: "var(--surface-2)", border: "1px solid var(--line)",
+            }}>
+              <Icon name="clock" size={13} color="var(--txt-muted)" />
+              <span className="num" style={{ fontWeight: 800, fontSize: 12, color: "var(--txt-muted)", fontVariantNumeric: "tabular-nums" }}>
+                {fmtCountdown(cetesRemaining)}
+              </span>
+            </span>
           </div>
-        ) : canClaimCetes ? (
+        ) : (
           <div className="card" style={{
             display: "flex", alignItems: "center", gap: 14,
             border: "1px solid var(--accent)", background: "var(--accent-soft)",
@@ -240,23 +264,7 @@ export function WelcomeBonus() {
               Activar
             </button>
           </div>
-        ) : cetesClaimed === false ? (
-          <div className="card" style={{ display: "flex", alignItems: "center", gap: 14, opacity: 0.7 }}>
-            <span style={{
-              width: 44, height: 44, borderRadius: 13, flexShrink: 0,
-              background: "var(--surface-2)", border: "1px solid var(--line)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <Icon name="lock" size={20} color="var(--txt-muted)" />
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>$300 en CETES gratis</p>
-              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-                Verifica tu identidad para activar este bono.
-              </p>
-            </div>
-          </div>
-        ) : null}
+        )}
 
         {/* ── Bono Friendbot (XLM testnet) ── */}
         {stellar.enabled && stellar.authenticated && pk && (

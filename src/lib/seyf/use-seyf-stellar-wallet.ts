@@ -97,35 +97,65 @@ export function useSeyfStellarWallet() {
   const [error, setError] = useState<string | null>(null)
   const codeSentRef = useRef(false)
 
-  // Refleja el estado de auth de Pollar (driven por el cliente headless).
+  // getClient de usePollar() cambia de identidad en cada render; lo leemos vía ref
+  // para NO meterlo en las deps del effect de suscripción (evita re-suscripciones).
+  const getClientRef = useRef(getClient)
+  useEffect(() => {
+    getClientRef.current = getClient
+  })
+
+  // Suscripción ÚNICA al estado de auth de Pollar. Antes dependía de `getClient`,
+  // cuya identidad cambia por render → se re-suscribía en cada render, acumulando
+  // listeners que disparaban todos a la vez (flood de "auth state → authenticated").
+  // Ahora: una sola suscripción (con reintento hasta que el client esté listo) y
+  // deduplicación por `step` para no reprocesar/loguear el mismo estado.
   useEffect(() => {
     let unsub: (() => void) | undefined
-    try {
-      const client = getClient()
+    let cancelled = false
+    let retry: ReturnType<typeof setTimeout> | undefined
+    let lastStep: string | null = null
+
+    const onState = (s: AuthState) => {
+      if (lastStep === s.step && s.step !== 'error') return
+      lastStep = s.step
+      if (process.env.NODE_ENV === 'development') {
+        console.info('[SEYF·OTP] auth state →', s.step)
+      }
+      setPhase(phaseFromAuth(s.step))
+      if (s.step === 'entering_code') codeSentRef.current = true
+      if (s.step === 'error') setError(translatePollarError(s))
+      else setError(null)
+    }
+
+    const subscribe = () => {
+      if (cancelled) return
+      let client: ReturnType<typeof getClient> | null = null
+      try {
+        client = getClientRef.current()
+      } catch {
+        client = null
+      }
+      if (!client) {
+        // El client aún no está listo — reintenta sin re-montar el effect.
+        retry = setTimeout(subscribe, 400)
+        return
+      }
       const initial = client.getAuthState()
+      lastStep = initial.step
       setPhase(phaseFromAuth(initial.step))
       if (initial.step === 'entering_code' || initial.step === 'verifying_email_code') {
         codeSentRef.current = true
       }
-      unsub = client.onAuthStateChange((s) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[SEYF·OTP] auth state →', s.step, s)
-        }
-        setPhase(phaseFromAuth(s.step))
-        if (s.step === 'entering_code') codeSentRef.current = true
-        if (s.step === 'error') {
-          setError(translatePollarError(s))
-        } else {
-          setError(null)
-        }
-      })
-    } catch (e) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[SEYF·OTP] getClient() no disponible aún:', e)
-      }
+      unsub = client.onAuthStateChange(onState)
     }
-    return () => unsub?.()
-  }, [getClient])
+
+    subscribe()
+    return () => {
+      cancelled = true
+      if (retry) clearTimeout(retry)
+      unsub?.()
+    }
+  }, [])
 
   const publicKey = useMemo(() => {
     if (!walletAddress) return null
