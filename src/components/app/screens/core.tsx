@@ -10,6 +10,7 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useConversions, type Conversion } from "@/hooks/useConversions";
+import { useStellarTxns, type StellarOperation } from "@/hooks/useStellarTxns";
 import { assetByCode } from "@/lib/bitso/assets";
 import { useVaultsRail } from "@/hooks/useVaultsRail";
 import { useKycStatus } from "@/hooks/useKycStatus";
@@ -31,6 +32,7 @@ import { OnboardingHero } from "../OnboardingHero";
 import { CurrencyTicker } from "../CurrencyTicker";
 import { SEYF_VAULTS_ADDRESS, SEYF_ADVANCE_ADDRESS } from "@/lib/chain";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { stellarTxExplorerUrl as stellarExplorerTxUrl } from "@/lib/etherfuse/stellar-tx-url";
 import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
 
 /* ---------------- ONBOARDING ---------------- */
@@ -148,6 +150,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const wallet = useWallet();
   const stellar = useSeyfStellarWallet();
   const homeTxns = useOnchainTxns(wallet.address);
+  const stellarTxns = useStellarTxns(stellar.publicKey ?? undefined);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
   // Riel correcto (Stellar/DeFindex o EVM) para que "En bóveda" del home coincida
@@ -322,8 +325,8 @@ export function ScreenHome({ go }: { go: Go }) {
         </div>
         <div className="card" style={{ padding: "4px 18px" }}>
           {realData ? (
-            pend.pending.length === 0 && conv.conversions.length === 0 && homeTxns.txns.length === 0 ? (
-              homeTxns.loading ? (
+            pend.pending.length === 0 && conv.conversions.length === 0 && homeTxns.txns.length === 0 && stellarTxns.ops.length === 0 ? (
+              (homeTxns.loading || stellarTxns.loading) ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}>
                   <span className="spin" style={{ color: "var(--accent)" }} />
                 </div>
@@ -335,7 +338,7 @@ export function ScreenHome({ go }: { go: Go }) {
             ) : (
               <div className="list">
                 {pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
-                {mergeRecent(conv.conversions.filter((c) => !pend.pending.some((p) => p.ref === c.id)), homeTxns.txns, go, 3)}
+                {mergeRecent(conv.conversions.filter((c) => !pend.pending.some((p) => p.ref === c.id)), homeTxns.txns, stellarTxns.ops, go, 3)}
               </div>
             )
           ) : (
@@ -361,8 +364,8 @@ export function ScreenHome({ go }: { go: Go }) {
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} /></Portal>}
-      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
+      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} /></Portal>}
+      {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
       {modal === "advance" && (
         <Portal>
           <LiquidityAdvanceModal
@@ -391,16 +394,26 @@ function AcctRow({ go, to, ic, nm, su, vl, series }: { go: Go; to: Parameters<Go
   );
 }
 
-/* Fusiona conversiones (Bitso) + transferencias on-chain en una lista ordenada
-   por fecha (más reciente primero). Las conversiones viven off-chain, por eso
-   se intercalan aquí en lugar de venir del feed on-chain. */
-function mergeRecent(conversions: Conversion[], onchain: OnchainTransfer[], go?: Go, limit?: number) {
+/* Fusiona conversiones (Bitso) + transferencias on-chain (Arbitrum + Stellar)
+   en una lista ordenada por fecha (más reciente primero). */
+function mergeRecent(
+  conversions: Conversion[],
+  onchain: OnchainTransfer[],
+  stellarOps: StellarOperation[],
+  go?: Go,
+  limit?: number,
+) {
   const rows: { key: string; ts: number; node: React.ReactNode }[] = [
     ...conversions.map((c) => ({ key: c.id, ts: c.createdAt, node: <ConvTxnRow key={c.id} c={c} /> })),
     ...onchain.map((t, i) => ({
       key: `oc_${i}`,
       ts: t.timestamp || 0,
       node: <TxnRow key={`oc_${i}`} t={onchainToRow(t, i)} go={go} />,
+    })),
+    ...stellarOps.map((op) => ({
+      key: `st_${op.id}`,
+      ts: op.createdAt,
+      node: <TxnRow key={`st_${op.id}`} t={stellarOpToRow(op)} go={go} />,
     })),
   ];
   rows.sort((a, b) => b.ts - a.ts);
@@ -448,9 +461,62 @@ function onchainToRow(t: OnchainTransfer, i: number): Txn {
   };
 }
 
+function stellarOpToRow(op: StellarOperation): Txn {
+  const pos = op.direction === "in";
+  const isSwap = op.type === "path_payment_strict_send" || op.type === "path_payment_strict_receive";
+  const isTrust = op.type === "change_trust";
+  const isCreate = op.type === "create_account";
+
+  let nm: string, ic: string, tint: Txn["tint"];
+  if (isSwap) {
+    nm = `${op.sourceAsset ?? "?"} → ${op.asset}`;
+    ic = "swap";
+    tint = "swap";
+  } else if (isTrust) {
+    nm = `Trustline ${op.asset}`;
+    ic = "shield";
+    tint = "neutral";
+  } else if (isCreate) {
+    nm = pos ? "Cuenta creada" : "Fondeo de cuenta";
+    ic = pos ? "in" : "send";
+    tint = pos ? "pos" : "neutral";
+  } else if (pos) {
+    nm = `${op.asset} recibido`;
+    ic = "in";
+    tint = "pos";
+  } else {
+    nm = `${op.asset} enviado`;
+    ic = "send";
+    tint = "neutral";
+  }
+
+  const amt = isSwap
+    ? (pos ? op.amount : -(op.sourceAmount ?? op.amount))
+    : (pos ? op.amount : -op.amount);
+
+  return {
+    id: Number(op.id.slice(-6)) || 0,
+    nm,
+    su: op.createdAt
+      ? new Date(op.createdAt).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "Stellar",
+    amt,
+    cur: isSwap ? (pos ? op.asset : (op.sourceAsset ?? op.asset)) : op.asset,
+    ic,
+    pos: pos || (isSwap && op.direction === "self"),
+    tint,
+    hash: op.txHash,
+    fromAddr: op.from,
+    toAddr: op.to,
+    blockNumber: op.ledger ? `L${op.ledger}` : undefined,
+  };
+}
+
 export function ScreenWallet({ go }: { go: Go }) {
   const wallet = useWallet();
+  const stellar = useSeyfStellarWallet();
   const { txns: onchainTxns, loading: loadingTxns, refresh: refreshTxns } = useOnchainTxns(wallet.address);
+  const stellarTxns = useStellarTxns(stellar.publicKey ?? undefined);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
   const [modal, setModal] = useState<null | "deposit" | "send">(null);
@@ -465,7 +531,7 @@ export function ScreenWallet({ go }: { go: Go }) {
   const shown = realMode ? wallet.balance : 48250.4;
   const refreshBal = wallet.refreshBalance;
 
-  const onSuccess = () => { void refreshBal(); void refreshTxns(); };
+  const onSuccess = () => { void refreshBal(); void refreshTxns(); void stellarTxns.refresh(); };
 
   return (
     <div className="screen screen-enter">
@@ -508,15 +574,17 @@ export function ScreenWallet({ go }: { go: Go }) {
 
         <div className="sec-head" style={{ marginTop: realMode ? 26 : undefined }}><h3>Movimientos</h3><span className="link" onClick={() => onSuccess()}>Actualizar</span></div>
         <div className="card" style={{ padding: "4px 18px" }}>
-          {realMode && pend.pending.length === 0 && conv.conversions.length === 0 && loadingTxns && onchainTxns.length === 0 ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
-          ) : realMode && pend.pending.length === 0 && conv.conversions.length === 0 && onchainTxns.length === 0 ? (
-            <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>Aún no tienes movimientos.</p>
+          {realMode && pend.pending.length === 0 && conv.conversions.length === 0 && onchainTxns.length === 0 && stellarTxns.ops.length === 0 ? (
+            (loadingTxns || stellarTxns.loading) ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}><span className="spin" style={{ color: "var(--accent)" }} /></div>
+            ) : (
+              <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>Aún no tienes movimientos.</p>
+            )
           ) : (
             <div className="list">
               {realMode && pend.pending.map((p) => <PendingTxnRow key={p.id} p={p} />)}
               {realMode
-                ? mergeRecent(conv.conversions.filter((c) => !pend.pending.some((p) => p.ref === c.id)), onchainTxns, go)
+                ? mergeRecent(conv.conversions.filter((c) => !pend.pending.some((p) => p.ref === c.id)), onchainTxns, stellarTxns.ops, go)
                 : TXNS.map((t) => <TxnRow key={t.id} t={t} go={go} />)}
             </div>
           )}
@@ -742,19 +810,40 @@ export function ScreenTxnDetail({ go, ctx }: { go: Go; ctx: unknown }) {
 
         {/* ── Información del movimiento ── */}
         {(() => {
+          const isStellar = t.fromAddr?.startsWith("G") || t.toAddr?.startsWith("G");
+          const isLedger = t.blockNumber?.startsWith("L");
           const rows: { label: string; value: string; mono?: boolean }[] = [
             { label: "Tipo", value: pos ? "Entrada" : "Salida" },
             { label: "Divisa", value: cur },
-            ...(t.fromAddr ? [{ label: "De", value: shortHex(t.fromAddr), mono: true }] : []),
-            ...(t.toAddr ? [{ label: "Para", value: shortHex(t.toAddr), mono: true }] : []),
-            ...(t.blockNumber ? [{ label: "Bloque", value: `#${t.blockNumber}`, mono: true }] : []),
+            ...(t.fromAddr ? [{ label: "De", value: shortAddr(t.fromAddr), mono: true }] : []),
+            ...(t.toAddr ? [{ label: "Para", value: shortAddr(t.toAddr), mono: true }] : []),
+            ...(t.blockNumber ? [{ label: isLedger ? "Ledger" : "Bloque", value: isLedger ? t.blockNumber.slice(1) : `#${t.blockNumber}`, mono: true }] : []),
+            ...(isStellar ? [{ label: "Red", value: "Stellar" }] : []),
           ];
+          const explorerUrl = t.hash
+            ? isStellar
+              ? stellarExplorerTxUrl(t.hash)
+              : `https://sepolia.arbiscan.io/tx/${t.hash}`
+            : null;
           return (
-            <div className="card" style={{ marginTop: 16, padding: "4px 0" }}>
-              {rows.map((r, i) => (
-                <DetailRow key={r.label} label={r.label} value={r.value} mono={r.mono} last={i === rows.length - 1} />
-              ))}
-            </div>
+            <>
+              <div className="card" style={{ marginTop: 16, padding: "4px 0" }}>
+                {rows.map((r, i) => (
+                  <DetailRow key={r.label} label={r.label} value={r.value} mono={r.mono} last={i === rows.length - 1} />
+                ))}
+              </div>
+              {explorerUrl && (
+                <a
+                  href={explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost"
+                  style={{ marginTop: 12, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 13 }}
+                >
+                  <Icon name="globe" size={16} /> Ver en explorador
+                </a>
+              )}
+            </>
           );
         })()}
 
@@ -778,6 +867,9 @@ function DetailRow({ label, value, mono, last }: { label: string; value: string;
   );
 }
 
-function shortHex(addr: string) {
+function shortAddr(addr: string) {
+  if (addr.startsWith("G") && addr.length >= 56) {
+    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+  }
   return addr.length > 12 ? `${addr.slice(0, 8)}…${addr.slice(-6)}` : addr;
 }

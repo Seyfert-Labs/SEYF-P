@@ -6,8 +6,8 @@ import { isSdexSwapPair, quoteSdexPathPayment, type SdexSwapCode } from '@/lib/s
 const bodySchema = z.object({
   from: z.string().trim().min(1),
   to: z.string().trim().min(1),
-  amount: z.number().positive(),
-  slippageBps: z.number().int().positive().max(5000).optional(),
+  amount: z.coerce.number().positive(),
+  slippageBps: z.coerce.number().int().positive().max(5000).optional(),
 })
 
 /** POST /api/sdex/quote — cotiza XLM↔USDC vía SDEX (Horizon path payment). */

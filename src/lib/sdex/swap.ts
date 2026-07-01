@@ -18,6 +18,13 @@ async function postJson<T>(url: string, body: unknown): Promise<{ ok: boolean; d
     body: JSON.stringify(body),
   })
   const data = (await res.json().catch(() => ({}))) as T & { error?: string }
+  if (!res.ok && !data.error) {
+    if (res.status === 404) {
+      data.error = 'Cotización no disponible. Recarga la página (caché desactualizada).'
+    } else {
+      data.error = `Error del servidor (${res.status})`
+    }
+  }
   return { ok: res.ok, data }
 }
 

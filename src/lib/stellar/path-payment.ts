@@ -92,6 +92,19 @@ export function isSdexSwapPair(from: string, to: string): boolean {
 }
 
 
+function horizonPathError(e: unknown, amountHuman: number): Error {
+  const err = e as { response?: { data?: { detail?: string; title?: string } }; message?: string }
+  const detail = err.response?.data?.detail ?? err.response?.data?.title ?? err.message ?? ''
+  if (/bad request/i.test(detail)) {
+    if (amountHuman >= 50_000) {
+      return new Error('El monto supera la liquidez disponible en el SDEX. Prueba con menos XLM/USDC.')
+    }
+    return new Error('Monto inválido para el SDEX. Usa al menos 0.0000001 y menos de 50,000.')
+  }
+  if (detail) return new Error(detail)
+  return e instanceof Error ? e : new Error('No se pudo consultar rutas en Horizon')
+}
+
 async function fetchBestPath(
   from: SdexSwapCode,
   to: SdexSwapCode,
@@ -101,7 +114,17 @@ async function fetchBestPath(
   const sendAsset = from === 'XLM' ? Asset.native() : usdcAsset()
   const destAsset = to === 'XLM' ? Asset.native() : usdcAsset()
   const amount = toStroops(amountHuman)
-  const paths = await server.strictSendPaths(sendAsset, amount, [destAsset]).call()
+  if (Number(amount) <= 0) {
+    throw new Error('El monto es demasiado pequeño para cotizar en el SDEX.')
+  }
+
+  let paths: { records?: Array<{ destination_amount: string; path?: Array<{ asset_type: string; asset_code?: string; asset_issuer?: string }> }> }
+  try {
+    paths = await server.strictSendPaths(sendAsset, amount, [destAsset]).call() as typeof paths
+  } catch (e) {
+    throw horizonPathError(e, amountHuman)
+  }
+
   const best = paths.records?.[0]
   if (!best?.destination_amount) {
     throw new Error('No hay ruta SDEX para este par. Prueba con un monto menor.')
