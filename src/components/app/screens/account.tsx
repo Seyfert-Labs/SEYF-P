@@ -8,6 +8,7 @@ import { CARD_TXNS, FMT } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { ClabeCard } from "../ClabeCard";
+import { StellarAccountCard } from "../StellarAccountCard";
 import { useUserBanks } from "@/hooks/useUserBanks";
 import { AddBankModal } from "../modals/AddBankModal";
 import { Portal } from "../Portal";
@@ -163,7 +164,6 @@ export function ScreenProfile({ go }: { go: Go }) {
   const email = wallet.email || "diego@correo.com";
   const { list: banks, remove: removeBank, reload: reloadBanks } = useUserBanks(wallet.address);
   const [showAddBank, setShowAddBank] = useState(false);
-  const [copiedStellar, setCopiedStellar] = useState(false);
 
   return (
     <div className="screen screen-enter">
@@ -231,47 +231,11 @@ export function ScreenProfile({ go }: { go: Go }) {
           </>
         )}
 
-        {/* ── Wallet Stellar (dirección pública) ── */}
-        {stellar.enabled && stellar.authenticated && stellar.publicKey && (
+        {/* ── Cuenta digital Stellar (dirección pública) ── */}
+        {stellar.enabled && stellar.authenticated && (
           <>
             <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Wallet digital</p>
-            <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <span style={{
-                width: 44, height: 44, borderRadius: 13, flexShrink: 0,
-                background: "linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)",
-                color: "#fff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Icon name="globe" size={22} />
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>Dirección Stellar</p>
-                <p className="num" style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", wordBreak: "break-all", lineHeight: 1.5 }}>
-                  {stellar.publicKey}
-                </p>
-              </div>
-              <button
-                style={{
-                  background: copiedStellar ? "var(--accent-soft)" : "var(--surface-2)",
-                  border: "1px solid var(--line)",
-                  borderRadius: 10,
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 700,
-                  color: copiedStellar ? "var(--accent)" : "var(--txt-muted)",
-                  transition: "all 0.2s",
-                }}
-                onClick={() => {
-                  void navigator.clipboard.writeText(stellar.publicKey ?? "");
-                  setCopiedStellar(true);
-                  setTimeout(() => setCopiedStellar(false), 2000);
-                }}
-              >
-                <Icon name={copiedStellar ? "check" : "copy"} size={14} />
-                {copiedStellar ? "Copiada" : "Copiar"}
-              </button>
-            </div>
+            <StellarAccountCard />
             <p style={{ margin: "8px 4px 0", fontSize: 11, color: "var(--txt-dim)", lineHeight: 1.5 }}>
               Esta es tu dirección de wallet en la red Stellar. Puedes compartirla para recibir activos como XLM o USDC.
             </p>

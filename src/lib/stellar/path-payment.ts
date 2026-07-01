@@ -4,7 +4,9 @@ import {
   BASE_FEE,
   Horizon,
   Networks,
+  NotFoundError,
   Operation,
+  StrKey,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
 import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
@@ -219,6 +221,58 @@ export async function buildSdexPathPaymentXdr(
     .setTimeout(120)
     .build()
 
+  return tx.toXDR()
+}
+
+export type SeyfPayAsset = 'XLM' | 'USDC'
+
+/**
+ * XDR sin firmar para un pago Stellar entre cuentas SEYF (riel Stellar, firma Pollar).
+ * - XLM a una cuenta que aún no existe → usa `createAccount` (la crea y fondea).
+ * - XLM a cuenta existente o USDC → usa `payment` (USDC exige trustline en el destino).
+ */
+export async function buildStellarPaymentXdr(params: {
+  from: string
+  to: string
+  asset: SeyfPayAsset
+  amount: string
+}): Promise<string> {
+  const { from, to, asset } = params
+  if (!StrKey.isValidEd25519PublicKey(from)) throw new Error('Dirección de origen inválida.')
+  if (!StrKey.isValidEd25519PublicKey(to)) throw new Error('Dirección Stellar de destino inválida.')
+  if (from === to) throw new Error('El destino no puede ser tu propia cuenta.')
+
+  const amt = Number(params.amount)
+  if (!Number.isFinite(amt) || amt <= 0) throw new Error('Monto inválido.')
+  const sendAmount = amt.toFixed(7)
+
+  const { passphrase } = networkConfig()
+  const server = horizonServer()
+  const account = await server.loadAccount(from)
+  const stellarAsset = asset === 'USDC' ? usdcAsset() : Asset.native()
+
+  // ¿La cuenta destino ya existe on-chain?
+  let destExists = true
+  try {
+    await server.loadAccount(to)
+  } catch (e) {
+    const status = (e as { response?: { status?: number } })?.response?.status
+    if (e instanceof NotFoundError || status === 404) destExists = false
+    else throw e
+  }
+
+  const builder = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: passphrase })
+
+  if (!destExists) {
+    if (asset !== 'XLM') {
+      throw new Error('Esa cuenta SEYF aún no existe on-chain; envíale XLM primero para activarla.')
+    }
+    builder.addOperation(Operation.createAccount({ destination: to, startingBalance: sendAmount }))
+  } else {
+    builder.addOperation(Operation.payment({ destination: to, asset: stellarAsset, amount: sendAmount }))
+  }
+
+  const tx = builder.setTimeout(120).build()
   return tx.toXDR()
 }
 

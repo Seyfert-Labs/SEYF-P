@@ -50,17 +50,24 @@ export function StellarAccountCard() {
   const explorerUrl = stellarAccountExplorerUrl(publicKey);
 
   return (
-    <div className="deposit-card" style={{ marginTop: 14 }}>
-      <div className="dc-glow" />
+    <div
+      className="deposit-card"
+      style={{
+        marginTop: 14,
+        // Tono morado de la app (accent-2) en vez del verde por defecto de .deposit-card.
+        background: "linear-gradient(135deg, #1b1533 0%, #0b0a14 100%)",
+      }}
+    >
+      <div className="dc-glow" style={{ background: "radial-gradient(circle, var(--accent-2-soft), transparent 70%)" }} />
       <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <p style={{ margin: 0, fontSize: 11, color: "var(--txt-muted)", letterSpacing: ".08em", textTransform: "uppercase" }}>
             Cuenta Digital Stellar
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>Recibe activos on-chain</p>
+          <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 800, color: "var(--accent-2)" }}>Recibe activos on-chain</p>
         </div>
         <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--txt-muted)" }}>
-          <Icon name="globe" size={14} color="var(--accent)" /> Stellar
+          <Icon name="globe" size={14} color="var(--accent-2)" /> Stellar
         </span>
       </div>
 
@@ -88,7 +95,7 @@ export function StellarAccountCard() {
                   href={explorerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ margin: "3px 0 0", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700, color: "var(--accent)" }}
+                  style={{ margin: "3px 0 0", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700, color: "var(--accent-2)" }}
                 >
                   Ver en el explorador ↗
                 </a>
@@ -97,7 +104,7 @@ export function StellarAccountCard() {
               )}
             </div>
             <button className="icon-btn" onClick={copy} aria-label="Copiar dirección Stellar" style={{ flexShrink: 0 }}>
-              <Icon name={copied ? "check" : "copy"} size={18} color={copied ? "var(--accent)" : "var(--txt)"} />
+              <Icon name={copied ? "check" : "copy"} size={18} color={copied ? "var(--accent-2)" : "var(--txt)"} />
             </button>
           </div>
         </>
@@ -107,7 +114,7 @@ export function StellarAccountCard() {
             Activa tu cuenta Stellar para obtener tu dirección y recibir activos on-chain.
           </p>
           <button
-            className="btn btn-primary"
+            className="btn btn-violet"
             style={{ marginTop: 16, position: "relative" }}
             disabled={activating}
             onClick={activate}

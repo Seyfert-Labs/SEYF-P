@@ -200,24 +200,27 @@ export function WelcomeBonus() {
       if (!result.ok) throw new Error(result.error);
       // Refrescar saldo para que se muestre "activado"
       await checkXlm();
+      // También refresca el balance de Pollar que alimenta "Disponible en tu wallet" en Home.
+      void stellar.refreshBalanceAfterTx();
       setFbStatus("done");
     } catch (e) {
       setFbError(e instanceof Error ? e.message : "No se pudo fondear");
       setFbStatus("error");
     }
-  }, [pk, checkXlm]);
+  }, [pk, checkXlm, stellar]);
 
   // Refresca el saldo XLM real desde Horizon. El friendbot no puede re-fondear una
   // cuenta ya creada (da 10,000 XLM una sola vez), así que "reactivar" no aplica:
-  // solo actualizamos el saldo mostrado.
+  // solo actualizamos el saldo mostrado (Horizon directo + balance de Pollar en Home).
   const refreshFbXlm = useCallback(async () => {
     setFbRefreshing(true);
     try {
       await checkXlm();
+      void stellar.refreshBalanceAfterTx();
     } finally {
       setFbRefreshing(false);
     }
-  }, [checkXlm]);
+  }, [checkXlm, stellar]);
 
   // Mostrar sección si hay stellar autenticado O wallet autenticado
   const hasAuth = (stellar.enabled && stellar.authenticated && !!pk) || wallet.authenticated;
