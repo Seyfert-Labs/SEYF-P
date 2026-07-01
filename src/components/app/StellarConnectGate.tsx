@@ -74,12 +74,16 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
     setActivateError(null);
     void (async () => {
       try {
-        await waitForPollarSession(stellar.getClient, { timeoutMs: 20_000 });
+        // Usa el publicKey que RESUELVE la sesión, no stellar.publicKey del hook:
+        // en cuentas nuevas el hook aún no re-derivó el publicKey en este render,
+        // y como activationDoneRef bloquea el re-run, el fondeo se saltaría y la
+        // cuenta nunca se crearía en el ledger (sin create_account → "no fondos").
+        const { publicKey } = await waitForPollarSession(stellar.getClient, { timeoutMs: 20_000 });
         if (cancelled) return;
         // Fondea la wallet con XLM (testnet) para que pueda pagar las fees de las
         // firmas (trustline, depósitos a bóvedas). Idempotente y no bloqueante:
         // si falla, el depósito reintenta el fondeo más adelante.
-        if (stellar.publicKey) await fundStellarWallet(stellar.publicKey);
+        if (publicKey) await fundStellarWallet(publicKey);
         if (cancelled) return;
         resolverRef.current?.(true);
         resolverRef.current = null;
