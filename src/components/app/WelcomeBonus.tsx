@@ -14,18 +14,8 @@ import { Portal } from "./Portal";
 import { fundStellarWallet } from "@/lib/seyf/use-ensure-stellar-funding";
 
 const BONUS_AMOUNT = 300;
-const LS_FRIENDBOT_KEY = (pk: string) => `seyf_friendbot_claimed_${pk}`;
-
 type CetesStatus = "idle" | "quoting" | "ordering" | "processing" | "done" | "error";
 type FriendbotStatus = "idle" | "funding" | "done" | "error";
-
-function getFriendbotClaimed(pk: string | null): boolean {
-  if (!pk || typeof window === "undefined") return false;
-  try { return localStorage.getItem(LS_FRIENDBOT_KEY(pk)) === "1"; } catch { return false; }
-}
-function setFriendbotClaimed(pk: string) {
-  try { localStorage.setItem(LS_FRIENDBOT_KEY(pk), "1"); } catch { /* noop */ }
-}
 
 export function WelcomeBonus() {
   const wallet = useWallet();
@@ -56,8 +46,28 @@ export function WelcomeBonus() {
     return () => { active = false; };
   }, [address]);
 
+  // Checa si la wallet ya tiene XLM on-chain (friendbot ya aplicado)
   useEffect(() => {
-    setFbClaimed(getFriendbotClaimed(pk));
+    if (!pk) { setFbClaimed(false); return; }
+    let active = true;
+    const horizonBase = process.env.NEXT_PUBLIC_POLLAR_STELLAR_NETWORK === "mainnet"
+      ? "https://horizon.stellar.org"
+      : "https://horizon-testnet.stellar.org";
+    (async () => {
+      try {
+        const res = await fetch(`${horizonBase}/accounts/${pk}`);
+        if (!active) return;
+        if (res.ok) {
+          const data = await res.json();
+          const native = (data.balances as Array<{ asset_type: string; balance: string }>)
+            ?.find((b) => b.asset_type === "native");
+          setFbClaimed(native ? Number(native.balance) >= 1 : false);
+        } else {
+          setFbClaimed(false);
+        }
+      } catch { if (active) setFbClaimed(false); }
+    })();
+    return () => { active = false; };
   }, [pk]);
 
   // --- CETES claim ---
@@ -111,7 +121,6 @@ export function WelcomeBonus() {
     try {
       const result = await fundStellarWallet(pk);
       if (!result.ok) throw new Error(result.error);
-      setFriendbotClaimed(pk);
       setFbClaimed(true);
       setFbStatus("done");
     } catch (e) {
@@ -137,7 +146,9 @@ export function WelcomeBonus() {
     !!pk &&
     !fbClaimed;
 
-  if (cetesClaimed === null && !wallet.authenticated) return null;
+  // Mostrar sección si hay stellar autenticado O wallet autenticado
+  const hasAuth = (stellar.enabled && stellar.authenticated && !!pk) || wallet.authenticated;
+  if (!hasAuth) return null;
 
   return (
     <>
@@ -213,58 +224,60 @@ export function WelcomeBonus() {
         ) : null}
 
         {/* ── Bono Friendbot (XLM testnet) ── */}
-        {fbClaimed ? (
-          <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{
-              width: 44, height: 44, borderRadius: 13, flexShrink: 0,
-              background: "rgba(99,102,241,.12)", color: "#6366f1",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <Icon name="check" size={22} />
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>10,000 XLM activado</p>
-              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-                Tu wallet fue fondeada con XLM de testnet para operar.
-              </p>
+        {stellar.enabled && stellar.authenticated && pk && (
+          fbClaimed ? (
+            <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{
+                width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+                background: "rgba(99,102,241,.12)", color: "#6366f1",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <Icon name="check" size={22} />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>10,000 XLM activado</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                  Tu wallet fue fondeada con XLM de testnet para operar.
+                </p>
+              </div>
+              <span className="pos-pill" style={{ background: "rgba(99,102,241,.12)", color: "#6366f1" }}>
+                <Icon name="globe" size={12} /> XLM
+              </span>
             </div>
-            <span className="pos-pill" style={{ background: "rgba(99,102,241,.12)", color: "#6366f1" }}>
-              <Icon name="globe" size={12} /> XLM
-            </span>
-          </div>
-        ) : canClaimFriendbot ? (
-          <div className="card" style={{
-            display: "flex", alignItems: "center", gap: 14,
-            border: "1px solid rgba(99,102,241,.3)", background: "rgba(99,102,241,.06)",
-          }}>
-            <span style={{
-              width: 44, height: 44, borderRadius: 13, flexShrink: 0,
-              background: "#6366f1", color: "#fff",
-              display: "flex", alignItems: "center", justifyContent: "center",
+          ) : (
+            <div className="card" style={{
+              display: "flex", alignItems: "center", gap: 14,
+              border: "1px solid rgba(99,102,241,.3)", background: "rgba(99,102,241,.06)",
             }}>
-              <Icon name="globe" size={22} />
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>10,000 XLM gratis</p>
-              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
-                Fondea tu wallet Stellar para operar en testnet.
-              </p>
-            </div>
-            <button
-              onClick={claimFriendbot}
-              disabled={fbStatus === "funding"}
-              style={{
-                flexShrink: 0, padding: "9px 18px", borderRadius: 11,
+              <span style={{
+                width: 44, height: 44, borderRadius: 13, flexShrink: 0,
                 background: "#6366f1", color: "#fff",
-                border: "none", fontWeight: 800, fontSize: 13,
-                cursor: fbStatus === "funding" ? "default" : "pointer",
-                opacity: fbStatus === "funding" ? 0.6 : 1,
-              }}
-            >
-              {fbStatus === "funding" ? <span className="spin" style={{ width: 16, height: 16 }} /> : "Activar"}
-            </button>
-          </div>
-        ) : null}
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <Icon name="globe" size={22} />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>10,000 XLM gratis</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                  Fondea tu wallet Stellar para operar en testnet.
+                </p>
+              </div>
+              <button
+                onClick={claimFriendbot}
+                disabled={fbStatus === "funding"}
+                style={{
+                  flexShrink: 0, padding: "9px 18px", borderRadius: 11,
+                  background: "#6366f1", color: "#fff",
+                  border: "none", fontWeight: 800, fontSize: 13,
+                  cursor: fbStatus === "funding" ? "default" : "pointer",
+                  opacity: fbStatus === "funding" ? 0.6 : 1,
+                }}
+              >
+                {fbStatus === "funding" ? <span className="spin" style={{ width: 16, height: 16 }} /> : "Activar"}
+              </button>
+            </div>
+          )
+        )}
 
         {fbStatus === "error" && fbError && (
           <div className="card" style={{ borderColor: "var(--neg)", display: "flex", alignItems: "center", gap: 10 }}>
