@@ -162,7 +162,14 @@ export function WelcomeBonus() {
                 Se depositaron $300 MXN en CETES a tu bóveda.
               </p>
             </div>
-            <span className="pos-pill"><Icon name="leaf" size={12} /> CETES</span>
+            {/* Prueba: reactivar aunque ya esté reclamado (vuelve a correr el onramp Etherfuse). */}
+            <button
+              onClick={() => { cetesStarted.current = false; void claimCetes(); }}
+              disabled={cetesStatus !== "idle"}
+              style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 10, background: "var(--surface-2)", color: "var(--txt-muted)", border: "1px solid var(--line)", fontWeight: 700, fontSize: 12, cursor: cetesStatus === "idle" ? "pointer" : "default" }}
+            >
+              Reactivar
+            </button>
           </div>
         ) : canClaimCetes ? (
           <div className="card" style={{
@@ -231,9 +238,14 @@ export function WelcomeBonus() {
                   Tu wallet fue fondeada con XLM de testnet para operar.
                 </p>
               </div>
-              <span className="pos-pill" style={{ background: "rgba(99,102,241,.12)", color: "#6366f1" }}>
-                <Icon name="globe" size={12} /> XLM
-              </span>
+              {/* Prueba: reintenta el fondeo Friendbot (idempotente; no re-crea cuentas ya existentes). */}
+              <button
+                onClick={() => void claimFriendbot()}
+                disabled={fbStatus === "funding"}
+                style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 10, background: "var(--surface-2)", color: "var(--txt-muted)", border: "1px solid var(--line)", fontWeight: 700, fontSize: 12, cursor: fbStatus === "funding" ? "default" : "pointer" }}
+              >
+                {fbStatus === "funding" ? <span className="spin" style={{ width: 14, height: 14 }} /> : "Reactivar"}
+              </button>
             </div>
           ) : (
             <div className="card" style={{
