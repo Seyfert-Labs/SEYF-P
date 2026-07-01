@@ -66,10 +66,11 @@ export function AddBankModal({
       if (res.ok && data.id) {
         bankId = data.id;
       } else {
-        console.warn("[add-bank] Juno no registró la cuenta, se agrega localmente:", data.error);
+        // Juno no la registró como destino SPEI, pero igual se guarda en tu cuenta (Supabase).
+        console.warn("[add-bank] Juno no registró el destino SPEI; la cuenta se guarda en tu perfil igual:", data.error);
       }
     } catch (e) {
-      console.warn("[add-bank] error de red con Juno, se agrega localmente:", e);
+      console.warn("[add-bank] error de red con Juno; la cuenta se guarda en tu perfil igual:", e);
     }
 
     try {
