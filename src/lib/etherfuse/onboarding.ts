@@ -31,26 +31,32 @@ export async function generateOnboardingPresignedUrl(
   params: GenerateOnboardingUrlParams,
 ): Promise<{ presignedUrl: string }> {
   const blockchain = params.blockchain ?? getEtherfuseDefaultBlockchain();
-  const res = await etherfuseFetch("/ramp/onboarding-url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      customerId: params.customerId,
-      bankAccountId: params.bankAccountId,
-      publicKey: params.publicKey,
-      blockchain,
-      accountType: params.accountType ?? 'personal',
-    }),
-  });
+  let res: Response;
+  try {
+    res = await etherfuseFetch("/ramp/onboarding-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerId: params.customerId,
+        bankAccountId: params.bankAccountId,
+        publicKey: params.publicKey,
+        blockchain,
+        accountType: params.accountType ?? 'personal',
+      }),
+    });
+  } catch (err) {
+    /**
+     * `etherfuseFetch` lanza `AppError` en `!res.ok` antes de leer el body. Re-envolvemos con
+     * el prefijo "onboarding-url" y el mensaje del proveedor para que
+     * `generateOnboardingPresignedUrlResolving409` reconozca el conflicto de wallet ya
+     * vinculada y resuelva customerId/bankAccountId por lookup en la API.
+     */
+    const providerMsg =
+      err instanceof Error ? err.message : String(err);
+    throw new Error(`Etherfuse onboarding-url failed: ${providerMsg}`);
+  }
 
   const { json: raw, text } = await etherfuseReadBody<OnboardingUrlResponse>(res);
-  if (!res.ok) {
-    const msg =
-      raw && typeof raw === "object" && "error" in raw && typeof raw.error === "string"
-        ? raw.error
-        : text.slice(0, 500);
-    throw new Error(`Etherfuse onboarding-url falló (${res.status}): ${msg}`);
-  }
   if (!raw || typeof raw !== "object") {
     throw new Error(
       `Etherfuse onboarding-url: respuesta no JSON (${res.status}): ${text.slice(0, 500)}`,
@@ -67,8 +73,25 @@ export async function generateOnboardingPresignedUrl(
 
 function isWalletAlreadyRegisteredError(message: string): boolean {
   const m = message.toLowerCase();
-  /** Cualquier 409 de onboarding-url suele ser conflicto de wallet ya vinculada. */
-  if (message.includes("onboarding-url") && message.includes("409")) return true;
+  /**
+   * `etherfuseFetch` mapea todo 4xx a statusCode 400 y pierde el "409" original del texto,
+   * así que clasificamos por CONTENIDO del mensaje del proveedor, no por código.
+   * Un error de onboarding-url que menciona wallet/usuario ya registrado es un conflicto
+   * idempotente resoluble por lookup de customerId/bankAccountId.
+   */
+  if (m.includes("onboarding-url") || m.includes("onboarding url")) {
+    if (
+      m.includes("already") ||
+      m.includes("registered") ||
+      m.includes("exist") ||
+      m.includes("duplicate") ||
+      m.includes("wallet") ||
+      m.includes("added user")
+    ) {
+      return true;
+    }
+  }
+  /** Compatibilidad: si algún caller aún incluye el código HTTP en el mensaje. */
   return (
     message.includes("409") &&
     (m.includes("already") ||

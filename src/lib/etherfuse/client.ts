@@ -14,6 +14,14 @@ export type EtherfuseFetchOptions = Omit<RequestInit, "headers"> & {
    * Default: false for POST/PUT/PATCH/DELETE; GET is always retryable.
    */
   retryable?: boolean;
+  /**
+   * Por defecto `etherfuseFetch` lanza `AppError` en cualquier `!res.ok`. Los callers que
+   * necesitan inspeccionar el status (p. ej. tratar 404 como "not found" sin lanzar) pueden
+   * pasar `throwOnError: false` para recibir la `Response` cruda incluso en errores no
+   * reintentables. Los status reintentables (429/502/503/504) siguen reintentando; solo se
+   * devuelve la respuesta de error tras agotar los reintentos.
+   */
+  throwOnError?: boolean;
 };
 
 /** Retryable HTTP status codes. */
@@ -89,6 +97,12 @@ export async function etherfuseFetch(
           attempt < maxAttempts - 1
         ) {
           continue;
+        }
+
+        // Caller opts out of throwing on error statuses — return the raw response
+        // so it can inspect res.status (e.g. 404 → not_found) without a throw.
+        if (init.throwOnError === false) {
+          return res;
         }
 
         // Read body for error message

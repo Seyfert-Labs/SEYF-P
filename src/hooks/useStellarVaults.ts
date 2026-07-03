@@ -217,8 +217,18 @@ export function useStellarVaults(address?: string) {
           onchainBalCache.set(`${publicKey}:${planId}`, { bal: nextBal, ts: now });
         }
 
-        await pollStellarBalance(refreshBalance, publicKey);
-        await reload();
+        // Reconciliación en segundo plano: pollStellarBalance recorre ~32 s de reintentos.
+        // NO debe bloquear el éxito del modal — el tx ya está on-chain y el saldo optimista
+        // ya se reflejó. Corre aparte y refresca cuando la red propague.
+        void (async () => {
+          try {
+            await pollStellarBalance(refreshBalance, publicKey);
+            await reload();
+          } catch {
+            // el saldo optimista ya está; el poll de fondo reintenta solo
+          }
+        })();
+
         return hash;
       } finally {
         setBusy(false);

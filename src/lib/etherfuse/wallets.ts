@@ -1,4 +1,5 @@
-import { etherfuseFetch, etherfuseReadBody, extractEtherfuseErrorMessage } from "@/lib/etherfuse/client";
+import { etherfuseFetch, etherfuseReadBody } from "@/lib/etherfuse/client";
+import { AppError } from "@/lib/seyf/api-error";
 
 export type EtherfuseWallet = {
   walletId: string;
@@ -19,33 +20,31 @@ export async function registerOrganizationWallet(params: {
   blockchain?: "stellar" | "solana" | "base" | "polygon" | "monad";
   claimOwnership?: boolean;
 }): Promise<EtherfuseWallet> {
-  const res = await etherfuseFetch("/ramp/wallet", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      publicKey: params.publicKey,
-      blockchain: params.blockchain ?? "stellar",
-      claimOwnership: params.claimOwnership ?? true,
-    }),
-    retryable: false,
-  });
-  const { json, text } = await etherfuseReadBody<EtherfuseWallet | { error?: string }>(res);
-  if (!res.ok) {
-    /** Algunos entornos devuelven 409 con el objeto wallet en el cuerpo (idempotente). */
-    if (
-      res.status === 409 &&
-      json &&
-      typeof json === "object" &&
-      "walletId" in json &&
-      typeof (json as EtherfuseWallet).walletId === "string" &&
-      "customerId" in json &&
-      typeof (json as EtherfuseWallet).customerId === "string"
-    ) {
-      return json as EtherfuseWallet;
-    }
-    const msg = extractEtherfuseErrorMessage(json, text, 500);
-    throw new Error(`Etherfuse register wallet failed (${res.status}): ${msg}`);
+  let res: Response;
+  try {
+    res = await etherfuseFetch("/ramp/wallet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        publicKey: params.publicKey,
+        blockchain: params.blockchain ?? "stellar",
+        claimOwnership: params.claimOwnership ?? true,
+      }),
+      retryable: false,
+    });
+  } catch (err) {
+    /**
+     * `etherfuseFetch` lanza `AppError` en cualquier `!res.ok` ANTES de que podamos leer el
+     * body, así que re-envolvemos con el prefijo "register wallet" y el mensaje del proveedor.
+     * Esto permite que `isRecoverableRegisterWalletConflict` / `isWalletClaimedByAnotherOrg`
+     * clasifiquen correctamente el conflicto idempotente same-org (recuperable, p. ej.
+     * "You have already added user with this address") vs. el cross-org (no recuperable).
+     */
+    const providerMsg =
+      err instanceof AppError || err instanceof Error ? err.message : String(err);
+    throw new Error(`Etherfuse register wallet failed: ${providerMsg}`);
   }
+  const { json, text } = await etherfuseReadBody<EtherfuseWallet | { error?: string }>(res);
   if (!json || typeof json !== "object" || !("walletId" in json)) {
     throw new Error(`Etherfuse register wallet returned invalid payload: ${text.slice(0, 500)}`);
   }
@@ -75,9 +74,13 @@ export function isRecoverableRegisterWalletConflict(error: unknown): boolean {
     return false;
   }
   // Mismo-org / reintento idempotente: la wallet ya está en NUESTRA org.
+  // "You have already added user with this address, see org: <uuid>" es el texto que
+  // Etherfuse devuelve cuando la wallet/usuario ya fue registrado antes en esta org —
+  // re-enviar KYC debe continuar, no bloquear.
   return (
     msg.includes("(409)") ||
     m.includes("already added") ||
+    m.includes("already added user") ||
     m.includes("already exists") ||
     m.includes("already registered") ||
     m.includes("duplicate")

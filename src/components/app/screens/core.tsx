@@ -2,7 +2,7 @@
 
 /* UTONOMA — pantallas core: Onboarding, Home, Wallet (wired a Juno) */
 import React, { useEffect, useState } from "react";
-import { Icon, Spark, Flag } from "../ui";
+import { Icon, Spark } from "../ui";
 import { TopBar, SubHeader, TxnRow, PendingTxnRow, ConvTxnRow } from "../shared";
 import { TXNS, FMT, type Txn } from "../data";
 import type { Go } from "../nav";
@@ -10,8 +10,8 @@ import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
 import { usePendingTxns } from "@/hooks/usePendingTxns";
 import { useConversions, type Conversion } from "@/hooks/useConversions";
+import { useAssetPricesMxn } from "@/hooks/useAssetPricesMxn";
 import { useStellarTxns, type StellarOperation } from "@/hooks/useStellarTxns";
-import { assetByCode } from "@/lib/bitso/assets";
 import { useVaultsRail } from "@/hooks/useVaultsRail";
 import { useKycStatus } from "@/hooks/useKycStatus";
 import type { OnchainTransfer } from "@/lib/chain";
@@ -108,14 +108,14 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
 
 /* Metadatos de presentación de los activos de la wallet Stellar (sin jerga de protocolo). */
-const STELLAR_ASSET_INFO: Record<string, { name: string; icon: string; color: string }> = {
+export const STELLAR_ASSET_INFO: Record<string, { name: string; icon: string; color: string }> = {
   XLM: { name: "Stellar Lumens", icon: "star", color: "var(--accent)" },
   CETES: { name: "Bonos CETES", icon: "shield", color: "#5BD6C0" },
   USDC: { name: "USD Coin", icon: "globe", color: "#7C9EFF" },
 };
 
 /** Avatar redondo del activo Stellar, del mismo tamaño que las banderas de divisas. */
-function StellarAssetAvatar({ code }: { code: string }) {
+export function StellarAssetAvatar({ code }: { code: string }) {
   if (code === "XLM") {
     return (
       <span className="flag sm" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#0b0e14" }}>
@@ -140,7 +140,7 @@ function StellarAssetAvatar({ code }: { code: string }) {
   );
 }
 
-const stellarAssetName = (code: string): string => STELLAR_ASSET_INFO[code]?.name ?? code;
+export const stellarAssetName = (code: string): string => STELLAR_ASSET_INFO[code]?.name ?? code;
 
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
@@ -186,8 +186,16 @@ export function ScreenHome({ go }: { go: Go }) {
         .map((b) => ({ code: (b.code || "").toUpperCase(), bal: Number(b.balance ?? 0) }))
         .filter((a) => a.code && a.bal > 0)
     : [];
-  // Spot: saldo MXNB on-chain. Las bóvedas se muestran en la pantalla de Ahorro.
-  const pesos = realData ? wallet.balance : 48250.4;
+  // Precios reales en MXN de TODOS los activos de la wallet Stellar: Bitso (ticker
+  // público por book) para cripto/fiat y quote offramp de Etherfuse para CETES.
+  // Sin hardcodeo; genérico para cualquier activo → listo para mainnet.
+  const { valueOf: mxnValueOf } = useAssetPricesMxn(
+    stellarAssets.map((a) => a.code),
+    stellar.publicKey,
+  );
+  const stellarMxn = stellarAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
+  // "Disponible" del hero = valor real en MXN de los activos Stellar (no MXNB de Arbitrum).
+  const pesos = realData ? stellarMxn : 48250.4;
   // Patrimonio = un solo dinero en dos estados: Disponible (líquido, no rinde) +
   // En bóveda (invertido, rinde). Co-denominados en MXN, por eso se suman aquí;
   // las divisas/activos Stellar viven aparte en "Otros activos" (otras unidades).
@@ -287,28 +295,19 @@ export function ScreenHome({ go }: { go: Go }) {
 
         {/* ── 1b. OTROS ACTIVOS — saldos líquidos (divisas de conversiones + wallet Stellar).
                 Etiquetado "Disponible" para separarlo por ESTADO de "Mi ahorro" (bóvedas). ── */}
-        {realData && (Object.keys(conv.balances).length > 0 || stellarAssets.length > 0) && (
+        {realData && stellarAssets.length > 0 && (
           <>
           <div className="sec-head" style={{ marginTop: 22, marginBottom: 8 }}>
             <h3>Disponible en tu wallet</h3>
           </div>
           <div className="card" style={{ padding: "4px 18px" }}>
-            {Object.entries(conv.balances).map(([code, bal]) => {
-              const a = assetByCode(code);
-              return (
-                <div className="lrow" key={code} style={{ cursor: "pointer" }} onClick={() => go("convertir")}>
-                  <div className="ava" style={{ overflow: "hidden", padding: 0 }}><Flag code={a?.flag || "us"} cls="sm" /></div>
-                  <div className="mid"><p className="ti">{code}</p><p className="su">{a?.name || code}</p></div>
-                  <div className="amt"><div className="a num">{FMT(bal, a?.dec ?? 2)}</div></div>
-                  <Icon name="chevR" size={16} color="var(--txt-dim)" />
-                </div>
-              );
-            })}
+            {/* Solo activos on-chain de Stellar. Cada uno abre su pantalla de detalle. */}
             {stellarAssets.map((a) => (
-              <div className="lrow" key={a.code} style={{ cursor: "default" }}>
+              <div className="lrow" key={a.code} style={{ cursor: "pointer" }} onClick={() => go("activo", { code: a.code, bal: a.bal })}>
                 <div className="ava" style={{ overflow: "hidden", padding: 0 }}><StellarAssetAvatar code={a.code} /></div>
                 <div className="mid"><p className="ti">{a.code}</p><p className="su">{stellarAssetName(a.code)}</p></div>
                 <div className="amt"><div className="a num">{hide ? "••••" : FMT(a.bal, 2)}</div></div>
+                <Icon name="chevR" size={16} color="var(--txt-dim)" />
               </div>
             ))}
           </div>

@@ -10,6 +10,7 @@ import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
 import { ScreenCard, ScreenProfile, ScreenNotifs } from "./screens/account";
 import { ScreenKyc } from "./screens/kyc";
+import { ScreenAssetDetail } from "./screens/asset-detail";
 import { useWallet } from "@/components/wallet/WalletContext";
 
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
@@ -77,9 +78,10 @@ export default function SeyfApp() {
     kyc: <ScreenKyc go={go} />,
     notifs: <ScreenNotifs go={go} />,
     txn: <ScreenTxnDetail go={go} ctx={route.ctx} />,
+    activo: <ScreenAssetDetail go={go} ctx={route.ctx} />,
   };
 
-  const showTabs = !["boveda", "convertir", "cambio", "txn", "kyc"].includes(route.screen);
+  const showTabs = !["boveda", "convertir", "cambio", "txn", "kyc", "activo"].includes(route.screen);
 
   return (
     <div className="app-shell">

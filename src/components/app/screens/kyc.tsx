@@ -127,7 +127,7 @@ export function ScreenKyc({ go }: { go: Go }) {
 
   const refreshStatus = useCallback(async () => {
     if (!stellar.publicKey) return;
-    const r = await fetch("/api/seyf/kyc/status");
+    const r = await fetch(`/api/seyf/kyc/status?wallet=${encodeURIComponent(stellar.publicKey)}`);
     const j = await r.json().catch(() => ({}));
     const snap = j.kyc;
     if (r.ok && snap?.status) {

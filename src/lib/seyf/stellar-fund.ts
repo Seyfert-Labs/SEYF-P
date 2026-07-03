@@ -15,6 +15,13 @@ type StellarNetwork = 'testnet' | 'mainnet'
 
 /** Reserva base + colchón para fees: por debajo de esto la cuenta no puede firmar. */
 const MIN_XLM = 1
+/**
+ * Umbral para considerar una cuenta "ya fondeada por Friendbot" (grant de 10,000 XLM).
+ * Pollar crea cuentas nuevas con ~2 XLM; esas SÍ deben intentar Friendbot para tener
+ * colchón suficiente (reservas de trustlines, depósitos DeFindex). Solo saltamos
+ * Friendbot cuando la cuenta ya tiene un saldo claramente por encima del mínimo de Pollar.
+ */
+const SUFFICIENT_XLM = 50
 
 function resolveNetwork(): { horizonUrl: string; network: StellarNetwork; friendbotUrl: string | null } {
   const env = (
@@ -133,13 +140,16 @@ export async function ensureFunded(publicKey: string): Promise<FundResult> {
   const { network, friendbotUrl } = resolveNetwork()
 
   const current = await getAccountXlm(publicKey)
-  if (current != null && current >= MIN_XLM) {
+  // Solo saltamos Friendbot si la cuenta ya tiene saldo claramente por encima del
+  // mínimo que Pollar deja (~2 XLM). Así una cuenta recién creada por Pollar SÍ
+  // intenta Friendbot para tener colchón real, no solo el mínimo de reserva.
+  if (current != null && current >= SUFFICIENT_XLM) {
     return {
       network,
       funded: false,
       alreadyFunded: true,
       xlm: current,
-      message: 'La wallet ya tiene XLM para fees.',
+      message: 'La wallet ya tiene XLM suficiente.',
     }
   }
 
