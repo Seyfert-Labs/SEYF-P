@@ -1,6 +1,6 @@
 # Integración Dynerox — on-ramp SPEI → cripto
 
-Rama: `feat/dynerox-onramp-spei`. Aislada de Juno: no toca `lib/juno/*` ni `api/juno/*`.
+Rama: `dynerox` (se mantiene rebasada sobre `main`). Aislada de Juno: no toca `lib/juno/*` ni `api/juno/*`.
 
 ## Qué es
 
