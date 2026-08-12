@@ -204,6 +204,13 @@ export function ScreenKyc({ go }: { go: Go }) {
       await stellar.verifyCode(code.trim());
     });
 
+  // Solo pedir el código cuando de verdad ya se envió uno. Durante un reenvío
+  // (phase "sending" con un envío previo) NO regresamos a la pantalla inicial.
+  const codeSent =
+    stellar.phase === "code" ||
+    stellar.phase === "verifying" ||
+    ((stellar.phase === "error" || stellar.phase === "sending") && stellar.codeSentOnce);
+
   const submitIdentity = (e: FormEvent) => {
     e.preventDefault();
     if (!stellar.publicKey) return;
@@ -346,14 +353,17 @@ export function ScreenKyc({ go }: { go: Go }) {
             <span style={{ width: 60, height: 60, borderRadius: 18, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="shield" size={30} />
             </span>
-            {stellar.phase === "idle" || stellar.phase === "sending" ? (
+            {!codeSent ? (
               <>
                 <p style={{ margin: "16px 0 6px", fontWeight: 800, fontSize: 17 }}>Empecemos tu verificación</p>
                 <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
                   Te enviaremos un código a <b style={{ color: "var(--txt)" }}>{email || "tu correo"}</b> para confirmar que eres tú.
                 </p>
-                <button className="btn btn-primary" disabled={busy || !email} onClick={sendCode} style={{ width: "100%" }}>
-                  {busy ? <span className="spin" /> : "Enviar código"}
+                {stellar.phase === "error" && stellar.error && (
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--neg)", lineHeight: 1.4 }}>{stellar.error}</p>
+                )}
+                <button className="btn btn-primary" disabled={busy || stellar.phase === "sending" || !email} onClick={sendCode} style={{ width: "100%" }}>
+                  {busy || stellar.phase === "sending" ? <span className="spin" /> : "Enviar código"}
                 </button>
               </>
             ) : (
@@ -368,11 +378,19 @@ export function ScreenKyc({ go }: { go: Go }) {
                     Usa el código de <b style={{ color: "var(--txt)" }}>verificación de identidad</b> más reciente; es distinto al de inicio de sesión.
                   </p>
                 </div>
-                {stellar.phase === "error" && (
+                {stellar.phase === "error" && stellar.error && (
                   <div className="card" style={{ margin: "0 0 12px", borderColor: "var(--neg)", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
                     <Icon name="info" size={16} color="var(--neg)" />
                     <p style={{ margin: 0, fontSize: 13, color: "var(--neg)", lineHeight: 1.4, textAlign: "left" }}>
-                      Código incorrecto. Revisa el correo e inténtalo de nuevo.
+                      {stellar.error}
+                    </p>
+                  </div>
+                )}
+                {stellar.notice && (
+                  <div className="card" style={{ margin: "0 0 12px", background: "var(--accent-soft)", border: "none", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                    <Icon name="info" size={16} color="var(--accent)" />
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4, textAlign: "left" }}>
+                      {stellar.notice}
                     </p>
                   </div>
                 )}
@@ -387,7 +405,12 @@ export function ScreenKyc({ go }: { go: Go }) {
                   onFocus={(e) => e.target.select()}
                   style={{ textAlign: "center", letterSpacing: "0.3em", fontSize: 22 }}
                 />
-                <button className="btn btn-primary" disabled={busy || stellar.phase === "verifying"} onClick={verifyCode} style={{ width: "100%", marginTop: 14 }}>
+                <button
+                  className="btn btn-primary"
+                  disabled={busy || stellar.phase === "verifying" || stellar.phase === "sending" || code.trim().length < 4}
+                  onClick={verifyCode}
+                  style={{ width: "100%", marginTop: 14 }}
+                >
                   {busy || stellar.phase === "verifying" ? <span className="spin" /> : "Verificar"}
                 </button>
                 {resent ? (
@@ -395,8 +418,8 @@ export function ScreenKyc({ go }: { go: Go }) {
                     Código reenviado ✓
                   </p>
                 ) : (
-                  <button className="btn btn-ghost" disabled={busy} onClick={handleResend} style={{ width: "100%", marginTop: 10 }}>
-                    Reenviar código
+                  <button className="btn btn-ghost" disabled={busy || stellar.phase === "sending"} onClick={handleResend} style={{ width: "100%", marginTop: 10 }}>
+                    {stellar.phase === "sending" ? <span className="spin" /> : "Reenviar código"}
                   </button>
                 )}
               </>

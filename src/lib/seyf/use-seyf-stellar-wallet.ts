@@ -5,6 +5,7 @@ import { usePollar } from '@pollar/react'
 import type { AuthState, WalletBalanceState } from '@pollar/core'
 import { isValidStellarPublicKey, normalizeStellarPublicKey } from '@/lib/etherfuse/stellar-public-key'
 import { pollStellarBalance, STELLAR_BALANCE_CHANGED_EVT } from '@/lib/seyf/stellar-balance-refresh'
+import { installPollarOtpErrorShim } from '@/lib/pollar/otp-error-shim'
 
 export type SeyfStellarSession = {
   stellarAddress: string
@@ -35,30 +36,74 @@ function mapBalances(state: WalletBalanceState): MappedBalances {
   }
 }
 
-/** Traduce mensajes de error de Pollar a español legible. */
+/**
+ * Traduce mensajes de error de Pollar a español legible. Nunca devuelve el
+ * `message` crudo del SDK: son cadenas fijas en inglés ("Invalid code — try
+ * again") que no queremos enseñarle al usuario.
+ */
 function translatePollarError(state: AuthState): string {
   if (state.step !== 'error') return ''
   const msg = state.message ?? ''
-  const code = (state as { errorCode?: string }).errorCode ?? ''
-  const prev = (state as { previousStep?: string }).previousStep ?? ''
 
-  if (code === 'SESSION_CREATE_FAILED' || prev === 'creating_session') {
-    return 'No se pudo conectar con el servicio de verificación. Verifica tu conexión o intenta de nuevo en unos segundos.'
-  }
-  if (code === 'EMAIL_SEND_FAILED' || prev === 'sending_email') {
-    return 'No se pudo enviar el código a tu correo. Verifica que el correo sea correcto e intenta de nuevo.'
-  }
-  if (code === 'EMAIL_CODE_INVALID') {
-    return 'El código ingresado es incorrecto. Revisa tu correo e intenta de nuevo.'
-  }
-  if (code === 'EMAIL_CODE_EXPIRED') {
-    return 'El código expiró. Solicita uno nuevo.'
-  }
   if (msg.toLowerCase().includes('origin')) {
     return 'Este dominio no está autorizado. Contacta soporte.'
   }
-  if (msg) return msg
+
+  switch (state.errorCode) {
+    case 'SESSION_CREATE_FAILED':
+      return 'No se pudo conectar con el servicio de verificación. Verifica tu conexión o intenta de nuevo en unos segundos.'
+    case 'EMAIL_SEND_FAILED':
+      return 'No se pudo enviar el código a tu correo. Verifica que el correo sea correcto e intenta de nuevo.'
+    case 'EMAIL_CODE_INVALID':
+      return 'El código es incorrecto. Usa el más reciente que te llegó por correo e inténtalo de nuevo.'
+    case 'EMAIL_CODE_EXPIRED':
+      return 'El código expiró. Solicita uno nuevo.'
+    case 'EMAIL_VERIFY_FAILED':
+      return 'No pudimos verificar el código. Solicita uno nuevo e inténtalo otra vez.'
+    case 'AUTH_FAILED':
+      return 'No pudimos completar la verificación. Intenta de nuevo.'
+    case 'WALLET_CONNECT_FAILED':
+    case 'WALLET_AUTH_FAILED':
+      return 'No pudimos conectar tu cuenta segura. Intenta de nuevo.'
+    default:
+      break
+  }
+
+  if (state.previousStep === 'creating_session') {
+    return 'No se pudo conectar con el servicio de verificación. Verifica tu conexión o intenta de nuevo en unos segundos.'
+  }
+  if (state.previousStep === 'sending_email') {
+    return 'No se pudo enviar el código a tu correo. Verifica que el correo sea correcto e intenta de nuevo.'
+  }
   return 'No se pudo verificar. Intenta de nuevo.'
+}
+
+/**
+ * ¿El SDK acepta un nuevo `verifyEmailCode()` desde este estado? Replica el
+ * guard interno de @pollar/core: sin `clientSessionId` (o con un errorCode que
+ * no sea de código inválido/expirado) la llamada LANZA `PollarFlowError` y deja
+ * al usuario atorado. Preferimos reiniciar el flujo antes que llamar en falso.
+ */
+function canRetryVerify(state: AuthState): boolean {
+  if (state.step === 'entering_code') return true
+  if (state.step !== 'error') return false
+  return (
+    Boolean(state.clientSessionId) &&
+    (state.errorCode === 'EMAIL_CODE_INVALID' || state.errorCode === 'EMAIL_CODE_EXPIRED')
+  )
+}
+
+/** Correo asociado al estado de auth, si el paso lo lleva. */
+function emailFromAuth(state: AuthState): string | null {
+  if (
+    state.step === 'sending_email' ||
+    state.step === 'entering_code' ||
+    state.step === 'verifying_email_code' ||
+    state.step === 'error'
+  ) {
+    return state.email?.trim() || null
+  }
+  return null
 }
 
 /** Traduce el estado de auth de Pollar a nuestra fase de enrolamiento. */
@@ -95,7 +140,14 @@ export function useSeyfStellarWallet() {
 
   const [phase, setPhase] = useState<StellarEnrollPhase>('idle')
   const [error, setError] = useState<string | null>(null)
-  const codeSentRef = useRef(false)
+  // Aviso informativo (no es error): p.ej. "te enviamos un código nuevo".
+  const [notice, setNotice] = useState<string | null>(null)
+  // Es estado (no ref) porque la UI decide con él si muestra el campo del
+  // código: leerlo desde un ref durante el render da valores viejos.
+  const [codeSentOnce, setCodeSentOnce] = useState(false)
+  // Último correo usado en el enrolamiento: nos deja reiniciar el flujo cuando
+  // el SDK pierde la sesión de verificación y ya no acepta reintentos.
+  const emailRef = useRef<string | null>(null)
 
   // getClient de usePollar() cambia de identidad en cada render; lo leemos vía ref
   // para NO meterlo en las deps del effect de suscripción (evita re-suscripciones).
@@ -121,8 +173,11 @@ export function useSeyfStellarWallet() {
       if (process.env.NODE_ENV === 'development') {
         console.info('[SEYF·OTP] auth state →', s.step)
       }
+      const mail = emailFromAuth(s)
+      if (mail) emailRef.current = mail
       setPhase(phaseFromAuth(s.step))
-      if (s.step === 'entering_code') codeSentRef.current = true
+      if (s.step === 'entering_code') setCodeSentOnce(true)
+      if (s.step === 'authenticated') setNotice(null)
       if (s.step === 'error') setError(translatePollarError(s))
       else setError(null)
     }
@@ -140,11 +195,13 @@ export function useSeyfStellarWallet() {
         retry = setTimeout(subscribe, 400)
         return
       }
+      // Corrige la clasificación de errores del OTP en el SDK (ver el shim).
+      installPollarOtpErrorShim(client)
       const initial = client.getAuthState()
       lastStep = initial.step
       setPhase(phaseFromAuth(initial.step))
       if (initial.step === 'entering_code' || initial.step === 'verifying_email_code') {
-        codeSentRef.current = true
+        setCodeSentOnce(true)
       }
       unsub = client.onAuthStateChange(onState)
     }
@@ -224,48 +281,100 @@ export function useSeyfStellarWallet() {
     return { stellarAddress: publicKey, publicKey, contractId: publicKey }
   }, [isAuthenticated, publicKey])
 
-  /** Envía el código OTP al correo (mismo de Privy). Headless: no abre modal. */
-  const sendCode = useCallback(async (email: string) => {
+  /**
+   * Arranca una sesión de verificación nueva y manda otro código. `login()`
+   * aborta el flujo anterior por dentro, así que sirve tanto para el primer
+   * envío como para recuperarse de un estado de error sin salida.
+   */
+  const startEmailFlow = useCallback((email: string, info?: string) => {
     setError(null)
+    setNotice(info ?? null)
     setPhase('sending')
-    codeSentRef.current = false
+    // OJO: `codeSentOnce` NO se reinicia aquí. Marca "ya se envió un código
+    // alguna vez" y es lo que decide si la UI muestra el campo del código; si lo
+    // borráramos en cada reenvío, la pantalla saltaría a "Enviar código" a media
+    // reenvío y el usuario perdería el contexto.
+    emailRef.current = email
     try {
       const client = getClient()
       if (process.env.NODE_ENV === 'development') {
-        console.info('[SEYF·OTP] sendCode →', email, '| auth step:', client.getAuthState().step)
+        console.info('[SEYF·OTP] login email →', email, '| auth step:', client.getAuthState().step)
       }
       client.login({ provider: 'email', email })
+      return true
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'No se pudo enviar el código'
-      console.error('[SEYF·OTP] sendCode error síncrono:', e)
-      setError(msg)
+      console.error('[SEYF·OTP] error al iniciar el flujo de correo:', e)
+      setNotice(null)
+      setError('No pudimos enviarte el código. Revisa tu conexión e intenta de nuevo.')
       setPhase('error')
+      return false
     }
   }, [getClient])
 
-  /** Verifica el código OTP que el usuario capturó. */
+  /** Envía el código OTP al correo (mismo de Privy). Headless: no abre modal. */
+  const sendCode = useCallback(async (email: string) => {
+    startEmailFlow(email)
+  }, [startEmailFlow])
+
+  /**
+   * Verifica el código OTP que el usuario capturó.
+   *
+   * El SDK de Pollar solo acepta `verifyEmailCode()` desde `entering_code` (o
+   * desde un error de código inválido/expirado que conserve el clientSessionId);
+   * en cualquier otro estado LANZA `PollarFlowError` y el usuario se queda sin
+   * salida hasta recargar. Cuando ya no se puede reintentar, reiniciamos el
+   * flujo y mandamos un código nuevo en vez de llamar en falso.
+   */
   const verifyCode = useCallback(async (code: string) => {
+    let client: ReturnType<typeof getClient>
+    try {
+      client = getClient()
+    } catch (e) {
+      console.error('[SEYF·OTP] cliente Pollar no disponible:', e)
+      setError('El servicio de verificación no está listo. Recarga la página e intenta de nuevo.')
+      setPhase('error')
+      return
+    }
+
+    const state = client.getAuthState()
+    if (process.env.NODE_ENV === 'development') {
+      console.info('[SEYF·OTP] verifyCode → code length:', code.length, '| auth step:', state.step)
+    }
+
+    if (state.step === 'authenticated') {
+      setPhase('connected')
+      return
+    }
+
+    if (!canRetryVerify(state)) {
+      // La sesión de verificación ya no sirve: pedimos un código nuevo.
+      const mail = emailFromAuth(state) || emailRef.current
+      if (mail) {
+        startEmailFlow(mail, 'Tu código anterior ya no era válido. Te enviamos uno nuevo a tu correo.')
+      } else {
+        setError('Solicita un código nuevo para continuar.')
+        setPhase('error')
+      }
+      return
+    }
+
     setError(null)
+    setNotice(null)
     setPhase('verifying')
     try {
-      const client = getClient()
-      const currentStep = client.getAuthState().step
-      if (process.env.NODE_ENV === 'development') {
-        console.info('[SEYF·OTP] verifyCode → code length:', code.length, '| auth step:', currentStep)
-      }
-      if (currentStep !== 'entering_code' && currentStep !== 'error') {
-        setError('El código aún no se ha enviado. Solicita uno nuevo.')
-        setPhase('error')
-        return
-      }
       client.verifyEmailCode(code)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Código inválido'
+      // Red de seguridad: si el guard del SDK cambia, no dejamos al usuario atorado.
       console.error('[SEYF·OTP] verifyCode error:', e)
-      setError(msg)
-      setPhase('error')
+      const mail = emailRef.current
+      if (mail) {
+        startEmailFlow(mail, 'Tu código anterior ya no era válido. Te enviamos uno nuevo a tu correo.')
+      } else {
+        setError('No pudimos verificar el código. Solicita uno nuevo.')
+        setPhase('error')
+      }
     }
-  }, [getClient])
+  }, [getClient, startEmailFlow])
 
   const login = useCallback(() => openLoginModal(), [openLoginModal])
 
@@ -284,7 +393,8 @@ export function useSeyfStellarWallet() {
     // Enrolamiento silencioso (OTP en nuestra UI).
     phase,
     error,
-    codeSentOnce: codeSentRef.current,
+    notice,
+    codeSentOnce,
     sendCode,
     verifyCode,
     // Fallback al modal de Pollar (no usado en el flujo nuevo).

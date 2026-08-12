@@ -127,7 +127,7 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
   // Solo mostrar la UI de "ingresa código" si el código FUE enviado exitosamente
   // (o estamos en verificación / activación). Si hubo error ANTES de enviar, mostrar "Enviar código".
   const codeSent = stellar.phase === "code" || stellar.phase === "verifying" || activating ||
-    (stellar.phase === "error" && stellar.codeSentOnce);
+    ((stellar.phase === "error" || stellar.phase === "sending") && stellar.codeSentOnce);
 
   return (
     <StellarConnectCtx.Provider value={{ connected, ensureConnected }}>
@@ -189,6 +189,9 @@ export function StellarConnectProvider({ children }: { children: ReactNode }) {
                   />
                   {stellar.phase === "error" && stellar.error && (
                     <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--neg)" }}>{stellar.error}</p>
+                  )}
+                  {stellar.notice && (
+                    <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--txt-muted)" }}>{stellar.notice}</p>
                   )}
                   {activateError && (
                     <p style={{ margin: "8px 2px 0", fontSize: 12, color: "var(--neg)" }}>{activateError}</p>
