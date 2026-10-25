@@ -73,3 +73,7 @@ docs/reyf-pitch-kit/
 docs/reyf-pitch-kit.zip
 docs/reyf-pitch.pptx
 docs/reyf-demo.mp4
+
+# soroban
+soroban/target/
+soroban/**/test_snapshots/
