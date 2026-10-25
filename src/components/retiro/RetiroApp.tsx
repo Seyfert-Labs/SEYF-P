@@ -32,7 +32,9 @@ type SessionState = 'pending' | 'ok' | 'error'
 
 /** Espera el token SEP-10 que abre SeyfAuthBridge; si no llega, deja reintentar. */
 function useSep10(publicKey: string | null, getClient: () => PollarClient) {
-  const [state, setState] = useState<SessionState>('pending')
+  // El estado va atado a la cuenta: si cambia la cuenta, vuelve a "pending" sin otro render.
+  const [result, setResult] = useState<{ account: string; state: SessionState } | null>(null)
+  const state: SessionState = result && result.account === publicKey ? result.state : 'pending'
 
   useEffect(() => {
     if (!publicKey) return
@@ -40,22 +42,22 @@ function useSep10(publicKey: string | null, getClient: () => PollarClient) {
     const started = Date.now()
     const tick = () => {
       if (cancelled) return
-      if (peekSeyfAuthToken() && seyfAuthAccount() === publicKey) return setState('ok')
-      if (Date.now() - started > 25_000) return setState('error')
+      if (peekSeyfAuthToken() && seyfAuthAccount() === publicKey) return setResult({ account: publicKey, state: 'ok' })
+      if (Date.now() - started > 25_000) return setResult({ account: publicKey, state: 'error' })
       setTimeout(tick, 400)
     }
-    setState('pending')
-    tick()
+    const first = setTimeout(tick, 0)
     return () => {
       cancelled = true
+      clearTimeout(first)
     }
   }, [publicKey])
 
   const retry = useCallback(async () => {
     if (!publicKey) return
-    setState('pending')
+    setResult({ account: publicKey, state: 'pending' })
     const token = await ensureSeyfSession(getClient(), publicKey)
-    setState(token ? 'ok' : 'error')
+    setResult({ account: publicKey, state: token ? 'ok' : 'error' })
   }, [publicKey, getClient])
 
   return { state, retry }

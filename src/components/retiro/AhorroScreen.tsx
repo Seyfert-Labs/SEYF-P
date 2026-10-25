@@ -18,35 +18,38 @@ const PPS_SCALE = BigInt(10) ** BigInt(18)
 
 type PpsSnapshot = { pps: string; t: number }
 
+function readSnapshot(key: string): PpsSnapshot | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(key)
+    const prev = raw ? (JSON.parse(raw) as PpsSnapshot) : null
+    return prev?.pps && /^\d+$/.test(prev.pps) && typeof prev.t === 'number' ? prev : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Rendimiento observado: guardamos el precio por acción la primera vez que lo
  * vemos en este dispositivo y lo comparamos con el actual. Es dato de la red,
  * no una tasa supuesta; se aclara en pantalla desde cuándo se mide.
  */
 function useObservedYield(publicKey: string, shares: bigint, value: bigint) {
-  const [snap, setSnap] = useState<PpsSnapshot | null>(null)
   const key = `seyf-retiro-pps:${publicKey}`
+  const ppsNow = shares > BigInt(0) ? (value * PPS_SCALE) / shares : null
 
+  // La primera vez solo guardamos la referencia; el rendimiento aparece en la siguiente lectura.
   useEffect(() => {
-    if (shares <= BigInt(0)) return
-    const ppsNow = (value * PPS_SCALE) / shares
+    if (ppsNow === null || readSnapshot(key)) return
     try {
-      const raw = localStorage.getItem(key)
-      const prev = raw ? (JSON.parse(raw) as PpsSnapshot) : null
-      if (prev?.pps && /^\d+$/.test(prev.pps)) {
-        setSnap(prev)
-      } else {
-        const fresh = { pps: ppsNow.toString(), t: Date.now() }
-        localStorage.setItem(key, JSON.stringify(fresh))
-        setSnap(fresh)
-      }
+      localStorage.setItem(key, JSON.stringify({ pps: ppsNow.toString(), t: Date.now() }))
     } catch {
       /* sin localStorage no hay referencia; simplemente no se muestra */
     }
-  }, [key, shares, value])
+  }, [key, ppsNow])
 
-  if (!snap || shares <= BigInt(0)) return null
-  const ppsNow = (value * PPS_SCALE) / shares
+  const snap = readSnapshot(key)
+  if (!snap || ppsNow === null) return null
   const gain = (shares * (ppsNow - BigInt(snap.pps))) / PPS_SCALE
   return { gain, since: new Date(snap.t) }
 }
