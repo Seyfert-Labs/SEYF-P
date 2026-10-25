@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   try {
     if (isSponsorConfigured()) {
-      const result = await submitFeeBumped(parsed.data.signedXdr, [session.account])
+      const result = await submitFeeBumped(parsed.data.signedXdr, session.account)
       return NextResponse.json({ txHash: result.hash, sponsored: true })
     }
 
