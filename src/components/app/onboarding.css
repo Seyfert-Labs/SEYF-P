@@ -1,0 +1,65 @@
+/* ============================================================
+   SEYF — Pantalla de entrada a la app (onboarding fase 0) + splash.
+   Mismos tokens de globals.css; todo bajo .onb-v2 / .splash-v2.
+   ============================================================ */
+
+.onb.onb-v2 { padding: 0; overflow: hidden; isolation: isolate; }
+
+/* aurora: tres manchas de color que derivan lento */
+.onb-aurora { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.onb-aurora i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; }
+.onb-aurora i:nth-child(1) { width: 360px; height: 360px; top: -120px; right: -120px; background: radial-gradient(circle, rgba(139,92,246,.55), transparent 70%); animation: onbDrift1 12s ease-in-out infinite alternate; }
+.onb-aurora i:nth-child(2) { width: 300px; height: 300px; top: 180px; left: -150px; background: radial-gradient(circle, rgba(200,255,77,.28), transparent 70%); animation: onbDrift2 14s ease-in-out infinite alternate; }
+.onb-aurora i:nth-child(3) { width: 420px; height: 260px; bottom: -120px; left: 10%; background: radial-gradient(circle, rgba(139,92,246,.3), transparent 70%); animation: onbDrift1 16s ease-in-out infinite alternate-reverse; }
+@keyframes onbDrift1 { to { transform: translate(-40px, 50px) scale(1.1); } }
+@keyframes onbDrift2 { to { transform: translate(50px, -30px) scale(.92); } }
+
+.onb-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding: 22px 24px 190px; }
+.onb-scroll::-webkit-scrollbar { display: none; }
+
+.onb-top { display: flex; align-items: center; justify-content: space-between; }
+.onb-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  color: var(--txt); background: rgba(255,255,255,.06); border: 1px solid var(--line-strong);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.onb-live { width: 6px; height: 6px; border-radius: 99px; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: onbLive 1.6s ease-in-out infinite; }
+@keyframes onbLive { 50% { opacity: .3; transform: scale(.8); } }
+
+.onb-stage { position: relative; height: 270px; margin: 6px -24px 0; }
+.onb-canvas { position: absolute; inset: 0; }
+.onb-stage-glow { position: absolute; left: 50%; top: 50%; width: 230px; height: 230px; transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(circle, rgba(139,92,246,.4), rgba(200,255,77,.08) 50%, transparent 70%); filter: blur(30px); }
+
+.onb.onb-v2 .onb-title { font-family: var(--font-display), system-ui, sans-serif; font-size: 42px; line-height: 1.02; font-weight: 700; letter-spacing: -0.045em; margin: 0; text-wrap: balance; }
+.onb-mask { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; margin-bottom: -.08em; margin-right: .22em; }
+.onb-mask > span { display: inline-block; }
+.onb-mask .em { color: var(--accent); }
+.onb.onb-v2 p.sub { font-size: 16px; max-width: 360px; }
+
+.onb-feats { display: flex; flex-direction: column; gap: 8px; margin: 22px 0; }
+.onb-feat { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
+  background: rgba(255,255,255,.035); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.onb-feat .tk { width: 30px; height: 30px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.onb-feat:nth-child(2) .tk { background: var(--accent-2-soft); color: #c4b5fd; }
+.onb-feat .tx { font-size: 14.5px; font-weight: 600; color: var(--txt); }
+
+/* CTAs fijas */
+.onb-cta { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; flex-direction: column; gap: 10px;
+  padding: 44px 24px calc(22px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, rgba(8,8,13,.85) 38%, var(--bg) 70%); }
+.onb-primary { position: relative; overflow: hidden; gap: 8px; }
+.onb-primary::before { content: ''; position: absolute; inset: 0; transform: translateX(-120%);
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.6) 50%, transparent 70%); animation: onbShine 3.2s ease-in-out 1.6s infinite; }
+@keyframes onbShine { 0% { transform: translateX(-120%); } 45%, 100% { transform: translateX(120%); } }
+
+/* ---------- splash (mientras carga la sesión) ---------- */
+.splash-v2 { position: relative; display: grid; place-items: center; }
+.splash-v2 .ring { position: absolute; width: 96px; height: 96px; border-radius: 50%; border: 1.5px solid var(--accent); opacity: 0; animation: splashRing 2.2s cubic-bezier(.22,1,.36,1) infinite; }
+.splash-v2 .ring:nth-child(2) { border-color: var(--accent-2); animation-delay: .7s; }
+.splash-v2 .ring:nth-child(3) { animation-delay: 1.4s; }
+.splash-v2 img { position: relative; animation: splashBreath 2.2s ease-in-out infinite; }
+@keyframes splashRing { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(2.1); opacity: 0; } }
+@keyframes splashBreath { 50% { transform: scale(.94); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-aurora i, .onb-live, .onb-primary::before, .splash-v2 .ring, .splash-v2 img { animation: none; }
+}

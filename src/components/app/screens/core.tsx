@@ -29,6 +29,8 @@ import { motion } from "motion/react";
 import { SeyfWordmark } from "@/components/brand/SeyfLogo";
 import { OnboardingHero } from "../OnboardingHero";
 import { CurrencyTicker } from "../CurrencyTicker";
+import dynamic from "next/dynamic";
+import "../onboarding.css";
 import { SEYF_VAULTS_ADDRESS, SEYF_ADVANCE_ADDRESS } from "@/lib/chain";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { stellarTxExplorerUrl as stellarExplorerTxUrl } from "@/lib/etherfuse/stellar-tx-url";
@@ -36,6 +38,8 @@ import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
 
 /* ---------------- ONBOARDING ---------------- */
 const ONB_EASE = [0.22, 1, 0.36, 1] as const;
+// three.js solo en el navegador y fuera del bundle inicial de la app
+const Symbol3D = dynamic(() => import("@/components/brand/Symbol3D"), { ssr: false });
 // Fases: 0 = Hero, 1 = Quiz de perfil (5 preguntas full-screen)
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState(0);
@@ -46,56 +50,81 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       { ic: "bolt", tx: "Adelanta tu rendimiento cuando lo necesites" },
       { ic: "shield", tx: "0% de comisión · retira al instante" },
     ];
+    const title = ["Tu", "dinero", "rinde", "el", "doble", "que", "tu", "Afore."];
     return (
-      <div className="onb screen-enter" style={{ paddingTop: 40, overflowY: "auto" }}>
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: ONB_EASE }}>
-          <SeyfWordmark height={30} />
-        </motion.div>
-        <div className="onb-hero" style={{ justifyContent: "center", gap: 22 }}>
-          <div>
-            <motion.h1 style={{ fontSize: 44, lineHeight: 1.03 }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.05, ease: ONB_EASE }}>
-              Tu dinero rinde el <em>doble que tu Afore</em>.
-            </motion.h1>
-            <motion.p className="sub" style={{ fontSize: 16.5 }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.13, ease: ONB_EASE }}>
-              Ahorra en bonos soberanos de México y el mundo. Liquidez sin penalización y 0% de comisión sobre tu saldo.
-            </motion.p>
-          </div>
+      <div className="onb onb-v2 screen-enter">
+        {/* Aurora animada de fondo (solo decorativa) */}
+        <div className="onb-aurora" aria-hidden><i /><i /><i /></div>
 
-          <OnboardingHero />
+        <div className="onb-scroll">
+          <motion.header className="onb-top" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: ONB_EASE }}>
+            <SeyfWordmark height={26} />
+            <span className="onb-chip"><span className="onb-live" /> 9% anual hoy</span>
+          </motion.header>
 
-          {/* Ticker de bonos soberanos por país (banda a ancho completo) */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.9, ease: ONB_EASE }}
-            style={{ marginInline: -28 }}
-          >
-            <p className="eyebrow" style={{ textAlign: "center", marginBottom: 10 }}>Bonos soberanos del mundo</p>
-            <CurrencyTicker />
+          {/* Símbolo SEYF en 3D */}
+          <motion.div className="onb-stage" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, ease: ONB_EASE }}>
+            <div className="onb-stage-glow" />
+            <Symbol3D className="onb-canvas" scale={0.95} />
           </motion.div>
 
-          <div>
-            {feats.map((f, i) => (
+          <h1 className="onb-title">
+            {title.map((w, i) => (
+              <span className="onb-mask" key={i}>
+                <motion.span
+                  className={i >= 4 && i <= 7 ? "em" : undefined}
+                  initial={{ y: "105%" }}
+                  animate={{ y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 + i * 0.05, ease: ONB_EASE }}
+                >
+                  {w}
+                </motion.span>
+              </span>
+            ))}
+          </h1>
+          <motion.p className="sub" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.6, ease: ONB_EASE }}>
+            Ahorra en bonos soberanos de México y el mundo. Liquidez sin penalización y 0% de comisión sobre tu saldo.
+          </motion.p>
+
+          <motion.div className="onb-feats" initial="hide" animate="show" variants={{ show: { transition: { staggerChildren: 0.08, delayChildren: 0.75 } } }}>
+            {feats.map((f) => (
               <motion.div
                 key={f.ic}
-                className="feat"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.45, delay: 1.2 + i * 0.1, ease: ONB_EASE }}
+                className="onb-feat"
+                variants={{ hide: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: ONB_EASE } } }}
               >
                 <span className="tk"><Icon name={f.ic} size={15} /></span>
                 <span className="tx">{f.tx}</span>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.95, ease: ONB_EASE }}>
+            <OnboardingHero />
+          </motion.div>
+
+          {/* Ticker de bonos soberanos por país (banda a ancho completo) */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 1.1, ease: ONB_EASE }}
+            style={{ marginInline: -24, marginTop: 22 }}
+          >
+            <p className="eyebrow" style={{ textAlign: "center", marginBottom: 10 }}>Bonos soberanos del mundo</p>
+            <CurrencyTicker />
+          </motion.div>
         </div>
+
+        {/* CTAs fijas abajo, sobre un degradado de vidrio */}
         <motion.div
-          style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 28, paddingTop: 4 }}
-          initial={{ opacity: 0, y: 14 }}
+          className="onb-cta"
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3, ease: ONB_EASE }}
+          transition={{ duration: 0.6, delay: 0.45, ease: ONB_EASE }}
         >
-          <button className="btn btn-primary" onClick={() => setPhase(1)}>Comenzar gratis</button>
+          <button className="btn btn-primary onb-primary" onClick={() => setPhase(1)}>
+            Comenzar gratis <Icon name="arrowR" size={18} />
+          </button>
           <button className="btn btn-ghost" onClick={onDone}>Ya tengo cuenta</button>
         </motion.div>
       </div>

@@ -1,13 +1,37 @@
 "use client";
 
-/* UTONOMA — Landing page (portada de _prototype/Utonoma Landing.html).
-   Animaciones reimplementadas sin anime.js: reveals + counters (IntersectionObserver
-   + rAF), nav hide-on-scroll, FAQ acordeón, tilt 3D de la tarjeta. CTAs → /app. */
+/* SEYF — Landing page.
+   Narrativa por scroll: hero "cinemático" con el símbolo SEYF en 3D (three.js)
+   pinneado mientras cambian los mensajes, historia del producto con el celular
+   fijo, bonos en carrusel horizontal guiado por scroll y tarjeta que gira en 3D.
+   Smooth scroll con Lenis; animaciones ligadas al scroll con motion (useScroll).
+   Todo respeta prefers-reduced-motion. CTAs → /app. */
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import dynamic from "next/dynamic";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+  type MotionValue,
+} from "motion/react";
+import Lenis from "lenis";
 import { SeyfSymbol } from "@/components/brand/SeyfLogo";
 import { GrowingAmount } from "@/components/app/GrowingAmount";
+import AppMock from "./AppMock";
+import { CountryRelief, type CountryCode } from "./CountryRelief";
+
+// three.js solo en el navegador y fuera del bundle inicial
+const Symbol3D = dynamic(() => import("@/components/brand/Symbol3D"), { ssr: false });
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+// instancia de Lenis compartida (para scrollTo programático desde las secciones)
+const lenisRef: { current: Lenis | null } = { current: null };
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /* ---------- counter animado ---------- */
 function Counter({
@@ -101,32 +125,6 @@ const FlagEU = ({ s = 26 }: { s?: number }) => (
   <svg viewBox="0 0 36 36" width={s} height={s}><rect width="36" height="36" fill="#003399" />{EU_STARS.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="1.5" fill="#FFCC00" />)}</svg>
 );
 
-/* ---------- mini gráfica de barras que crecen (mockup) ---------- */
-function MiniBars({ active }: { active: boolean }) {
-  const reduced = useReducedMotion();
-  const bars = [38, 50, 44, 62, 56, 72, 80, 76, 90, 100];
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 46, marginTop: 4 }}>
-      {bars.map((h, i) => {
-        const last = i === bars.length - 1;
-        return (
-          <motion.div
-            key={i}
-            initial={reduced ? false : { scaleY: 0 }}
-            animate={{ scaleY: active ? 1 : 0 }}
-            transition={reduced ? { duration: 0 } : { duration: 0.5, delay: active ? i * 0.05 : 0, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              flex: 1, height: `${h}%`, transformOrigin: "bottom", borderRadius: "3px 3px 1px 1px",
-              background: last ? "var(--accent)" : "var(--line-2)",
-              boxShadow: last ? "0 0 14px -3px var(--accent)" : "none",
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 const AppStoreBtn = () => (
   <a className="store-btn" href="#descargar">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 1.8c.1 1-.3 2-.9 2.8-.7.8-1.7 1.4-2.7 1.3-.1-1 .4-2 1-2.7.7-.8 1.8-1.4 2.6-1.4zM19 17c-.5 1.1-.7 1.6-1.3 2.6-.9 1.4-2.1 3.1-3.6 3.1-1.3 0-1.7-.9-3.5-.9s-2.2.8-3.5.9c-1.5.1-2.6-1.5-3.5-2.9C1 16.7.8 12.3 2.4 9.9c1-1.6 2.6-2.5 4.1-2.5 1.6 0 2.5.9 3.8.9 1.2 0 2-.9 3.8-.9 1.4 0 2.8.7 3.8 2-3.3 1.8-2.8 6.5.8 7.6z" /></svg>
@@ -147,47 +145,537 @@ const FAQ_ITEMS = [
   { q: "¿Está protegido mi dinero?", a: "Tu saldo está asegurado hasta $3,000,000 MXN, cifrado con AES‑256 y protegido con acceso biométrico y verificación en dos pasos." },
 ];
 
-export default function Landing() {
-  const reduced = useReducedMotion();
-  const rootRef = useRef<HTMLDivElement>(null);
+// accent = color del país (glow, pin y medidor); wall = color base del relieve
+const BONDS: { cc: CountryCode; Flag: React.FC<{ s?: number }>; country: string; inst: string; cur: string; capital: string; y: number; accent: string; wall: string }[] = [
+  { cc: "mx", Flag: FlagMX, country: "México", inst: "CETES · Bonos M", cur: "MXN", capital: "CDMX", y: 10.25, accent: "#2ecc71", wall: "#0b5a33" },
+  { cc: "us", Flag: FlagUS, country: "Estados Unidos", inst: "US Treasury", cur: "USD", capital: "Washington", y: 4.45, accent: "#6c8cff", wall: "#2c2e6e" },
+  { cc: "br", Flag: FlagBR, country: "Brasil", inst: "Tesouro Selic", cur: "BRL", capital: "Brasilia", y: 11.75, accent: "#ffd400", wall: "#0f6b34" },
+  { cc: "ar", Flag: FlagAR, country: "Argentina", inst: "Lecap", cur: "ARS", capital: "Buenos Aires", y: 14.5, accent: "#74acdf", wall: "#3b6f9c" },
+  { cc: "co", Flag: FlagCO, country: "Colombia", inst: "TES", cur: "COP", capital: "Bogotá", y: 9.6, accent: "#fcd116", wall: "#00307d" },
+  { cc: "eu", Flag: FlagEU, country: "Europa", inst: "Bonos UE", cur: "EUR", capital: "Bruselas", y: 3.4, accent: "#ffcc00", wall: "#0d2f80" },
+  { cc: "kr", Flag: FlagKR, country: "Corea del Sur", inst: "Korea Treasury", cur: "KRW", capital: "Seúl", y: 3.35, accent: "#ff5a6a", wall: "#3a3f55" },
+];
+const MAX_YIELD = Math.max(...BONDS.map((b) => b.y));
+
+const STEPS = [
+  { n: "01", ti: "Deposita por SPEI", de: "Recibe tu CLABE al instante. Cada peso que entra empieza a rendir desde el primer día." },
+  { n: "02", ti: "Convierte sin margen", de: "Pasa a dólar digital al tipo de cambio real, en segundos y sin comisión oculta." },
+  { n: "03", ti: "Ahorra con metas", de: "Crea bóvedas con rendimiento de hasta 11.2% y retira al banco cuando quieras." },
+];
+
+const MANIFESTO =
+  "Tu dinero parado pierde contra la inflación todos los días. SEYF hace que cada peso trabaje: rinde diario, se mueve en segundos y sale cuando tú decides. Sin letras chiquitas. Sin jerga.";
+
+/* ---------- piezas de scroll ---------- */
+
+/** Pantalla de entrada: el símbolo se dibuja y la cortina sube. Solo una vez por sesión. */
+function Intro() {
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("seyf-intro") === "1";
+      sessionStorage.setItem("seyf-intro", "1");
+    } catch {}
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const id = setTimeout(() => setShow(false), seen || reduce ? 0 : 1450);
+    return () => clearTimeout(id);
+  }, []);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          className="intro"
+          initial={{ clipPath: "inset(0 0 0% 0)" }}
+          exit={{ clipPath: "inset(0 0 100% 0)" }}
+          transition={{ duration: 0.85, ease: [0.76, 0, 0.24, 1] }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, rotate: -20 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ duration: 0.8, ease: EASE }}
+          >
+            <SeyfSymbol size={64} />
+          </motion.div>
+          <div className="intro-word display">
+            {"SEYF".split("").map((c, i) => (
+              <motion.span key={i} initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 0.6, delay: 0.25 + i * 0.06, ease: EASE }}>
+                {c}
+              </motion.span>
+            ))}
+          </div>
+          <motion.div className="intro-bar" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 1.2, ease: "easeInOut" }} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** Palabra del manifiesto: se ilumina según el avance del scroll. */
+function Word({ children, progress, range }: { children: string; progress: MotionValue<number>; range: [number, number] }) {
+  const opacity = useTransform(progress, range, [0.14, 1]);
+  const y = useTransform(progress, range, [6, 0]);
+  return (
+    <motion.span style={{ opacity, y, display: "inline-block", marginRight: "0.26em" }}>{children}</motion.span>
+  );
+}
+
+function Manifesto() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.85", "end 0.45"] });
+  const words = MANIFESTO.split(" ");
+  return (
+    <section className="manifesto sec-pad">
+      <div className="wrap">
+        <span className="sec-tag">Por qué SEYF</span>
+        <div ref={ref} className="manifesto-text display">
+          {words.map((w, i) => (
+            <Word key={i} progress={scrollYProgress} range={[i / words.length, (i + 1) / words.length]}>
+              {w}
+            </Word>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Hero pinneado: el símbolo 3D gira con el scroll mientras cambian 3 mensajes. */
+function HeroCinema() {
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
+  const p = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.4 });
+
+  const b1o = useTransform(p, [0, 0.2, 0.3], [1, 1, 0]);
+  const b1y = useTransform(p, [0, 0.3], [0, -80]);
+  const b2o = useTransform(p, [0.32, 0.37, 0.58, 0.63], [0, 1, 1, 0]);
+  const b2s = useTransform(p, [0.32, 0.4], [0.94, 1]);
+  const b3o = useTransform(p, [0.66, 0.76, 1], [0, 1, 1]);
+  const b3y = useTransform(p, [0.66, 0.78], [60, 0]);
+  // --k: 1 = símbolo a la derecha (junto al texto), 0 = centrado; vuelve a la derecha en el beat 3
+  const k = useTransform(p, [0, 0.26, 0.4, 0.6, 0.74], [1, 1, 0, 0, 1]);
+  // en el beat 2 el símbolo se encoge para caber entre "Rinde" y "9% anual"
+  const symScale = useTransform(p, [0.26, 0.38, 0.6, 0.74], [1, 0.58, 0.58, 0.8]);
+  const hint = useTransform(p, [0, 0.06], [1, 0]);
+
+  return (
+    <section className="hero-cinema" ref={ref}>
+      <div className="hero-sticky">
+        {/* --k mueve el símbolo vía CSS (translateX); la escala va en el hijo para no pisar el transform */}
+        <motion.div className="hero-sym" style={{ "--k": k } as unknown as React.CSSProperties}>
+          <motion.div className="hero-sym-inner" style={{ scale: symScale }}>
+            <div className="hero-sym-glow" />
+            <Symbol3D progress={p} className="hero-canvas" />
+          </motion.div>
+        </motion.div>
+
+        {/* Beat 1 — propuesta */}
+        <motion.div className="wrap beat beat-1" style={{ opacity: b1o, y: b1y }}>
+          <div className="hero-copy">
+            <h1 className="display">
+              {["Tu", "dinero,", "protegido", "y", "creciendo", "en", "automático."].map((w, i) => (
+                <span className="hero-word-mask" key={i}>
+                  <motion.span
+                    className={`hero-word${i === 2 ? " em" : ""}${i === 4 ? " em2" : ""}`}
+                    initial={{ y: "105%" }}
+                    animate={{ y: 0 }}
+                    transition={{ duration: 0.9, delay: 0.25 + i * 0.06, ease: EASE }}
+                  >
+                    {w}
+                  </motion.span>
+                </span>
+              ))}
+            </h1>
+            <motion.p className="lede" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.75, ease: EASE }}>
+              Tus pesos rinden 9% anual, todos los días. Sin comisiones.
+            </motion.p>
+            <motion.div className="hero-cta" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.9, ease: EASE }}>
+              <Link className="btn btn-primary btn-lg magnetic" href="/app">
+                Iniciar ahora
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </Link>
+              <a className="hero-link" href="#producto">Ver cómo funciona</a>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* Beat 2 — rendimiento */}
+        <motion.div className="beat beat-2" style={{ opacity: b2o, scale: b2s }}>
+          <div className="beat-2-row display">
+            <span className="big-l">Rinde</span>
+            <span className="big-gap" />
+            <span className="big-r"><span className="em">9%</span> anual</span>
+          </div>
+          <div className="beat-2-foot">
+          <p className="beat-sub">Pagado todos los días, sobre tus pesos. Sin plazos forzosos.</p>
+          <div className="beat-cards">
+            <div className="float-card">
+              <div className="k"><span className="live-dot" /> Ganado hoy</div>
+              <div className="v"><GrowingAmount base={12.4} apy={9} size={20} align="left" color="var(--accent)" prefix="+$" tail={4} id="lp-ganado" /></div>
+            </div>
+            <div className="float-card">
+              <div className="k">Bóvedas hasta</div>
+              <div className="v num" style={{ color: "#c4b5fd" }}>11.2%</div>
+            </div>
+          </div>
+          </div>
+        </motion.div>
+
+        {/* Beat 3 — simple */}
+        <motion.div className="beat beat-3" style={{ opacity: b3o, y: b3y }}>
+          <div className="wrap beat-3-inner">
+            <h2 className="display">
+              Sin seed phrase.<br />Sin comisiones.<br /><span className="em">Sin jerga.</span>
+            </h2>
+            <p className="beat-sub">Construido sobre Stellar: tu dinero se mueve en segundos y siempre es tuyo.</p>
+          </div>
+        </motion.div>
+
+        <motion.div className="scroll-hint" style={{ opacity: hint }}>
+          <span>Desliza</span>
+          <i />
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/** Celular con el mockup fiel de la app; tilt 3D siguiendo el mouse. */
+function Phone({ screen }: { screen: number }) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const onMove = (ev: React.MouseEvent) => {
+    const stage = stageRef.current;
+    const tilt = tiltRef.current;
+    if (!stage || !tilt) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = stage.getBoundingClientRect();
+    tilt.style.setProperty("--ptx", `${((ev.clientX - r.left) / r.width - 0.5) * 12}deg`);
+    tilt.style.setProperty("--pty", `${-((ev.clientY - r.top) / r.height - 0.5) * 12}deg`);
+  };
+  const onLeave = () => {
+    tiltRef.current?.style.setProperty("--ptx", "0deg");
+    tiltRef.current?.style.setProperty("--pty", "0deg");
+  };
+  return (
+    <div className="phone-stage" ref={stageRef} onMouseMove={onMove} onMouseLeave={onLeave}>
+      <div className="phone-tilt" ref={tiltRef}>
+        <div className="phone">
+          <div className="phone-screen">
+            <AppMock screen={screen} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Historia del producto: el celular queda fijo y cada paso "se detiene" (snap)
+    para que no se pase de largo. Los pasos también se pueden tocar. */
+function PhoneStory() {
+  const ref = useRef<HTMLElement>(null);
+  const [screen, setScreen] = useState(0);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
+  useMotionValueEvent(scrollYProgress, "change", (v) => setScreen(Math.min(2, Math.max(0, Math.floor(v * 3)))));
+
+  // posición de scroll (px) donde el paso i queda centrado en su tramo
+  const stepY = (i: number) => {
+    const el = ref.current;
+    if (!el) return 0;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    return top + (el.offsetHeight - window.innerHeight) * ((i + 0.5) / 3);
+  };
+  const goTo = (y: number) => {
+    if (lenisRef.current) lenisRef.current.scrollTo(y, { duration: 0.9 });
+    else window.scrollTo({ top: y, behavior: "smooth" });
+  };
+
+  // snap con dirección: al soltar el scroll, si te moviste hacia abajo avanza al
+  // siguiente paso; hacia arriba, regresa. En el primer/último paso deja salir.
+  const lastStep = useRef(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let t = 0;
+    const onScroll = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(() => {
+        const el = ref.current;
+        if (!el) return;
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        const v = (window.scrollY - top) / (el.offsetHeight - window.innerHeight);
+        if (v <= 0.02 || v >= 0.98) {
+          lastStep.current = v <= 0.02 ? 0 : 2; // fuera de la sección: no secuestrar el scroll
+          return;
+        }
+        const cur = lastStep.current;
+        const delta = v - (cur + 0.5) / 3;
+        let target = cur;
+        if (delta > 0.035) {
+          if (cur === 2) return; // bajando desde el último paso: sale de la sección
+          target = Math.min(2, Math.max(cur + 1, Math.floor(v * 3)));
+        } else if (delta < -0.035) {
+          if (cur === 0) return; // subiendo desde el primer paso: sale hacia arriba
+          target = Math.max(0, Math.min(cur - 1, Math.floor(v * 3)));
+        }
+        lastStep.current = target;
+        const y = stepY(target);
+        if (Math.abs(y - window.scrollY) > 6) goTo(y);
+      }, 140);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.clearTimeout(t);
+    };
+  }, []);
+
+  return (
+    <section className="story" id="producto" ref={ref}>
+      <div className="story-sticky">
+        <div className="wrap story-grid">
+          <div className="story-copy">
+            <span className="sec-tag">Así funciona</span>
+            <h2 className="sec-title display">Tres pasos. Cero complicaciones.</h2>
+            <div className="steps">
+              {STEPS.map((s, i) => (
+                <button key={s.n} className={`step${screen === i ? " on" : ""}`} onClick={() => { lastStep.current = i; goTo(stepY(i)); }}>
+                  <StepBar progress={scrollYProgress} i={i} />
+                  <span className="step-n num">{s.n}</span>
+                  <span className="step-body">
+                    <span className="step-ti">{s.ti}</span>
+                    <span className="step-de">{s.de}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <Phone screen={screen} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Barrita de cada paso: se llena 0→1 según el avance dentro de su tramo. */
+function StepBar({ progress, i }: { progress: MotionValue<number>; i: number }) {
+  const fill = useTransform(progress, [i / 3, (i + 1) / 3], [0, 1]);
+  return <span className="step-bar"><motion.i style={{ scaleX: fill }} /></span>;
+}
+
+/** Tarjeta de bono: relieve 3D del país + rendimiento. Gira en Y según su
+    distancia al centro de la pantalla (coverflow) y el mapa se inclina con el mouse. */
+function BondCard({ b, x }: { b: (typeof BONDS)[number]; x: MotionValue<number> }) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // centro de la tarjeta dentro del carril (sin el desplazamiento x) y ancho de la ventana
+  const [geo, setGeo] = useState({ center: 0, vw: 1440 });
+  useEffect(() => {
+    const on = () => {
+      const el = outerRef.current;
+      if (el) setGeo({ center: el.offsetLeft + el.offsetWidth / 2, vw: window.innerWidth });
+    };
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  // -1 (a la izquierda) … 0 (centro) … 1 (a la derecha)
+  const rel = useTransform(x, (xv) => Math.max(-1, Math.min(1, (geo.center + xv - geo.vw / 2) / (geo.vw * 0.6))));
+  const rotateY = useTransform(rel, (r) => r * -22);
+  const scale = useTransform(rel, (r) => 1 - Math.abs(r) * 0.08);
+  const opacity = useTransform(rel, (r) => 1 - Math.abs(r) * 0.35);
+  const onMove = (ev: React.PointerEvent) => {
+    const el = cardRef.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = el.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width - 0.5;
+    const py = (ev.clientY - r.top) / r.height - 0.5;
+    el.style.setProperty("--rx", `${32 - py * 18}deg`);
+    el.style.setProperty("--ry", `${px * 22}deg`);
+    el.style.setProperty("--mx", `${(px + 0.5) * 100}%`);
+    el.style.setProperty("--my", `${(py + 0.5) * 100}%`);
+  };
+  const onLeave = () => {
+    cardRef.current?.style.removeProperty("--rx");
+    cardRef.current?.style.removeProperty("--ry");
+  };
+  return (
+    <motion.div className="bond" ref={outerRef} style={{ rotateY, scale, opacity, transformPerspective: 1200, "--c": b.accent } as unknown as React.CSSProperties}>
+      <div className="bond-in" ref={cardRef} onPointerMove={onMove} onPointerLeave={onLeave}>
+        <div className="bond-stage">
+          <div className="bond-glow" />
+          <CountryRelief code={b.cc} wall={b.wall} accent={b.accent} />
+          <span className="bond-cap"><i />{b.capital}</span>
+        </div>
+        <div className="bond-head">
+          <span className="bond-flag"><b.Flag s={34} /></span>
+          <div style={{ minWidth: 0 }}>
+            <div className="country">{b.country}</div>
+            <div className="code">{b.inst}</div>
+          </div>
+          <span className="bond-cur">{b.cur}</span>
+        </div>
+        <div className="yld num"><Counter target={b.y} decimals={2} />%<small>anual</small></div>
+        <div className="bond-meter"><i style={{ width: `${(b.y / MAX_YIELD) * 100}%` }} /></div>
+        <div className="bond-foot"><span>Desde $50</span><span>Liquidez T+1</span></div>
+      </div>
+    </motion.div>
+  );
+}
+
+/** Bonos en carril horizontal que avanza con el scroll vertical. */
+function BondsRail() {
+  const ref = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [dist, setDist] = useState(0);
+  useIsoLayoutEffect(() => {
+    const measure = () => {
+      const t = trackRef.current;
+      if (!t) return;
+      setDist(Math.max(0, t.scrollWidth - window.innerWidth));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
+  const x = useTransform(scrollYProgress, [0, 1], [0, -dist]);
+  return (
+    <section className="rail" id="bonos" ref={ref} style={{ height: `calc(100vh + ${dist}px)` }}>
+      <div className="rail-sticky">
+        <div className="wrap rail-head">
+          <span className="sec-tag">Bonos de gobierno</span>
+          <h2 className="sec-title display">Rendimientos soberanos, en un toque.</h2>
+          <p className="sec-sub">Invierte en deuda respaldada por gobiernos desde $50. Liquidación T+1 y custodia regulada.</p>
+        </div>
+        <motion.div className="rail-track" ref={trackRef} style={{ x }}>
+          {BONDS.map((b) => (
+            <BondCard key={b.cc} b={b} x={x} />
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/** Tarjeta que gira en 3D al entrar en pantalla + tilt con el mouse. */
+function CardShowcase() {
+  const ref = useRef<HTMLElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
-  const phoneStageRef = useRef<HTMLDivElement>(null);
-  const phoneTiltRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const rotY = useTransform(scrollYProgress, [0, 0.5, 1], [-38, 0, 24]);
+  const rotX = useTransform(scrollYProgress, [0, 0.5, 1], [18, 0, -10]);
+  const ty = useTransform(scrollYProgress, [0, 0.5, 1], [80, 0, -40]);
+  const onMove = (ev: React.MouseEvent) => {
+    const card = creditRef.current;
+    if (!card || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = card.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width - 0.5;
+    const py = (ev.clientY - r.top) / r.height - 0.5;
+    card.style.transform = `rotateY(${px * 14}deg) rotateX(${-py * 14}deg)`;
+    card.style.setProperty("--gx", `${(px + 0.5) * 100}%`);
+    card.style.setProperty("--gy", `${(py + 0.5) * 100}%`);
+  };
+  const onLeave = () => {
+    if (creditRef.current) creditRef.current.style.transform = "rotateY(0) rotateX(0)";
+  };
+  return (
+    <section className="sec-pad" id="tarjeta" ref={ref}>
+      <div className="wrap split">
+        <div className="card-stage">
+          <motion.div style={{ rotateY: rotY, rotateX: rotX, y: ty, transformPerspective: 1200 }}>
+            <div className="credit" ref={creditRef} onMouseMove={onMove} onMouseLeave={onLeave}>
+              <div className="sheen" /><div className="blob" /><div className="glare" />
+              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <span className="display" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 22, fontWeight: 800 }}><SeyfSymbol size={22} /> SEYF</span>
+                <div className="chip" />
+              </div>
+              <div style={{ position: "relative" }}>
+                <div className="num" style={{ fontSize: 20, letterSpacing: ".14em" }}>4821 ··· ··· 7‑903</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 16 }}>
+                  <div><div style={{ fontSize: 10, color: "var(--muted)", letterSpacing: ".08em" }}>TITULAR</div><div style={{ fontSize: 15, fontWeight: 700, marginTop: 3 }}>DIEGO ROBLES</div></div>
+                  <span className="display" style={{ fontSize: 17, fontStyle: "italic", fontWeight: 800, color: "var(--accent)" }}>VISA</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          <div className="card-shadow" />
+        </div>
+        <Reveal>
+          <span className="sec-tag">Tarjeta global</span>
+          <h2 className="sec-title display" style={{ fontSize: "clamp(32px, 4vw, 44px)" }}>Gasta en cualquier moneda, sin sorpresas.</h2>
+          <div className="feat-list">
+            {[
+              { ti: "Tipo de cambio real", de: "Convertimos al cambio real del mercado, sin margen oculto ni comisión." },
+              { ti: "Saldos en múltiples divisas", de: "Guarda MXN, USD, BRL y KRW y paga con el que prefieras." },
+              { ti: "Control total", de: "Congela la tarjeta, cambia tu PIN y recibe alertas de cada cargo al instante." },
+            ].map((f) => (
+              <div className="feat-item" key={f.ti}><span className="ck"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l4.5 4.5L19 7" /></svg></span><div><div className="ti">{f.ti}</div><div className="de">{f.de}</div></div></div>
+            ))}
+          </div>
+          <div className="cur-chips">
+            <span className="cur-chip">$ MXN</span>
+            <span className="cur-chip"><span className="cur-flag"><FlagUS s={18} /></span> USD</span>
+            <span className="cur-chip"><span className="cur-flag"><FlagBR s={18} /></span> BRL</span>
+            <span className="cur-chip"><span className="cur-flag"><FlagKR s={18} /></span> KRW</span>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/** Reveal al entrar en pantalla (blur + subida). */
+function Reveal({ children, delay = 0, className, style }: { children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties }) {
+  const reduced = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      style={style}
+      initial={reduced ? false : { opacity: 0, y: 36, filter: "blur(8px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={{ once: true, margin: "0px 0px -80px 0px" }}
+      transition={{ duration: 0.9, delay, ease: EASE }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** Título de sección con máscara: cada línea sube desde abajo. */
+function SecHead({ tag, title, sub, center = false }: { tag: string; title: string; sub?: string; center?: boolean }) {
+  return (
+    <div className={center ? "sec-head-center" : undefined} style={{ marginBottom: 48 }}>
+      <Reveal><span className="sec-tag">{tag}</span></Reveal>
+      <Reveal delay={0.05}><h2 className="sec-title display">{title}</h2></Reveal>
+      {sub && <Reveal delay={0.12}><p className="sec-sub">{sub}</p></Reveal>}
+    </div>
+  );
+}
+
+/* ---------- landing ---------- */
+export default function Landing() {
   const [navHidden, setNavHidden] = useState(false);
   const [navScrolled, setNavScrolled] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [screen, setScreen] = useState(0); // pantalla activa del cel (0=Inicio,1=Convertir,2=Bóvedas)
+  const { scrollYProgress } = useScroll();
+  const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30 });
 
-  // auto-cycle de las pantallas del celular (pausa si reduce-motion)
+  // smooth scroll (Lenis) — usa el scroll nativo, así que useScroll sigue funcionando
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = setInterval(() => setScreen((s) => (s + 1) % 3), 3800);
-    return () => clearInterval(id);
-  }, []);
-
-  // reveal on scroll (con stagger por grupo)
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (!e.isIntersecting) return;
-          const el = e.target as HTMLElement;
-          const sibs = Array.prototype.filter.call(
-            el.parentElement?.children ?? [],
-            (c: Element) => c.classList.contains("reveal"),
-          );
-          const idx = sibs.indexOf(el);
-          el.style.transitionDelay = Math.max(0, idx) * 75 + "ms";
-          el.classList.add("in");
-          obs.unobserve(el);
-        });
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" },
-    );
-    root.querySelectorAll(".reveal").forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
+    const lenis = new Lenis({ duration: 1.15, anchors: { offset: -80 }, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
+    lenisRef.current = lenis;
+    let raf = 0;
+    const loop = (time: number) => {
+      lenis.raf(time);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
   }, []);
 
   // nav: ocultar al bajar, mostrar al subir
@@ -213,46 +701,17 @@ export default function Landing() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  // tilt 3D de la tarjeta
-  const onCardMove = (ev: React.MouseEvent) => {
-    const card = creditRef.current;
-    if (!card) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const r = card.getBoundingClientRect();
-    const px = (ev.clientX - r.left) / r.width - 0.5;
-    const py = (ev.clientY - r.top) / r.height - 0.5;
-    card.style.transform = `rotateY(${px * 12}deg) rotateX(${-py * 12}deg)`;
-  };
-  const onCardLeave = () => {
-    if (creditRef.current) creditRef.current.style.transform = "rotateY(0) rotateX(0)";
-  };
-
-  // tilt 3D del celular siguiendo el mouse (parallax sobre el stage)
-  const onPhoneMove = (ev: React.MouseEvent) => {
-    const stage = phoneStageRef.current;
-    const tilt = phoneTiltRef.current;
-    if (!stage || !tilt) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const r = stage.getBoundingClientRect();
-    const px = (ev.clientX - r.left) / r.width - 0.5;
-    const py = (ev.clientY - r.top) / r.height - 0.5;
-    tilt.style.setProperty("--ptx", `${px * 14}deg`);
-    tilt.style.setProperty("--pty", `${-py * 14}deg`);
-  };
-  const onPhoneLeave = () => {
-    const tilt = phoneTiltRef.current;
-    if (!tilt) return;
-    tilt.style.setProperty("--ptx", "0deg");
-    tilt.style.setProperty("--pty", "0deg");
-  };
-
   return (
-    <div className="lp" ref={rootRef}>
+    <div className="lp">
+      <Intro />
+      <motion.div className="scroll-progress" style={{ scaleX: progress }} />
+
       {/* atmospheric bg */}
       <div className="atmos">
         <div className="glow g1" />
         <div className="glow g2" />
         <div className="grid" />
+        <div className="grain" />
       </div>
 
       {/* NAV */}
@@ -271,166 +730,7 @@ export default function Landing() {
       </div>
 
       <main>
-        {/* HERO */}
-        <section className="hero">
-          <div className="wrap hero-grid">
-            <div className="hero-copy">
-              <span className="pill-tag reveal"><b>NUEVO</b> Rendimiento diario sobre tus pesos</span>
-              <h1 className="display">
-                <span className="hero-word">Tu</span> <span className="hero-word">dinero,</span>{" "}
-                <span className="hero-word em">protegido</span>{" "}
-                <span className="hero-word">y</span> <span className="hero-word em2">creciendo</span>{" "}
-                <span className="hero-word">en</span> <span className="hero-word">automático.</span>
-              </h1>
-              <p className="lede reveal">Pesos digitales, bonos de gobierno de 7 países, bóvedas de ahorro y una tarjeta que gasta en cualquier divisa al tipo de cambio de Google. Todo en una sola app.</p>
-              <div className="hero-cta reveal">
-                <Link className="btn btn-primary btn-lg" href="/app">Iniciar ahora</Link>
-                <AppStoreBtn />
-                <GooglePlayBtn />
-              </div>
-              <div className="hero-trust reveal">
-                <span className="t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg> Saldo asegurado</span>
-                <span className="t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="5" y="10" width="14" height="10" rx="2.5" /><path d="M8 10V7a4 4 0 018 0v3" /></svg> Cifrado AES‑256</span>
-                <span className="t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="9" /><path d="M9 12l2 2 4-4" /></svg> Regulado</span>
-              </div>
-            </div>
-
-            {/* phone mockup */}
-            <div className="phone-stage" ref={phoneStageRef} onMouseMove={onPhoneMove} onMouseLeave={onPhoneLeave}>
-              <div className="float-card fc1 reveal">
-                <div className="k" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <motion.span
-                    aria-hidden
-                    animate={reduced ? undefined : { opacity: [1, 0.25, 1], scale: [1, 0.85, 1] }}
-                    transition={reduced ? undefined : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ width: 6, height: 6, borderRadius: 99, background: "var(--accent)", display: "inline-block" }}
-                  />
-                  Rinde solo
-                </div>
-                <div className="v"><span style={{ color: "var(--accent)" }}>+</span><span className="num"><Counter target={9} suffix="% anual" /></span></div>
-              </div>
-              <div className="float-card fc2 reveal">
-                <div className="k">Ganado hoy</div>
-                <div className="v"><GrowingAmount base={12.4} apy={9} size={18} align="left" color="var(--accent)" prefix="+$" tail={4} id="lp-ganado" /></div>
-              </div>
-              <div className="phone-tilt" ref={phoneTiltRef}>
-                <div className="phone" id="phone">
-                  <div className="phone-screen">
-                    <div className="mini-stack">
-                      {/* Pantalla 1 — Inicio */}
-                      <div className={`mini${screen === 0 ? " active" : ""}`}>
-                        <div className="mini-top">
-                          <div>
-                            <div style={{ fontSize: 11, color: "var(--muted)" }}>Buenas tardes</div>
-                            <div style={{ fontWeight: 800, fontSize: 15 }}>Diego</div>
-                          </div>
-                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,var(--accent-2),var(--accent))", display: "grid", placeItems: "center", fontWeight: 800, color: "var(--on-accent)", fontSize: 12 }}>DR</div>
-                        </div>
-                        <div className="mini-bal">
-                          <div className="mini-eyebrow">Patrimonio total</div>
-                          {/* Saldo creciendo en vivo, como en la app real */}
-                          <div style={{ marginTop: 7 }}>
-                            <GrowingAmount base={585050.4} apy={9} size={27} align="left" tail={4} id="lp-patrimonio" />
-                          </div>
-                          <MiniBars active={screen === 0} />
-                          {/* Split de estados: Disponible (lima) / En bóveda (violeta) — como en la app */}
-                          <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>
-                                <span style={{ width: 6, height: 6, borderRadius: 2, background: "var(--accent)" }} /> Disponible
-                              </div>
-                              <div className="num" style={{ fontSize: 14, fontWeight: 800, marginTop: 2 }}>$120,400</div>
-                            </div>
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "var(--muted)", fontWeight: 700 }}>
-                                <span style={{ width: 6, height: 6, borderRadius: 2, background: "var(--accent-2)" }} /> En bóveda
-                              </div>
-                              <div className="num" style={{ fontSize: 14, fontWeight: 800, marginTop: 2, color: "#c4b5fd" }}>$464,650</div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mini-row">
-                          <div className="mini-flag"><FlagMX /></div>
-                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>CETES</div><div style={{ fontSize: 11, color: "var(--muted)" }}>México · MXN</div></div>
-                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>10.8%</div>
-                        </div>
-                        <div className="mini-row">
-                          <div className="mini-flag"><FlagBR /></div>
-                          <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 13 }}>Tesouro</div><div style={{ fontSize: 11, color: "var(--muted)" }}>Brasil · BRL</div></div>
-                          <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 15 }}>11.2%</div>
-                        </div>
-                        <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
-                          <Link href="/app" style={{ flex: 1, background: "var(--accent)", color: "var(--on-accent)", borderRadius: 13, padding: 11, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Invertir</Link>
-                          <Link href="/app" style={{ flex: 1, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 13, padding: 11, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Convertir</Link>
-                        </div>
-                      </div>
-
-                      {/* Pantalla 2 — Convertir */}
-                      <div className={`mini${screen === 1 ? " active" : ""}`}>
-                        <div className="mini-top">
-                          <div style={{ fontWeight: 800, fontSize: 16 }}>Convertir</div>
-                          <span style={{ fontSize: 10.5, color: "var(--accent)", fontWeight: 800, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 99, padding: "4px 9px" }}>Tipo Bitso</span>
-                        </div>
-                        <div className="mini-bal" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div><div className="mini-eyebrow">Peso digital</div><div className="num" style={{ fontSize: 25, fontWeight: 700, marginTop: 5 }}>1,000</div></div>
-                          <span style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 11, padding: "8px 13px", fontWeight: 800, fontSize: 13 }}>MXN</span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "center", margin: "-6px 0" }}>
-                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--surface-2)", border: "1px solid var(--line)", display: "grid", placeItems: "center", color: "var(--accent)" }}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 4v13M7 4L4 7M7 4l3 3M17 20V7M17 20l3-3M17 20l-3-3" /></svg>
-                          </div>
-                        </div>
-                        <div className="mini-bal" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div><div className="mini-eyebrow">Dólar digital</div><div className="num" style={{ fontSize: 25, fontWeight: 700, marginTop: 5, color: "var(--accent)" }}>57.48</div></div>
-                          <span style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 11, padding: "8px 13px", fontWeight: 800, fontSize: 13 }}>USDT</span>
-                        </div>
-                        <div className="mini-row" style={{ justifyContent: "space-between" }}>
-                          <span style={{ fontSize: 12, color: "var(--muted)" }}>1 MXN</span>
-                          <span className="num" style={{ fontWeight: 800, color: "var(--accent)", fontSize: 13 }}>0.0575 USDT</span>
-                        </div>
-                        <div style={{ marginTop: "auto" }}>
-                          <Link href="/app" style={{ display: "block", background: "var(--accent)", color: "var(--on-accent)", borderRadius: 13, padding: 12, textAlign: "center", fontWeight: 800, fontSize: 13 }}>Convertir 1,000 MXN</Link>
-                        </div>
-                      </div>
-
-                      {/* Pantalla 3 — Bóvedas */}
-                      <div className={`mini${screen === 2 ? " active" : ""}`}>
-                        <div className="mini-top">
-                          <div style={{ fontWeight: 800, fontSize: 16 }}>Bóvedas</div>
-                          <span style={{ fontSize: 11, color: "var(--muted)" }}>Ahorro con meta</span>
-                        </div>
-                        <div className="mini-bal">
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ fontWeight: 700, fontSize: 13 }}>Viaje a Japón</div>
-                            <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 13 }}>11.2%</div>
-                          </div>
-                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6, color: "#c4b5fd" }}>$32,000 <span style={{ opacity: 0.45, fontSize: 13, color: "var(--muted)" }}>/ $50,000</span></div>
-                          <div className="mini-alloc"><span style={{ width: "64%", background: "var(--accent-2)" }} /><span style={{ width: "36%", background: "var(--line-2)" }} /></div>
-                        </div>
-                        <div className="mini-bal">
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ fontWeight: 700, fontSize: 13 }}>Fondo de emergencia</div>
-                            <div className="num" style={{ color: "var(--accent)", fontWeight: 800, fontSize: 13 }}>9.0%</div>
-                          </div>
-                          <div className="num" style={{ fontSize: 19, fontWeight: 700, marginTop: 6, color: "#c4b5fd" }}>$18,500 <span style={{ opacity: 0.45, fontSize: 13, color: "var(--muted)" }}>/ $20,000</span></div>
-                          <div className="mini-alloc"><span style={{ width: "92%", background: "var(--accent-2)" }} /><span style={{ width: "8%", background: "var(--line-2)" }} /></div>
-                        </div>
-                        <div style={{ marginTop: "auto" }}>
-                          <Link href="/app" style={{ display: "block", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 13, padding: 12, textAlign: "center", fontWeight: 800, fontSize: 13 }}>+ Nueva bóveda</Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="phone-pager">
-                {[0, 1, 2].map((i) => (
-                  <i key={i} className={screen === i ? "on" : ""} onClick={() => setScreen(i)} />
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <HeroCinema />
 
         {/* MARQUEE */}
         <div className="marquee">
@@ -444,173 +744,78 @@ export default function Landing() {
                 <span className="it"><span className="flag"><FlagCO /></span> Colombia · TES 9.60%</span>
                 <span className="it"><span className="flag"><FlagEU /></span> Europa · Bonos UE 3.40%</span>
                 <span className="it"><span className="flag"><FlagKR /></span> Corea · KTB 3.35%</span>
-                <span className="it" style={{ color: "var(--accent)" }}>Tipo de cambio igual a Google</span>
+                <span className="it" style={{ color: "var(--accent)" }}>Tipo de cambio real · 0% comisión</span>
               </React.Fragment>
             ))}
           </div>
         </div>
 
-        {/* STATS */}
+        <Manifesto />
+
+        <PhoneStory />
+
+        {/* STATS — hechos del producto */}
         <section className="sec-pad">
           <div className="wrap">
             <div className="stats">
-              <div className="stat reveal"><div className="n num">$<Counter target={2.4} decimals={1} /><span className="suf">MMD</span></div><div className="l">gestionados en la plataforma</div></div>
-              <div className="stat reveal"><div className="n num"><Counter target={850} suffix="K" /><span className="suf">+</span></div><div className="l">usuarios ahorrando</div></div>
-              <div className="stat reveal"><div className="n num"><Counter target={7} /></div><div className="l">países con bonos soberanos</div></div>
-              <div className="stat reveal"><div className="n num"><Counter target={0} /><span className="suf">comisiones</span></div><div className="l">por cambio de divisa</div></div>
+              {[
+                { n: <><Counter target={9} /><span className="suf">%</span></>, l: "anual sobre tu saldo, pagado diario" },
+                { n: <><Counter target={24} /><span className="suf">/7</span></>, l: "depósitos y retiros por SPEI" },
+                { n: <><Counter target={5} /><span className="suf">s</span></>, l: "para mover tu dinero en Stellar" },
+                { n: <><Counter target={0} /><span className="suf">%</span></>, l: "comisión por cambio de divisa" },
+              ].map((s, i) => (
+                <Reveal key={i} delay={i * 0.08} className="stat">
+                  <div className="n num">{s.n}</div>
+                  <div className="l">{s.l}</div>
+                </Reveal>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* BENTO / PRODUCTO */}
-        <section className="sec-pad" id="producto">
-          <div className="wrap">
-            <div className="reveal" style={{ marginBottom: 44 }}>
-              <span className="sec-tag">Una sola app</span>
-              <h2 className="sec-title display">Toda tu vida financiera, concentrada.</h2>
-              <p className="sec-sub">Ahorro, inversión y gasto trabajando juntos — con rendimientos premium y la seguridad de un banco.</p>
-            </div>
-            <div className="bento">
-              <div className="card-glass col-3 row-2 reveal">
-                <div className="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 19c0-8 6-13 14-13 0 8-5 14-13 14-1 0-1-1-1-1z" /><path d="M9 15c2-3 5-5 8-6" /></svg></div>
-                <h3>Pesos digitales que rinden</h3>
-                <p>Tu saldo gana <b style={{ color: "var(--accent)" }}>9% anual</b> pagado todos los días. Sin plazos forzosos, disponible al instante.</p>
-                <div className="big-stat num" style={{ marginTop: 26 }}>9<span className="suf">%</span></div>
-                <div style={{ color: "var(--muted)", fontSize: 14 }}>rendimiento anual · pagado diario</div>
-                <div className="accent-glow" />
-              </div>
-              <div className="card-glass col-3 reveal">
-                <div className="b-icon v"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" /></svg></div>
-                <h3>Bonos de 7 gobiernos</h3>
-                <p>México, EE. UU., Brasil, Argentina, Colombia, Europa y Corea. Deuda soberana, el instrumento más seguro para crecer.</p>
-              </div>
-              <div className="card-glass col-3 reveal">
-                <div className="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><circle cx="12" cy="12" r="3.5" /><path d="M12 4.5v2M12 17.5v2" /></svg></div>
-                <h3>Bóvedas de ahorro</h3>
-                <p>Metas con rendimiento de hasta 11.2% y ahorro automático cada quincena.</p>
-              </div>
-              <div className="card-glass col-2 reveal">
-                <div className="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 9.5h19" /></svg></div>
-                <h3>Tarjeta global</h3>
-                <p>Gasta en pesos y divisas sin comisión.</p>
-              </div>
-              <div className="card-glass col-2 reveal">
-                <div className="b-icon v"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 4v13M7 4L4 7M7 4l3 3" /><path d="M17 20V7M17 20l3-3M17 20l-3-3" /></svg></div>
-                <h3>Cambio justo</h3>
-                <p>El tipo de cambio real, idéntico a Google.</p>
-              </div>
-              <div className="card-glass col-2 reveal">
-                <div className="b-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg></div>
-                <h3>Seguridad bancaria</h3>
-                <p>Cifrado AES‑256 y saldo asegurado.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+        <BondsRail />
 
-        {/* BONOS */}
-        <section className="sec-pad" id="bonos">
-          <div className="wrap">
-            <div className="reveal" style={{ marginBottom: 44 }}>
-              <span className="sec-tag">Bonos de gobierno</span>
-              <h2 className="sec-title display">Rendimientos soberanos, en un toque.</h2>
-              <p className="sec-sub">Invierte en deuda respaldada por gobiernos desde $50. Liquidación T+1 y custodia regulada.</p>
-            </div>
-            <div className="bonds-row">
-              <div className="bond reveal"><div className="flag"><FlagMX s={46} /></div><div className="country">México</div><div className="code">Bonos M · CETES · MXN</div><div className="yld num"><Counter target={10.25} decimals={2} />%<small>anual</small></div></div>
-              <div className="bond reveal"><div className="flag"><FlagUS s={46} /></div><div className="country">Estados Unidos</div><div className="code">US Treasury · USD</div><div className="yld num"><Counter target={4.45} decimals={2} />%<small>anual</small></div></div>
-              <div className="bond reveal"><div className="flag"><FlagBR s={46} /></div><div className="country">Brasil</div><div className="code">Tesouro Selic · BRL</div><div className="yld num"><Counter target={11.75} decimals={2} />%<small>anual</small></div></div>
-              <div className="bond reveal"><div className="flag"><FlagAR s={46} /></div><div className="country">Argentina</div><div className="code">Lecap · ARS</div><div className="yld num"><Counter target={14.5} decimals={2} />%<small>anual</small></div></div>
-              <div className="bond reveal"><div className="flag"><FlagCO s={46} /></div><div className="country">Colombia</div><div className="code">TES · COP</div><div className="yld num"><Counter target={9.6} decimals={2} />%<small>anual</small></div></div>
-              <div className="bond reveal"><div className="flag"><FlagEU s={46} /></div><div className="country">Europa</div><div className="code">Bonos UE · EUR</div><div className="yld num"><Counter target={3.4} decimals={2} />%<small>anual</small></div></div>
-              <div className="bond reveal"><div className="flag"><FlagKR s={46} /></div><div className="country">Corea del Sur</div><div className="code">Korea Treasury · KRW</div><div className="yld num"><Counter target={3.35} decimals={2} />%<small>anual</small></div></div>
-            </div>
-          </div>
-        </section>
-
-        {/* TARJETA */}
-        <section className="sec-pad" id="tarjeta">
-          <div className="wrap split">
-            <div className="reveal">
-              <div className="credit" ref={creditRef} onMouseMove={onCardMove} onMouseLeave={onCardLeave}>
-                <div className="sheen" /><div className="blob" />
-                <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <span className="display" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 22, fontWeight: 800 }}><SeyfSymbol size={22} /> SEYF</span>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" /></svg>
-                </div>
-                <div style={{ position: "relative" }}>
-                  <div className="num" style={{ fontSize: 20, letterSpacing: ".14em" }}>4821 ··· ··· 7‑903</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 16 }}>
-                    <div><div style={{ fontSize: 10, color: "var(--muted)", letterSpacing: ".08em" }}>TITULAR</div><div style={{ fontSize: 15, fontWeight: 700, marginTop: 3 }}>DIEGO ROBLES</div></div>
-                    <span className="display" style={{ fontSize: 17, fontStyle: "italic", fontWeight: 800, color: "var(--accent)" }}>VISA</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="reveal">
-              <span className="sec-tag">Tarjeta global</span>
-              <h2 className="sec-title display" style={{ fontSize: 38 }}>Gasta en cualquier moneda, sin sorpresas.</h2>
-              <div className="feat-list">
-                {[
-                  { ti: "Tipo de cambio de Google", de: "Convertimos al cambio real del mercado, sin margen oculto ni comisión." },
-                  { ti: "Saldos en múltiples divisas", de: "Guarda MXN, USD, BRL y KRW y paga con el que prefieras." },
-                  { ti: "Control total", de: "Congela la tarjeta, cambia tu PIN y recibe alertas de cada cargo al instante." },
-                ].map((f) => (
-                  <div className="feat-item" key={f.ti}><span className="ck"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l4.5 4.5L19 7" /></svg></span><div><div className="ti">{f.ti}</div><div className="de">{f.de}</div></div></div>
-                ))}
-              </div>
-              <div className="cur-chips">
-                <span className="cur-chip">$ MXN</span>
-                <span className="cur-chip"><span style={{ width: 18, height: 18, borderRadius: "50%", overflow: "hidden", display: "inline-block" }}><FlagUS s={18} /></span> USD</span>
-                <span className="cur-chip"><span style={{ width: 18, height: 18, borderRadius: "50%", overflow: "hidden", display: "inline-block" }}><FlagBR s={18} /></span> BRL</span>
-                <span className="cur-chip"><span style={{ width: 18, height: 18, borderRadius: "50%", overflow: "hidden", display: "inline-block" }}><FlagKR s={18} /></span> KRW</span>
-              </div>
-            </div>
-          </div>
-        </section>
+        <CardShowcase />
 
         {/* FX */}
         <section className="sec-pad">
           <div className="wrap split">
-            <div className="reveal">
+            <Reveal>
               <span className="sec-tag">Tipo de cambio</span>
-              <h2 className="sec-title display" style={{ fontSize: 38 }}>El mismo cambio que ves en Google.</h2>
+              <h2 className="sec-title display" style={{ fontSize: "clamp(32px, 4vw, 44px)" }}>El mismo cambio que ves en Google.</h2>
               <p className="sec-sub">Sin márgenes inflados ni letras chiquitas. Te damos el tipo de cambio interbancario real, en tiempo real.</p>
               <div style={{ marginTop: 24 }}><span className="match-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l4.5 4.5L19 7" /></svg> Igual a Google · 0% comisión</span></div>
-            </div>
-            <div className="fx-panel reveal">
+            </Reveal>
+            <Reveal className="fx-panel" delay={0.1}>
+              <div className="fx-head"><span>Divisa</span><span>MXN</span></div>
               <div className="fx-line"><span className="flag"><FlagUS s={32} /></span><div><div style={{ fontWeight: 700, fontSize: 14 }}>USD</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Dólar estadounidense</div></div><div className="rate num">$<Counter target={17.1252} decimals={4} /></div></div>
               <div className="fx-line"><span className="flag"><FlagBR s={32} /></span><div><div style={{ fontWeight: 700, fontSize: 14 }}>BRL</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Real brasileño</div></div><div className="rate num">$<Counter target={3.482} decimals={4} /></div></div>
               <div className="fx-line"><span className="flag"><FlagKR s={32} /></span><div><div style={{ fontWeight: 700, fontSize: 14 }}>KRW</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Won surcoreano</div></div><div className="rate num">$<Counter target={0.01243} decimals={5} /></div></div>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         {/* ALIADOS */}
         <section className="sec-pad" id="aliados">
           <div className="wrap">
-            <div className="reveal partners-head">
-              <span className="sec-tag">Aliados</span>
-              <h2 className="sec-title display" style={{ marginLeft: "auto", marginRight: "auto" }}>Respaldado por la mejor infraestructura.</h2>
-              <p className="sec-sub" style={{ marginLeft: "auto", marginRight: "auto" }}>Conectamos liquidez, custodia y rieles de pago de primer nivel para que tu dinero se mueva seguro.</p>
-            </div>
+            <SecHead center tag="Aliados" title="Respaldado por la mejor infraestructura." sub="Conectamos liquidez, custodia y rieles de pago de primer nivel para que tu dinero se mueva seguro." />
             <div className="logo-wall">
-              <a className="ally reveal" href="#" aria-label="Bitso Business">
-                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="15" cy="15" r="12" /><path d="M11 9v12M11 9h4.5a3 3 0 010 6H11m0 0h5a3 3 0 010 6h-5" strokeWidth="2" /></svg>
-                <span style={{ display: "flex", flexDirection: "column" }}><span className="ally-name">bitso</span><span className="ally-sub">Business</span></span>
-              </a>
-              <a className="ally reveal" href="#" aria-label="Etherfuse">
+              <Reveal className="ally">
+                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="15" cy="15" r="12" /><path d="M7 17.5l16-6.5M7 13l16-6.5M7 22l16-6.5" strokeWidth="1.8" strokeLinecap="round" /></svg>
+                <span className="ally-name">Stellar</span>
+              </Reveal>
+              <Reveal className="ally" delay={0.06}>
                 <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3l10 6v12l-10 6L5 21V9l10-6z" /><path d="M15 9v12M10.5 12l9 6M19.5 12l-9 6" strokeWidth="1.6" opacity="0.85" /></svg>
                 <span className="ally-name">etherfuse</span>
-              </a>
-              <a className="ally reveal" href="#" aria-label="Arbitrum">
-                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="15" cy="15" r="12" /><path d="M9 21l5-11 5 11M11.4 16h5.2" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" /></svg>
-                <span className="ally-name">Arbitrum</span>
-              </a>
-              <a className="ally reveal" href="#" aria-label="SPEI">
+              </Reveal>
+              <Reveal className="ally" delay={0.12}>
+                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="15" cy="15" r="12" /><path d="M11 9v12M11 9h4.5a3 3 0 010 6H11m0 0h5a3 3 0 010 6h-5" strokeWidth="2" /></svg>
+                <span style={{ display: "flex", flexDirection: "column" }}><span className="ally-name">bitso</span><span className="ally-sub">Business</span></span>
+              </Reveal>
+              <Reveal className="ally" delay={0.18}>
                 <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 11h15l-3.5-3.5M24 19H9l3.5 3.5" /></svg>
                 <span style={{ display: "flex", flexDirection: "column" }}><span className="ally-name" style={{ letterSpacing: ".04em" }}>SPEI</span><span className="ally-sub">Transferencias</span></span>
-              </a>
+              </Reveal>
             </div>
             <p className="ally-note">Integraciones ilustrativas para fines de demostración.</p>
           </div>
@@ -619,15 +824,19 @@ export default function Landing() {
         {/* SEGURIDAD */}
         <section className="sec-pad" id="seguridad">
           <div className="wrap">
-            <div className="reveal sec-head-center" style={{ marginBottom: 44 }}>
-              <span className="sec-tag">Seguridad primero</span>
-              <h2 className="sec-title display">Tu dinero, blindado en cada capa.</h2>
-              <p className="sec-sub">Construido con los mismos estándares que la banca tradicional — y la transparencia que ella no te da.</p>
-            </div>
+            <SecHead center tag="Seguridad primero" title="Tu dinero, blindado en cada capa." sub="Construido con estándares institucionales — y la transparencia on-chain que nadie más te da." />
             <div className="sec-grid">
-              <div className="sec-card reveal"><div className="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg></div><h4>Saldo asegurado</h4><p>Protección de hasta $3,000,000 MXN por usuario en cuentas reguladas.</p></div>
-              <div className="sec-card reveal"><div className="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="10" width="14" height="10" rx="2.5" /><path d="M8 10V7a4 4 0 018 0v3" /></svg></div><h4>Cifrado AES‑256</h4><p>Cada dato y movimiento viaja cifrado de extremo a extremo, grado bancario.</p></div>
-              <div className="sec-card reveal"><div className="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 11v3a5 5 0 01-1.5 3.5" /><path d="M8.5 7.5a5 5 0 017 1.5" /><path d="M6.5 12a6.5 6.5 0 0111-4.7" /></svg></div><h4>Acceso biométrico</h4><p>Face ID, PIN y verificación en 2 pasos para que solo tú entres a tu dinero.</p></div>
+              {[
+                { ti: "Saldo asegurado", de: "Protección de hasta $3,000,000 MXN por usuario en cuentas reguladas.", ic: <><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></> },
+                { ti: "Cifrado AES‑256", de: "Cada dato y movimiento viaja cifrado de extremo a extremo.", ic: <><rect x="5" y="10" width="14" height="10" rx="2.5" /><path d="M8 10V7a4 4 0 018 0v3" /></> },
+                { ti: "Acceso biométrico", de: "Face ID, PIN y verificación en 2 pasos para que solo tú entres a tu dinero.", ic: <><path d="M12 11v3a5 5 0 01-1.5 3.5" /><path d="M8.5 7.5a5 5 0 017 1.5" /><path d="M6.5 12a6.5 6.5 0 0111-4.7" /></> },
+              ].map((c, i) => (
+                <Reveal key={c.ti} className="sec-card" delay={i * 0.08}>
+                  <div className="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{c.ic}</svg></div>
+                  <h4>{c.ti}</h4>
+                  <p>{c.de}</p>
+                </Reveal>
+              ))}
             </div>
           </div>
         </section>
@@ -635,19 +844,18 @@ export default function Landing() {
         {/* FAQ */}
         <section className="sec-pad">
           <div className="wrap">
-            <div className="reveal sec-head-center" style={{ marginBottom: 44 }}>
-              <span className="sec-tag">Preguntas</span>
-              <h2 className="sec-title display">Lo que quieres saber.</h2>
-            </div>
+            <SecHead center tag="Preguntas" title="Lo que quieres saber." />
             <div className="faq-list">
               {FAQ_ITEMS.map((item, i) => (
-                <div className={`faq reveal${openFaq === i ? " open" : ""}`} key={i}>
-                  <div className="faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                    {item.q}
-                    <span className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg></span>
+                <Reveal key={i} delay={i * 0.05}>
+                  <div className={`faq${openFaq === i ? " open" : ""}`}>
+                    <button className="faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
+                      {item.q}
+                      <span className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14" /></svg></span>
+                    </button>
+                    <div className="faq-a"><p>{item.a}</p></div>
                   </div>
-                  <div className="faq-a"><p>{item.a}</p></div>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -656,16 +864,18 @@ export default function Landing() {
         {/* FINAL CTA */}
         <section className="sec-pad" id="descargar">
           <div className="wrap">
-            <div className="final reveal">
-              <div className="glow-c" />
-              <h2 className="display">Empieza a hacer crecer tu dinero hoy.</h2>
-              <p>Abre tu cuenta en minutos. Sin comisiones de apertura, sin saldo mínimo.</p>
-              <div className="hero-cta">
-                <Link className="btn btn-primary btn-lg" href="/app">Iniciar ahora</Link>
-                <AppStoreBtn />
-                <GooglePlayBtn />
+            <Reveal className="final">
+              <Symbol3D className="final-canvas" scale={0.8} />
+              <div className="final-inner">
+                <h2 className="display">Empieza a hacer crecer tu dinero hoy.</h2>
+                <p>Abre tu cuenta en minutos. Sin comisiones de apertura, sin saldo mínimo.</p>
+                <div className="hero-cta">
+                  <Link className="btn btn-primary btn-lg" href="/app">Iniciar ahora</Link>
+                  <AppStoreBtn />
+                  <GooglePlayBtn />
+                </div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
 
@@ -690,9 +900,10 @@ export default function Landing() {
                 <a href="mailto:inversionistas@seyf.app">Contacto inversión</a>
               </div>
             </div>
+            <div className="foot-giant display" aria-hidden>SEYF</div>
             <div className="foot-bottom">
               <span>© 2026 SEYF. Todos los derechos reservados.</span>
-              <span>Hecho con seguridad de grado bancario · Regulado en México</span>
+              <span>Construido sobre Stellar · Hecho en México</span>
             </div>
           </div>
         </footer>
