@@ -1,12 +1,11 @@
 [package]
-name = "seyf-lock"
+name = "seyf-advance"
 version = "0.1.0"
 edition = "2021"
 publish = false
-description = "SEYF — capital bloqueado en una bóveda DeFindex con adelanto del rendimiento futuro"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib"]
 doctest = false
 
 [dependencies]

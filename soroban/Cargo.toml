@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["seyf-lock"]
+members = ["seyf_advance"]
 
 [workspace.dependencies]
 # La versión mayor de soroban-sdk sigue al protocolo: mainnet en Protocol 29 (verificado con Raven, 2026-10-25).
