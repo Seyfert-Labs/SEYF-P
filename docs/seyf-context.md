@@ -53,9 +53,13 @@ Instalados en `.claude/skills/` (scope de proyecto, ignorado por git) con
 | `soroswap-sdk` | swaps/FX |
 | `stellar-anchors` (Cheesecake Labs) | rampas SEP-6/24, Etherfuse |
 | `stellar-prices-api` (Rumblefish) | candidato de precios tras quitar Reflector — sin vetar (repoScore 27) |
+| `trustless-work` | escrow del adelanto: bloqueo de garantía, desembolso y repagos (ver plan §Escrow) |
 
-Descartados por ahora: agentic-payments, zk-proofs, cross-chain, Trustless Work
-(el adelanto está oculto), XOXNO (licencia no comercial, sin auditoría listada).
+Descartados por ahora: agentic-payments, zk-proofs, cross-chain, XOXNO (licencia
+no comercial, sin auditoría listada).
+
+> El skill `trustless-work` es un índice: sus sub-archivos (`skills/api/core-concepts.md`,
+> `constitution.md`, …) se leen desde el repo `Trustless-Work/trustlesswork-skill` cuando haga falta.
 
 ## Check 3 — stellar-build
 
@@ -100,6 +104,7 @@ Señales de confianza vía Raven `scout.searchRepos` (repoScore 0–100, activid
 | **Regional Starter Pack** (`ElliotFriend/regional-starter-pack`) | cliente Etherfuse portable + libs SEP-1/6/10/12/24/31/38 | activo (oct-2026), de SDF DevRel | comparar con `src/lib/etherfuse`; copiar offramp si falta |
 | **Smart Account Kit** (`stellar/smart-account-kit`) | passkeys (stretch) | repoScore **85**, activo; sobre contratos OZ auditados; **pre-1.0 (v0.6.x)** con breaking changes | detrás de flag |
 | **OZ Relayer + Channels plugin** | envío Soroban patrocinado (reemplaza Launchtube, retirado) | activo, repoScore 52 | para DeFindex/Soroswap; reservas siguen con CAP-33 propio |
+| **Trustless Work** (`Trustless-Work/trustlesswork-smart-contract-stellar`) | escrow del adelanto (reemplaza `SeyfAdvance.sol`) | repoScore **85**, activo (sep-2026); **auditado por Runtime Verification** (2025-09-12, stellarsecurityportal.com/report/64); V1 en mainnet, V2 solo testnet; fee 0.3% al liberar | API REST desde `/api/escrow/*` o `@trustless-work/escrow` |
 | `carstenjacobsen/ai-{passkeys,etherfuse,defindex,soroswap}-integration` | referencia de integración (passkeys + rampa MXN) | **dormidos desde mar-2026**, repoScore ≤31 | solo leer, no copiar |
 | Stellar DeFi Gotchas (`kaankacar/stellar-defi-gotchas`) | 400+ hallazgos | no indexado en Scout | checklist de revisión |
 | Anchor Directory / Demo Wallet / Anchor Test Suite | validar `stellar.toml` y SEPs | oficiales SDF | B3 |

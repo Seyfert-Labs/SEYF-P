@@ -35,6 +35,7 @@ COMMUNITY=(
   "soroswap-sdk|https://raw.githubusercontent.com/soroswap/sdk/main/skills/soroswap-sdk/SKILL.md"
   "stellar-anchors|https://raw.githubusercontent.com/CheesecakeLabs/stellar-anchor-skill/main/SKILL.md"
   "stellar-prices-api|https://raw.githubusercontent.com/rumblefishdev/stellar-prices-api/master/skills/stellar-prices-api/SKILL.md"
+  "trustless-work|https://raw.githubusercontent.com/Trustless-Work/trustlesswork-skill/main/trustless-work-dev/SKILL.md"
 )
 
 echo "→ stellar-build@$STELLAR_BUILD_REF en prefijo temporal"
