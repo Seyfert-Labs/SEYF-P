@@ -15,8 +15,8 @@ pub enum Error {
     ExceedsLtv = 8,
     ExceedsUserCap = 9,
     ExceedsGlobalCap = 10,
-    /// La cuenta de liquidez no tiene saldo o allowance para el adelanto.
-    InsufficientLiquidity = 11,
+    /// La tesorería del contrato no tiene saldo libre para el adelanto o el retiro.
+    InsufficientTreasury = 11,
     AdvanceBelowMin = 12,
     // Fuera de la lista de la spec, necesarios para validar entradas.
     InvalidParams = 13,

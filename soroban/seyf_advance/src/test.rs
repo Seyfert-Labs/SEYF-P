@@ -2,11 +2,12 @@ extern crate std;
 
 use soroban_sdk::{
     contract, contractimpl, contracttype,
-    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Ledger as _},
+    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, Events as _, Ledger as _},
     token::{StellarAssetClient, TokenClient},
-    vec, Address, Env, IntoVal, Symbol, Vec,
+    vec, Address, Env, Event, IntoVal, Symbol, Vec,
 };
 
+use crate::events::{TreasuryFunded, TreasuryWithdrawn};
 use crate::{Error, Params, SeyfAdvance, SeyfAdvanceClient};
 
 // ------------------------------------------------------------- vault simulado
@@ -106,17 +107,18 @@ impl MockVault {
 // ------------------------------------------------------------------- entorno
 
 const USDC: i128 = 10_000_000; // 7 decimales
-const LIQUIDITY: i128 = 50 * USDC;
+const TREASURY: i128 = 50 * USDC;
 
 struct Setup<'a> {
     e: Env,
     admin: Address,
-    liquidity: Address,
     usdc: TokenClient<'a>,
     usdc_admin: StellarAssetClient<'a>,
     vault: MockVaultClient<'a>,
     advance: SeyfAdvanceClient<'a>,
     users: std::vec::Vec<Address>,
+    /// USDC aportado a la tesorería menos lo retirado por el admin.
+    net_funded: i128,
 }
 
 fn default_params() -> Params {
@@ -138,7 +140,6 @@ impl<'a> Setup<'a> {
         e.ledger().set_timestamp(1_000_000);
 
         let admin = Address::generate(&e);
-        let liquidity = Address::generate(&e);
         let sac = e.register_stellar_asset_contract_v2(Address::generate(&e));
         let usdc = TokenClient::new(&e, &sac.address());
         let usdc_admin = StellarAssetClient::new(&e, &sac.address());
@@ -148,27 +149,40 @@ impl<'a> Setup<'a> {
 
         let advance_id = e.register(
             SeyfAdvance,
-            (
-                admin.clone(),
-                vault_id.clone(),
-                sac.address(),
-                liquidity.clone(),
-                default_params(),
-            ),
+            (admin.clone(), vault_id.clone(), sac.address(), default_params()),
         );
         let advance = SeyfAdvanceClient::new(&e, &advance_id);
 
-        // Cuenta de liquidez con 50 USDC y allowance completo para el contrato.
-        usdc_admin.mint(&liquidity, &LIQUIDITY);
-        let s = Setup { e, admin, liquidity, usdc, usdc_admin, vault, advance, users: std::vec::Vec::new() };
-        s.approve_liquidity(LIQUIDITY);
+        let mut s = Setup {
+            e,
+            admin,
+            usdc,
+            usdc_admin,
+            vault,
+            advance,
+            users: std::vec::Vec::new(),
+            net_funded: 0,
+        };
+        // Tesorería con 50 USDC aportados por un tercero.
+        s.fund(TREASURY);
         s
     }
 
-    fn approve_liquidity(&self, amount: i128) {
-        let expiration = self.e.ledger().sequence() + 10_000;
-        self.usdc
-            .approve(&self.liquidity, &self.advance.address, &amount, &expiration);
+    /// Un tercero aporta `amount` USDC a la tesorería.
+    fn fund(&mut self, amount: i128) -> Address {
+        let funder = Address::generate(&self.e);
+        self.usdc_admin.mint(&funder, &amount);
+        self.advance.fund_treasury(&funder, &amount);
+        self.net_funded += amount;
+        funder
+    }
+
+    /// El admin retira `amount` USDC de la tesorería.
+    fn withdraw(&mut self, amount: i128) -> Address {
+        let to = Address::generate(&self.e);
+        self.advance.withdraw_treasury(&to, &amount);
+        self.net_funded -= amount;
+        to
     }
 
     /// Usuario aprobado con `deposit` USDC depositados en el vault.
@@ -190,7 +204,7 @@ impl<'a> Setup<'a> {
         self.vault.get_asset_amounts_per_shares(&shares).get(0).unwrap()
     }
 
-    /// Invariantes 1 y 2 de la sección 5.6.
+    /// Invariantes de la tesorería y las posiciones.
     fn check_invariants(&self) {
         let mut advances = 0i128;
         let mut shares = 0i128;
@@ -206,8 +220,10 @@ impl<'a> Setup<'a> {
             shares,
             "acciones del contrato != suma de acciones de las posiciones"
         );
-        // El contrato nunca retiene USDC: todo pasa a la liquidez o al usuario.
-        assert_eq!(self.usdc.balance(&self.advance.address), 0);
+        // La tesorería es exactamente el USDC del contrato.
+        assert_eq!(self.advance.treasury(), self.usdc.balance(&self.advance.address));
+        // La tesorería nunca pierde: lo libre más lo adelantado cubre lo aportado.
+        assert!(self.advance.treasury() + advances >= self.net_funded, "la tesorería perdió USDC");
     }
 }
 
@@ -219,7 +235,7 @@ fn expected_advance(value: i128, apy_bps: u32, days: u32) -> i128 {
 // --------------------------------------------------------------------- tests
 
 #[test]
-fn open_advance_pays_from_liquidity_and_locks_shares() {
+fn open_advance_pays_from_treasury_and_locks_shares() {
     let mut s = Setup::new();
     let (user, shares) = s.user(100 * USDC);
 
@@ -230,8 +246,7 @@ fn open_advance_pays_from_liquidity_and_locks_shares() {
     let paid = s.advance.open_advance(&user, &shares, &90, &expected);
     assert_eq!(paid, expected);
     assert_eq!(s.usdc.balance(&user), expected);
-    assert_eq!(s.usdc.balance(&s.liquidity), LIQUIDITY - expected);
-    assert_eq!(s.advance.treasury(), LIQUIDITY - expected);
+    assert_eq!(s.advance.treasury(), TREASURY - expected);
     assert_eq!(s.vault.balance(&user), 0);
     assert_eq!(s.vault.balance(&s.advance.address), shares);
 
@@ -252,8 +267,8 @@ fn open_advance_authorizes_user_and_share_transfer() {
     s.advance.open_advance(&user, &shares, &90, &1);
 
     // El usuario firma la llamada raíz y, dentro del mismo árbol, la
-    // transferencia de sus acciones al contrato. El `transfer_from` de la
-    // liquidez lo autoriza el propio contrato (gasta su allowance).
+    // transferencia de sus acciones al contrato. El pago del adelanto sale del
+    // saldo del propio contrato, así que no pide ninguna otra firma.
     assert_eq!(
         s.e.auths(),
         std::vec![(
@@ -337,30 +352,28 @@ fn open_advance_caps() {
 }
 
 #[test]
-fn open_advance_requires_liquidity_balance_and_allowance() {
+fn open_advance_requires_treasury_balance() {
     let mut s = Setup::new();
     let (user, shares) = s.user(100 * USDC);
+    let expected = expected_advance(100 * USDC, 800, 90);
 
-    // Sin allowance suficiente.
-    s.approve_liquidity(1);
-    assert_eq!(s.advance.treasury(), 1);
+    // Falta 1 unidad en la tesorería.
+    s.withdraw(TREASURY - expected + 1);
+    assert_eq!(s.advance.treasury(), expected - 1);
     assert_eq!(
         s.advance.try_open_advance(&user, &shares, &90, &0),
-        Err(Ok(Error::InsufficientLiquidity))
+        Err(Ok(Error::InsufficientTreasury))
     );
 
-    // Con allowance pero sin saldo.
-    s.approve_liquidity(LIQUIDITY);
-    let sink = Address::generate(&s.e);
-    s.usdc.transfer(&s.liquidity, &sink, &(LIQUIDITY - 1));
-    assert_eq!(
-        s.advance.try_open_advance(&user, &shares, &90, &0),
-        Err(Ok(Error::InsufficientLiquidity))
-    );
+    // Con el saldo justo ya alcanza y la tesorería queda en cero.
+    s.fund(1);
+    s.advance.open_advance(&user, &shares, &90, &expected);
+    assert_eq!(s.advance.treasury(), 0);
+    s.check_invariants();
 }
 
 #[test]
-fn repay_returns_all_shares_and_refills_liquidity() {
+fn repay_returns_all_shares_and_refills_treasury() {
     let mut s = Setup::new();
     let (user, shares) = s.user(100 * USDC);
     s.advance.open_advance(&user, &shares, &90, &0);
@@ -368,7 +381,7 @@ fn repay_returns_all_shares_and_refills_liquidity() {
     s.advance.repay(&user);
     assert_eq!(s.vault.balance(&user), shares);
     assert_eq!(s.usdc.balance(&user), 0);
-    assert_eq!(s.usdc.balance(&s.liquidity), LIQUIDITY);
+    assert_eq!(s.advance.treasury(), TREASURY);
     assert_eq!(s.advance.outstanding(), 0);
     assert_eq!(s.advance.position(&user), None);
     s.check_invariants();
@@ -379,12 +392,26 @@ fn repay_returns_all_shares_and_refills_liquidity() {
 }
 
 #[test]
-fn repay_blocked_while_paused() {
+fn pause_only_blocks_new_advances() {
     let mut s = Setup::new();
     let (user, shares) = s.user(100 * USDC);
+    let (other, other_shares) = s.user(100 * USDC);
     s.advance.open_advance(&user, &shares, &90, &0);
     s.advance.pause();
-    assert_eq!(s.advance.try_repay(&user), Err(Ok(Error::Paused)));
+
+    // Nada nuevo se abre.
+    assert_eq!(
+        s.advance.try_open_advance(&other, &other_shares, &90, &0),
+        Err(Ok(Error::Paused))
+    );
+    // Pero el usuario sale repagando y la tesorería sigue operando.
+    s.advance.repay(&user);
+    assert_eq!(s.vault.balance(&user), shares);
+    assert_eq!(s.advance.treasury(), TREASURY);
+    s.fund(USDC);
+    s.withdraw(USDC);
+    assert_eq!(s.advance.treasury(), TREASURY);
+    s.check_invariants();
 }
 
 #[test]
@@ -404,12 +431,12 @@ fn settle_waits_until_yield_covers_the_advance() {
     // Ya lo cubre: cualquiera liquida, también en pausa, sin firmas.
     s.accrue(1);
     s.advance.pause();
-    let liquidity_before = s.usdc.balance(&s.liquidity);
+    let treasury_before = s.advance.treasury();
     s.advance.settle(&user);
     assert_eq!(s.e.auths(), std::vec![]);
 
-    // La liquidez recupera al menos el adelanto.
-    assert!(s.usdc.balance(&s.liquidity) - liquidity_before >= advance);
+    // La tesorería recupera al menos el adelanto.
+    assert!(s.advance.treasury() - treasury_before >= advance);
     // El usuario recupera su principal completo (salvo el redondeo de una acción).
     let returned = s.vault.balance(&user);
     assert!(returned < shares);
@@ -464,23 +491,122 @@ fn admin_only_functions() {
     assert!(s.advance.try_pause().is_err());
     assert!(s.advance.try_unpause().is_err());
     assert!(s.advance.try_set_params(&default_params()).is_err());
-    assert!(s.advance.try_set_liquidity(&Address::generate(e)).is_err());
+    assert!(s.advance.try_withdraw_treasury(&Address::generate(e), &1).is_err());
     assert!(s.advance.try_set_allowed(&Address::generate(e), &true).is_err());
     assert!(s.advance.try_propose_admin(&Address::generate(e)).is_err());
+    assert_eq!(s.advance.treasury(), TREASURY);
 }
 
 #[test]
-fn set_liquidity_switches_the_source() {
+fn fund_treasury_from_anyone() {
+    let mut s = Setup::new();
+    let funder = s.fund(3 * USDC);
+    // `events()` refleja solo la última invocación: se lee antes de otra llamada.
+    assert_eq!(
+        s.e.events().all().filter_by_contract(&s.advance.address),
+        std::vec![TreasuryFunded { from: funder.clone(), amount: 3 * USDC }
+            .to_xdr(&s.e, &s.advance.address)]
+    );
+    assert_eq!(s.advance.treasury(), TREASURY + 3 * USDC);
+
+    // Lo firma quien aporta, junto con la transferencia de su USDC.
+    s.usdc_admin.mint(&funder, &USDC);
+    s.advance.fund_treasury(&funder, &USDC);
+    assert_eq!(
+        s.e.auths(),
+        std::vec![(
+            funder.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    s.advance.address.clone(),
+                    Symbol::new(&s.e, "fund_treasury"),
+                    (funder.clone(), USDC).into_val(&s.e),
+                )),
+                sub_invocations: std::vec![AuthorizedInvocation {
+                    function: AuthorizedFunction::Contract((
+                        s.usdc.address.clone(),
+                        Symbol::new(&s.e, "transfer"),
+                        (funder.clone(), s.advance.address.clone(), USDC).into_val(&s.e),
+                    )),
+                    sub_invocations: std::vec![],
+                }],
+            }
+        )]
+    );
+    s.net_funded += USDC;
+
+    assert_eq!(s.advance.try_fund_treasury(&funder, &0), Err(Ok(Error::InvalidAmount)));
+    assert_eq!(s.advance.try_fund_treasury(&funder, &-1), Err(Ok(Error::InvalidAmount)));
+    s.check_invariants();
+}
+
+#[test]
+fn withdraw_treasury_cannot_take_committed_funds() {
     let mut s = Setup::new();
     let (user, shares) = s.user(100 * USDC);
+    let advance = s.advance.open_advance(&user, &shares, &90, &0);
+    let free = TREASURY - advance;
+    assert_eq!(s.advance.treasury(), free);
 
-    let new_liquidity = Address::generate(&s.e);
-    s.advance.set_liquidity(&new_liquidity);
-    assert_eq!(s.advance.liquidity(), new_liquidity);
+    // Lo adelantado ya no está en la tesorería: solo se retira lo libre.
+    let to = Address::generate(&s.e);
+    assert_eq!(
+        s.advance.try_withdraw_treasury(&to, &(free + 1)),
+        Err(Ok(Error::InsufficientTreasury))
+    );
+    assert_eq!(s.advance.try_withdraw_treasury(&to, &0), Err(Ok(Error::InvalidAmount)));
+
+    let to = s.withdraw(free);
+    assert_eq!(
+        s.e.events().all().filter_by_contract(&s.advance.address),
+        std::vec![TreasuryWithdrawn { to: to.clone(), amount: free }
+            .to_xdr(&s.e, &s.advance.address)]
+    );
+    assert_eq!(s.usdc.balance(&to), free);
     assert_eq!(s.advance.treasury(), 0);
     assert_eq!(
-        s.advance.try_open_advance(&user, &shares, &90, &0),
-        Err(Ok(Error::InsufficientLiquidity))
+        s.advance.try_withdraw_treasury(&to, &1),
+        Err(Ok(Error::InsufficientTreasury))
+    );
+    s.check_invariants();
+}
+
+#[test]
+fn locked_shares_never_leave_through_withdraw_treasury() {
+    let mut s = Setup::new();
+    let (a, a_shares) = s.user(100 * USDC);
+    let (b, b_shares) = s.user(100 * USDC);
+    let advance_a = s.advance.open_advance(&a, &a_shares, &90, &0);
+    let advance_b = s.advance.open_advance(&b, &b_shares, &90, &0);
+
+    // El admin vacía la tesorería: las acciones bloqueadas se quedan.
+    s.withdraw(TREASURY - advance_a - advance_b);
+    assert_eq!(s.advance.treasury(), 0);
+    assert_eq!(s.vault.balance(&s.advance.address), a_shares + b_shares);
+    s.check_invariants();
+
+    // Las dos salidas siguen funcionando con la tesorería vacía.
+    s.advance.repay(&a);
+    assert_eq!(s.vault.balance(&a), a_shares);
+    assert_eq!(s.advance.treasury(), advance_a);
+
+    // El rendimiento cubre de sobra el adelanto de `b`.
+    s.accrue(5 * USDC);
+    s.advance.settle(&b);
+    assert!(s.vault.balance(&b) > 0);
+    assert!(s.advance.treasury() >= advance_a + advance_b);
+    assert_eq!(s.vault.balance(&s.advance.address), 0);
+    s.check_invariants();
+}
+
+#[test]
+#[should_panic]
+fn constructor_rejects_vault_equal_to_asset() {
+    let e = Env::default();
+    let sac = e.register_stellar_asset_contract_v2(Address::generate(&e));
+    e.register(
+        SeyfAdvance,
+        (Address::generate(&e), sac.address(), sac.address(), default_params()),
     );
 }
 

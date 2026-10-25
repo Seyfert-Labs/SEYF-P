@@ -48,7 +48,6 @@ pub enum DataKey {
     PendingAdmin,
     Vault,
     Asset,
-    Liquidity,
     Params,
     Paused,
     Outstanding,
@@ -95,16 +94,6 @@ pub fn vault(e: &Env) -> Address {
 
 pub fn asset(e: &Env) -> Address {
     e.storage().instance().get(&DataKey::Asset).unwrap()
-}
-
-/// Cuenta o contrato de la que salen los adelantos (vía allowance) y a la que
-/// vuelven los repagos y lo recuperado del vault.
-pub fn liquidity(e: &Env) -> Address {
-    e.storage().instance().get(&DataKey::Liquidity).unwrap()
-}
-
-pub fn set_liquidity(e: &Env, liquidity: &Address) {
-    e.storage().instance().set(&DataKey::Liquidity, liquidity);
 }
 
 pub fn params(e: &Env) -> Params {

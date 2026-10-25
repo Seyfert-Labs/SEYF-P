@@ -28,7 +28,7 @@ pub struct AdvanceSettled {
     pub user: Address,
     pub shares_redeemed: i128,
     pub shares_returned: i128,
-    /// USDC retirado del vault y enviado a la liquidez (>= adelanto).
+    /// USDC retirado del vault hacia la tesorería del contrato (>= adelanto).
     pub recovered: i128,
 }
 
@@ -58,10 +58,20 @@ pub struct AllowedSet {
     pub allowed: bool,
 }
 
-#[contractevent(topics = ["liquidity_set"])]
+#[contractevent(topics = ["treasury_funded"])]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LiquiditySet {
-    pub liquidity: Address,
+pub struct TreasuryFunded {
+    #[topic]
+    pub from: Address,
+    pub amount: i128,
+}
+
+#[contractevent(topics = ["treasury_withdrawn"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TreasuryWithdrawn {
+    #[topic]
+    pub to: Address,
+    pub amount: i128,
 }
 
 #[contractevent(topics = ["admin_proposed"])]
