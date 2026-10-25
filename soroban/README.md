@@ -1,49 +1,56 @@
 # SEYF — contratos Soroban
 
-## `seyf-lock`
+## `seyf_advance`
 
-Capital bloqueado en una bóveda **DeFindex** por un plazo fijo, con el **rendimiento futuro
-adelantado** hoy. Reglas, diagramas y evidencia: `docs/hackmeridian-plan.md` §SeyfLock.
+Adelanto del rendimiento de un vault USDC de **DeFindex**. El usuario bloquea en el contrato
+acciones del vault que ya tiene (siguen rindiendo) y recibe hoy, en USDC, el rendimiento de un
+plazo. El adelanto sale de la **tesorería del contrato** (su saldo de USDC), nunca del capital del
+usuario. Plan: `docs/hackmeridian-12h.md` §Contrato tesorería del adelanto.
+
+- **Adelanto:** A = floor(V × `apy_bps` × días / (10 000 × 365)), con tope de LTV
+  (`max_advance_bps`), por usuario (`per_user_cap`) y global (`global_cap`).
+- **Dos salidas:** `repay` devuelve A a la tesorería y desbloquea todas las acciones. Si no,
+  `settle` (cualquiera, keeper incluido) procede solo cuando V_now ≥ V_open + A: retira del
+  vault techo(A × acciones / V_now) acciones (≥ A en USDC) hacia la tesorería y devuelve el resto
+  al usuario.
+- **La pausa solo frena `open_advance`.** `repay`, `settle` y la tesorería siguen funcionando.
 
 | Función | Quién | Qué hace |
 |---|---|---|
-| `quote(amount, term_secs)` | lectura | `amount × apy_bps × plazo/año × advance_bps`, tope 90% del capital |
-| `lock(user, amount, term_secs, min_shares)` | usuario | deposita en DeFindex a nombre del contrato y paga el adelanto desde el pool |
-| `position(user)` | lectura | valor actual, rendimiento generado, `owed_now` para salir hoy |
-| `unlock(user, min_out)` | usuario | antes de vencer paga `adelanto − rendimiento`; recibe su capital |
-| `settle(user, min_out)` | cualquiera (cron) | después de vencer: capital al usuario, rendimiento al pool |
-| `bump(user)` | cualquiera (cron) | extiende el TTL del bloqueo |
-| `fund_pool` / `withdraw_pool` | cualquiera / admin | pool de adelantos (no puede tocar capital bloqueado) |
-| `set_params` / `set_paused` / `set_admin` / `upgrade` | admin | parámetros para bloqueos nuevos; la pausa nunca bloquea salidas |
+| `quote(shares, term_days)` | lectura | `(V, A)` con todos los topes; falla igual que `open_advance` |
+| `open_advance(user, shares, term_days, min_advance)` | usuario | bloquea las acciones y paga A desde la tesorería |
+| `repay(user)` | usuario | devuelve A y recupera todas sus acciones (también en pausa) |
+| `settle(user)` | cualquiera | cierra la posición cuando el rendimiento cubre A (también en pausa) |
+| `position(user)` / `unlock_status(user)` | lectura | posición; `(V_now, V_open + A)` |
+| `treasury()` / `outstanding()` | lectura | saldo libre de USDC; adelantos vivos |
+| `fund_treasury(from, amount)` | cualquiera | aporta USDC a la tesorería |
+| `withdraw_treasury(to, amount)` | admin | retira del saldo libre; las acciones bloqueadas no salen por aquí |
+| `set_params` / `pause` / `unpause` / `set_allowed` | admin | parámetros, pausa y lista de permitidos |
+| `propose_admin` / `accept_admin` | admin / admin nuevo | cambio de admin en dos pasos |
+
+Sin `upgrade`: un cambio se publica con un despliegue nuevo.
 
 ### Desarrollo
 
 ```bash
 cd soroban
-cargo test                    # 16 tests (bóveda simulada con la misma forma de auth que DeFindex)
-stellar contract build        # → target/wasm32v1-none/release/seyf_lock.wasm (Stellar CLI ≥ 28.1)
+cargo test                    # 17 pruebas (vault simulado con la forma de DeFindex)
+stellar contract build        # → target/wasm32v1-none/release/seyf_advance.wasm (Stellar CLI 28.1)
 ```
 
 `soroban-sdk` 29.0.1 ↔ Protocol 29 (mainnet, verificado con stellar-raven el 2026-10-25).
+CI: `.github/workflows/contracts.yml` corre las pruebas, compila el wasm y lo sube como artefacto.
 
-### Testnet
+### Despliegues
 
-| Contrato | Dirección |
-|---|---|
-| SeyfLock (XLM) | `CC5CLKMAJU7KHMUUJWXM7RJ6E7OCN6LPI66GPL26LJMH7YDTAU6XQ6BZ` |
-| Bóveda DeFindex XLM | `CCLV4H7WTLJQ7ATLHBBQV2WW3OINF3FOY5XZ7VPHZO7NH3D2ZS4GFSF6` |
-| SAC XLM nativo | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` |
-
-Parámetros de testnet: APY 8%, adelanto 90%, plazo 60 s – 2 años, tope 10,000 XLM por bloqueo.
-
-```bash
-bash soroban/scripts/testnet-e2e.sh early   # bloqueo 1 año + salida anticipada
-bash soroban/scripts/testnet-e2e.sh short   # bloqueo de 60 s
-bash soroban/scripts/testnet-e2e.sh settle  # liquidar (firma un tercero)
-```
+Testnet y ciclo completo con hashes: [`DEPLOYMENTS.md`](DEPLOYMENTS.md).
 
 ### Antes de mainnet
 
-- Sin auditoría: desplegar con `cap_per_lock` / `cap_total` bajos; auditoría vía SCF Audit Bank.
-- `apy_bps` lo fija el admin: actualizarlo con el APY real de la bóveda antes de abrir bloqueos.
-- La bóveda debe ser de **un solo activo** y ese activo debe ser el `asset` del constructor.
+- Sin auditoría: topes bajos (beta: 1 USDC por usuario, 2 USDC en total), lista de permitidos
+  encendida y pausa disponible.
+- `apy_bps` lo fija el admin con el APY medido del vault.
+- El vault debe ser de **un solo activo** y ese activo debe ser el `asset` del constructor.
+
+`seyf-lock`, el contrato anterior (desbloqueo por fecha), queda archivado en la rama
+`archive/seyf-lock`.
