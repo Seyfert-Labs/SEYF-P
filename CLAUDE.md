@@ -1,4 +1,9 @@
 @AGENTS.md
+@SOUL.md
+@docs/seyf-context.md
+
+> ⚠️ Rama `meridian`: SEYF pasa a **full Stellar**. Lo de abajo describe el riel EVM
+> heredado y se reescribe en el bloque B2 de `docs/hackmeridian-plan.md`.
 
 # SEYF — super app fintech (MXNB + Privy + Supabase)
 
