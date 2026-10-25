@@ -9,7 +9,7 @@ import type { PollarClient } from '@pollar/core'
 import { pollarSignXdr } from '@/lib/pollar/client-api'
 import { seyfAuthHeaders } from '@/lib/stellar/auth-token'
 
-type XdrResponse = { xdr?: string; error?: string }
+type XdrResponse = { xdr?: string; exists?: boolean; error?: string }
 type SubmitResponse = { txHash?: string; successful?: boolean; error?: string }
 
 async function postAuthed<T>(url: string, body?: unknown): Promise<{ ok: boolean; data: T }> {
@@ -44,6 +44,7 @@ export async function ensureSponsoredAccount(
   publicKey: string,
 ): Promise<{ created: boolean; txHash?: string }> {
   const { ok, data } = await postAuthed<XdrResponse>('/api/stellar/sponsor/create-account')
+  if (ok && data.exists) return { created: false }
   if (!ok || !data.xdr) {
     // "La cuenta ya existe" no es un fallo: es el estado que queríamos.
     if (data.error?.toLowerCase().includes('ya existe')) return { created: false }

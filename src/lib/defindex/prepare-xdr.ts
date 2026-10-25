@@ -1,22 +1,7 @@
 import 'server-only'
 
-import {
-  Networks,
-  SorobanDataBuilder,
-  Transaction,
-  rpc,
-} from '@stellar/stellar-sdk'
-import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
-
-function networkPassphrase(): string {
-  return isPublicStellarTestnet() ? Networks.TESTNET : Networks.PUBLIC
-}
-
-function sorobanRpcUrl(): string {
-  return isPublicStellarTestnet()
-    ? 'https://soroban-testnet.stellar.org'
-    : 'https://soroban.stellar.org'
-}
+import { SorobanDataBuilder, Transaction, rpc } from '@stellar/stellar-sdk'
+import { sorobanRpcUrl, stellarNetworkPassphrase } from '@/lib/stellar/network'
 
 /** Margen sobre minResourceFee (1.15 = +15 %). No multiplicar el fee total: rompe el XDR Soroban. */
 function resourceFeeMargin(): number {
@@ -30,7 +15,7 @@ function resourceFeeMargin(): number {
  * (con margen pequeño). Evita FEE_LIMIT_EXCEEDED sin corromper la extensión Soroban.
  */
 export async function prepareSorobanXdr(unsignedXdr: string): Promise<string> {
-  const passphrase = networkPassphrase()
+  const passphrase = stellarNetworkPassphrase()
   const server = new rpc.Server(sorobanRpcUrl())
   const tx = new Transaction(unsignedXdr, passphrase)
 
