@@ -1,5 +1,10 @@
 # SEYF × HackMeridian 2026 — plan de ejecución
 
+> ⚠️ **Sustituido el 25-oct por `docs/hackmeridian-12h.md`.** Tras hablar con los mentores, el MVP es
+> solo `/retiro` en mainnet: ahorro en un vault USDC de DeFindex + adelanto de rendimiento con
+> `seyf_advance` (tesorería dentro del contrato). Los bloques B0–B7, Etherfuse, CETES, Soroswap y
+> `seyf-lock` quedan fuera del hackathon. Este archivo se conserva como referencia.
+
 > Rama: `meridian` (nunca `main`). Repo público: github.com/Seyfert-Labs/SEYF-P
 > Antes de empezar: `SOUL.md` y `docs/seyf-context.md` (los 4 checks).
 > Fuente de verdad Stellar: **stellar-raven**. Nada de direcciones ni APIs de memoria.

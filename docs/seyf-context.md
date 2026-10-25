@@ -1,5 +1,8 @@
 # SEYF — contexto Stellar y los 4 checks
 
+> Plan vigente del hackathon: `docs/hackmeridian-12h.md`. El adelanto usa `seyf_advance` con la
+> tesorería dentro del contrato; `seyf-lock` se archiva en la rama `archive/seyf-lock`.
+
 Correr estos 4 checks antes de construir cualquier cosa sobre Stellar en SEYF.
 Verificados el **2026-10-25** (mainnet en Protocol 29). Revalidar si pasa >1 mes.
 
@@ -100,7 +103,7 @@ Señales de confianza vía Raven `scout.searchRepos` (repoScore 0–100, activid
 | **Regional Starter Pack** (`ElliotFriend/regional-starter-pack`) | cliente Etherfuse portable + libs SEP-1/6/10/12/24/31/38 | activo (oct-2026), de SDF DevRel | comparar con `src/lib/etherfuse`; copiar offramp si falta |
 | **Smart Account Kit** (`stellar/smart-account-kit`) | passkeys (stretch) | repoScore **85**, activo; sobre contratos OZ auditados; **pre-1.0 (v0.6.x)** con breaking changes | detrás de flag |
 | **OZ Relayer + Channels plugin** | envío Soroban patrocinado (reemplaza Launchtube, retirado) | activo, repoScore 52 | para DeFindex/Soroswap; reservas siguen con CAP-33 propio |
-| ~~Trustless Work~~ | evaluado para el adelanto y **descartado** (2026-10-25) | auditado (Runtime Verification) y en mainnet, pero el escrow no puede depositar en DeFindex, no tiene time-lock y congela montos al fondear | se reemplaza por `soroban/seyf-lock` |
+| ~~Trustless Work~~ | evaluado para el adelanto y **descartado** (2026-10-25) | auditado (Runtime Verification) y en mainnet, pero el escrow no puede depositar en DeFindex, no tiene time-lock y congela montos al fondear | se reemplaza por `seyf_advance` en `soroban/` (`seyf-lock` archivado) |
 | `carstenjacobsen/ai-{passkeys,etherfuse,defindex,soroswap}-integration` | referencia de integración (passkeys + rampa MXN) | **dormidos desde mar-2026**, repoScore ≤31 | solo leer, no copiar |
 | Stellar DeFi Gotchas (`kaankacar/stellar-defi-gotchas`) | 400+ hallazgos | no indexado en Scout | checklist de revisión |
 | Anchor Directory / Demo Wallet / Anchor Test Suite | validar `stellar.toml` y SEPs | oficiales SDF | B3 |
@@ -127,4 +130,4 @@ para Stellar; Audit Bank del SCF para la auditoría.
 - Launchtube retirado → OpenZeppelin Relayer / Stellar Channels.
 - SEP-45 = Web Auth para cuentas de contrato (C-accounts), complemento de SEP-10.
 - USDC mainnet (Circle): `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`.
-- HackMeridian 2026: entrega lun 26-oct 12:00 Lisboa; categoría Scale; track Stellar Composed. Ver `docs/hackmeridian-plan.md`.
+- HackMeridian 2026: entrega lun 26-oct 12:00 Lisboa; categoría Scale; track Stellar Composed. Ver `docs/hackmeridian-12h.md`.
