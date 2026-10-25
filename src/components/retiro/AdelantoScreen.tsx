@@ -14,15 +14,9 @@ import ScaleQuote from './ScaleQuote'
 import { DEFAULT_DECIMALS, formatDate, formatUnits, parseUnits, toBigInt, toDate } from './units'
 import type { RetiroCtx } from './types'
 
+/** Plazo de la beta si el contrato no manda sus parámetros. */
 const MIN_DAYS = 1
 const MAX_DAYS = 30
-
-/** Saldo de la tesorería si la ruta lo manda como número/string o `{ balance }`. */
-function treasuryUnits(raw: unknown): bigint | null {
-  if (typeof raw === 'string' || typeof raw === 'number') return toBigInt(raw)
-  if (raw && typeof raw === 'object' && 'balance' in raw) return toBigInt((raw as { balance: unknown }).balance)
-  return null
-}
 
 export default function AdelantoScreen({ ctx }: { ctx: RetiroCtx }) {
   const { data } = ctx
@@ -57,9 +51,9 @@ export default function AdelantoScreen({ ctx }: { ctx: RetiroCtx }) {
       <ErrorBox error={tx.error} />
       <TxList txs={tx.txs} />
 
-      {advance.data && treasuryUnits(advance.data.treasury) !== null && (
+      {advance.data?.treasury !== undefined && (
         <BetaNote>
-          Tesorería del contrato disponible para adelantos: {formatUnits(treasuryUnits(advance.data.treasury) as bigint, decimals)} USDC.
+          Tesorería del contrato disponible para adelantos: {formatUnits(toBigInt(advance.data.treasury), decimals)} USDC.
         </BetaNote>
       )}
       <BetaNote>
@@ -83,7 +77,11 @@ function QuoteAndOpen({
 }) {
   const vault = ctx.data.vault
   const shares = toBigInt(vault.data?.shares)
-  const [days, setDays] = useState(30)
+  const params = ctx.data.advance.data?.params
+  const minDays = params?.minTermDays || MIN_DAYS
+  const maxDays = params?.maxTermDays || MAX_DAYS
+  const [pickedDays, setDays] = useState(30)
+  const days = Math.min(Math.max(pickedDays, minDays), maxDays)
   const [quote, setQuote] = useState<AdvanceQuote | null>(null)
   const [quoteError, setQuoteError] = useState<string | null>(null)
   const [quoting, setQuoting] = useState(false)
@@ -152,8 +150,8 @@ function QuoteAndOpen({
       <span className="field-label">Plazo: {days} {days === 1 ? 'día' : 'días'}</span>
       <input
         type="range"
-        min={MIN_DAYS}
-        max={MAX_DAYS}
+        min={minDays}
+        max={maxDays}
         step={1}
         value={days}
         onChange={(e) => setDays(Number(e.target.value))}
@@ -161,8 +159,8 @@ function QuoteAndOpen({
         aria-label="Plazo del adelanto en días"
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xxs)', color: 'var(--txt-dim)' }}>
-        <span>{MIN_DAYS} día</span>
-        <span>{MAX_DAYS} días</span>
+        <span>{minDays} {minDays === 1 ? 'día' : 'días'}</span>
+        <span>{maxDays} días</span>
       </div>
 
       <div style={{ marginTop: 12 }}>
@@ -202,7 +200,7 @@ function OpenPosition({
   if (!p) return null
   const status = advance.data?.unlockStatus ?? null
   const adv = toBigInt(p.advance)
-  const atOpen = toBigInt(p.value_at_open)
+  const atOpen = toBigInt(p.valueAtOpen)
   const valueNow = status ? toBigInt(status.valueNow) : null
   const unlockValue = status ? toBigInt(status.unlockValue) : null
   const covered = Boolean(status?.covered)
@@ -254,8 +252,8 @@ function OpenPosition({
         <Row label="Valor de desbloqueo" value={unlockValue !== null ? `${formatUnits(unlockValue, decimals)} USDC` : '—'} hint="Valor al abrir + adelanto" />
         {!covered && missing > BigInt(0) && <Row label="Falta de rendimiento" value={`${formatUnits(missing, decimals)} USDC`} />}
         <Row label="Valor al abrir" value={`${formatUnits(atOpen, decimals)} USDC`} hint={`${formatUnits(toBigInt(p.shares), decimals, 0)} acciones bloqueadas`} />
-        <Row label="Abierto" value={<span style={{ fontSize: 'var(--t-xs)' }}>{formatDate(toDate(p.opened_at))}</span>} />
-        <Row label="Desbloqueo estimado" value={<span style={{ fontSize: 'var(--t-xs)' }}>{formatDate(toDate(p.expected_unlock_at))}</span>} hint="Depende del rendimiento real" />
+        <Row label="Abierto" value={<span style={{ fontSize: 'var(--t-xs)' }}>{formatDate(toDate(p.openedAt))}</span>} />
+        <Row label="Desbloqueo estimado" value={<span style={{ fontSize: 'var(--t-xs)' }}>{formatDate(toDate(p.expectedUnlockAt))}</span>} hint="Depende del rendimiento real" />
       </div>
 
       <span className="field-label">Repagar y desbloquear todo</span>

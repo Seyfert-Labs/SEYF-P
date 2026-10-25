@@ -22,19 +22,30 @@ export type VaultPosition = {
 
 export type AdvanceQuote = { value: string; advance: string }
 
+/** Montos en unidades mínimas; fechas en segundos Unix (forma de `src/lib/advance/contract.ts`). */
 export type AdvancePositionRow = {
   shares: string
-  value_at_open: string
+  valueAtOpen: string
   advance: string
-  opened_at: string | number
-  expected_unlock_at: string | number
+  openedAt: number
+  expectedUnlockAt: number
+}
+
+export type AdvanceParams = {
+  apyBps: number
+  maxAdvanceBps: number
+  minTermDays: number
+  maxTermDays: number
+  perUserCap: string
+  globalCap: string
+  allowlistOn: boolean
 }
 
 export type AdvanceState = {
   position: AdvancePositionRow | null
   unlockStatus: { valueNow: string; unlockValue: string; covered: boolean } | null
-  params?: unknown
-  treasury?: unknown
+  params?: AdvanceParams
+  treasury?: string
 }
 
 type ErrorBody = { error?: string }
@@ -140,9 +151,12 @@ export async function sponsorTrustline(
   return signAndSubmit(client, publicKey, xdr)
 }
 
-/** USDC de Circle; en testnet se puede sobreescribir porque hay varios emisores. */
+/**
+ * USDC de Circle en mainnet. En testnet hay varios emisores que no comparten
+ * liquidez: el vault de DeFindex usa el USDC de Blend testnet.
+ */
 const USDC_ISSUER_MAINNET = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
-const USDC_ISSUER_TESTNET = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
+const USDC_ISSUER_TESTNET = 'GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56'
 
 export function usdcIssuer(network: 'mainnet' | 'testnet'): string {
   const override = process.env.NEXT_PUBLIC_STELLAR_USDC_ISSUER?.trim()
