@@ -100,6 +100,9 @@ function pollarApiError(data: unknown, error: { details?: string; message?: stri
     if (code === 'ORIGIN_NOT_ALLOWED') {
       return 'Este dominio no está autorizado en Pollar. Agrega tu URL en el dashboard de Pollar (testnet).'
     }
+    if (code === 'API_KEY_TYPE_NOT_ALLOWED' || code === 'API_KEY_NOT_FOUND') {
+      return `La API key de Pollar no sirve para esta operación (${code}). Revisa NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY.`
+    }
     if (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED') {
       return 'Tu sesión Stellar expiró. Vuelve a ingresar el código OTP.'
     }
@@ -127,4 +130,69 @@ export async function pollarSignXdr(client: PollarClient, unsignedXdr: string, p
   if (signed) return signed
 
   throw new Error(pollarApiError(data, error, 'Pollar no pudo firmar la transacción'))
+}
+
+/** Origen de la API de Pollar sin el sufijo de versión (`…/v1` → `…`). */
+function pollarApiOrigin(client: PollarClient): string {
+  const basePath = (client as unknown as { basePath?: string }).basePath?.trim()
+  const origin = basePath ? basePath.replace(/\/v\d+\/?$/, '') : ''
+  return origin || 'https://sdk.api.pollar.xyz'
+}
+
+/** Misma llave publicable que monta `SeyfPollarProvider`. */
+function pollarPublishableKey(client: PollarClient): string | null {
+  const fromClient = (client as unknown as { apiKey?: string }).apiKey?.trim()
+  return (
+    fromClient ||
+    process.env.NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_POLLAR_API_KEY?.trim() ||
+    null
+  )
+}
+
+export type PollarSep10SignInput = {
+  address: string
+  challengeXdr: string
+  homeDomains?: string[]
+  webAuthDomain?: string
+}
+
+/**
+ * Firma un challenge SEP-10 con la API v3 de Pollar (`/v3/stellar/sep10/sign`).
+ * `/v1/tx/sign` no firma challenges SEP-10. La red la fija la API key; el resto
+ * de firmas sigue por `pollarSignXdr`.
+ */
+export async function pollarSignSep10Challenge(
+  client: PollarClient,
+  input: PollarSep10SignInput,
+): Promise<string> {
+  const apiKey = pollarPublishableKey(client)
+  if (!apiKey) {
+    throw new Error('Falta NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY (o NEXT_PUBLIC_POLLAR_API_KEY).')
+  }
+  const accessToken = resolvePollarAccessToken(client)
+  if (!accessToken) {
+    throw new Error('Tu sesión Stellar expiró. Vuelve a ingresar el código OTP.')
+  }
+
+  const body: Record<string, unknown> = { address: input.address, challengeXdr: input.challengeXdr }
+  if (input.homeDomains?.length) body.homeDomains = input.homeDomains
+  if (input.webAuthDomain) body.webAuthDomain = input.webAuthDomain
+
+  const res = await fetch(`${pollarApiOrigin(client)}/v3/stellar/sep10/sign`, {
+    method: 'POST',
+    headers: {
+      'x-pollar-api-key': apiKey,
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  const data = (await res.json().catch(() => null)) as unknown
+  const signed = res.ok ? extractSignedXdr(data) : null
+  if (signed) return signed
+
+  throw new Error(
+    pollarApiError(data, undefined, `Pollar no pudo firmar el challenge SEP-10 (HTTP ${res.status})`),
+  )
 }
