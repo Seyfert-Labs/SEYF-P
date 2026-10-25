@@ -2,6 +2,10 @@
 // https://github.com/paltalabs/defindex/blob/main/public/testnet.contracts.json
 
 import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
+import { usdcIssuer } from '@/lib/stellar/usdc'
+
+/** USDC de los vaults DeFindex de testnet (Palta Labs); no es el de Circle en SDEX. */
+export const DEFINDEX_USDC_ISSUER_TESTNET = 'GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56'
 
 export const DEFINDEX_FACTORY_ADDRESS =
   'CDSCWE4GLNBYYTES2OCYDFQA2LLY4RBIAX6ZI32VSUXD7GO6HRPO4A32'
@@ -101,7 +105,7 @@ export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
     vaultKey: 'usdc_paltalabs_vault',
     vaultAddress: VAULT_USDC,
     assetSymbol: 'USDC',
-    assetIssuer: 'GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56',
+    assetIssuer: usdcIssuer(DEFINDEX_USDC_ISSUER_TESTNET),
     decimals: 7,
     risk: 'Bajo',
     horizon: '3 a 7 años',
