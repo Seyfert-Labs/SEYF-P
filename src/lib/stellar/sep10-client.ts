@@ -76,24 +76,25 @@ async function exchange(signedXdr: string, publicKey: string, mode?: 'account'):
 async function mintToken(client: PollarClient, publicKey: string): Promise<string | null> {
   const passphrase = stellarNetworkPassphrase()
 
-  // 1) SEP-10 estándar (wallets que Pollar firma del lado del servidor).
-  const challengeXdr = await fetchChallenge(publicKey)
-  let signedXdr: string | null = null
+  // 1) Prueba de cuenta. La app de Pollar es cosignada (Turnkey) y ahí
+  //    /stellar/sep10/sign siempre responde 502: intentarlo primero solo sumaba
+  //    una ida y vuelta y un error en cada inicio de sesión.
   try {
-    signedXdr = await pollarSignSep10Challenge(client, {
-      address: publicKey,
-      challengeXdr,
-      ...challengeDomains(challengeXdr, passphrase, publicKey),
-    })
+    const proofXdr = await fetchChallenge(publicKey, 'account')
+    const signedProof = await pollarSignAccountProof(client, proofXdr, publicKey, passphrase)
+    return await exchange(signedProof, publicKey, 'account')
   } catch (e) {
-    console.info('[sep10] SEP-10 estándar no disponible, uso prueba de cuenta:', e instanceof Error ? e.message : e)
+    console.info('[sep10] prueba de cuenta no disponible, uso SEP-10 estándar:', e instanceof Error ? e.message : e)
   }
-  if (signedXdr) return exchange(signedXdr, publicKey)
 
-  // 2) Prueba de cuenta (wallets Turnkey: Pollar solo firma txs cuyo origen es la cuenta).
-  const proofXdr = await fetchChallenge(publicKey, 'account')
-  const signedProof = await pollarSignAccountProof(client, proofXdr, publicKey, passphrase)
-  return exchange(signedProof, publicKey, 'account')
+  // 2) SEP-10 estándar (wallets que Pollar firma del lado del servidor).
+  const challengeXdr = await fetchChallenge(publicKey)
+  const signedXdr = await pollarSignSep10Challenge(client, {
+    address: publicKey,
+    challengeXdr,
+    ...challengeDomains(challengeXdr, passphrase, publicKey),
+  })
+  return exchange(signedXdr, publicKey)
 }
 
 /**
