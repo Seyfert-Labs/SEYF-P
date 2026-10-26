@@ -22,6 +22,10 @@ export function getSupabase(): SupabaseClient | null {
         },
       },
     });
+    // postgrest-js reintenta los GET 3 veces (1 + 2 + 4 s) ante errores de red,
+    // 503 o 520, y el TimeoutError de arriba también cuenta: eran los ~7 s.
+    // supabase-js no expone la opción; el PostgrestClient la lee de `retry`.
+    (cached as unknown as { rest: { retry?: boolean } }).rest.retry = false;
   }
   return cached;
 }
