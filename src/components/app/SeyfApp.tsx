@@ -39,8 +39,10 @@ function Splash() {
   return (
     <div className="app-shell">
       <div className="uto-root style-expresivo" style={{ alignItems: "center", justifyContent: "center" }}>
-        <SeyfMark size={56} style={{ marginBottom: 18, borderRadius: 17 }} />
-        <span className="spin" style={{ color: "var(--accent)" }} />
+        <div className="splash-v2">
+          <span className="ring" /><span className="ring" /><span className="ring" />
+          <SeyfMark size={64} style={{ borderRadius: 19 }} />
+        </div>
       </div>
     </div>
   );
