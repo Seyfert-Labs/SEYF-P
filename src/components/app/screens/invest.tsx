@@ -6,10 +6,11 @@ import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui";
 import { Celebration } from "../Celebration";
 import { PiggyBank, VaultDial } from "../SavingsArt";
+import { BondPicker, COIN_GRADIENT, CoinSphere, coinKind } from "../BondCoins";
 import { SubHeader, AvatarButton } from "../shared";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
 import { GrowingAmount, YieldRate } from "../GrowingAmount";
-import { MoneyInput } from "../MoneyInput";
+import { MoneyInput, formatWithCommas } from "../MoneyInput";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { usePollar } from "@pollar/react";
@@ -103,44 +104,6 @@ function PlanTile({ risk, size = 46 }: { risk: RiskLevel; size?: number }) {
   );
 }
 
-/** Icono representativo de cada estrategia DeFindex (reemplaza el emoji). */
-const STRATEGY_ICON: Record<string, string> = { cetes: "shield", usdc: "globe", xlm: "trend" };
-function strategyIconName(s: { id?: string; risk: RiskLevel }): string {
-  return (s.id && STRATEGY_ICON[s.id]) || riskIcon(s.risk);
-}
-
-/** Tile con icono animado (flota + late suave) para las tarjetas de estrategia.
- *  Mismo tamaño/estilo de caja que los iconos de Inicio (`.ava` 44px, borde sutil)
- *  para que no se vean más grandes; el color va solo en el glifo. */
-function AnimatedStrategyIcon({ name, color, size = 44 }: { name: string; color: string; size?: number }) {
-  const reduced = useReducedMotion();
-  return (
-    <motion.span
-      style={{
-        width: size, height: size, borderRadius: 14, flexShrink: 0,
-        background: "var(--surface-2)", border: "1px solid var(--line)", color,
-        display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
-      }}
-      animate={reduced ? undefined : { y: [0, -2.5, 0] }}
-      transition={reduced ? undefined : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-    >
-      <motion.span
-        style={{ display: "flex" }}
-        animate={reduced ? undefined : { scale: [1, 1.1, 1] }}
-        transition={reduced ? undefined : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <Icon name={name} size={size * 0.46} color={color} />
-      </motion.span>
-    </motion.span>
-  );
-}
-
-/** APY a mostrar: el vivo de DeFindex si llegó; si no, el de referencia del catálogo. */
-function strategyApyText(s: { apy: number | null; apyTarget?: number }): { text: string; estimated: boolean } {
-  if (s.apy != null && Number.isFinite(s.apy)) return { text: `${FMT(s.apy, 1)}%`, estimated: false };
-  if (s.apyTarget != null && Number.isFinite(s.apyTarget)) return { text: `${FMT(s.apyTarget, 1)}%`, estimated: true };
-  return { text: "—", estimated: false };
-}
 
 function PlanCard({ plan, onPick, recommended, locked }: { plan: VaultPlan; onPick: () => void; recommended?: boolean; locked?: boolean }) {
   return (
@@ -173,42 +136,8 @@ function PlanCard({ plan, onPick, recommended, locked }: { plan: VaultPlan; onPi
   );
 }
 
-/** Tarjeta de estrategia DeFindex (CETES / USDC / XLM) — contrato on-chain, no la bóveda del usuario. */
-function StrategyCard({
-  strategy,
-  onPick,
-  recommended,
-}: {
-  strategy: DefindexStrategyLive;
-  onPick: () => void;
-  recommended?: boolean;
-}) {
-  const apy = strategyApyText(strategy);
-  // Cada activo con su color (fondo, borde, dial y tasa) para distinguirlos de un vistazo.
-  return (
-    <div
-      className={`strat-card${recommended ? " rec" : ""}`}
-      onClick={onPick}
-      style={{ "--sc": strategy.color } as React.CSSProperties}
-    >
-      <VaultDial color={strategy.color} size={50} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <p className="nm">{strategy.name}</p>
-          {recommended && <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>}
-        </div>
-        <p className="ex">{strategy.exposure}</p>
-        <div style={{ marginTop: 6 }}><RiskBadge risk={strategy.risk} /></div>
-      </div>
-      <div>
-        <div className="apy num">{apy.text}</div>
-        <div className="apy-lb">{apy.estimated ? "anual est." : "anual"}</div>
-      </div>
-    </div>
-  );
-}
-
-/** Tarjeta de bóveda para el carrusel horizontal: saldo grande creciendo en vivo. */
+/** Bóveda como tarjeta (estilo cartera): se apilan y cada una lleva el color
+    y la moneda de su activo. Tocarla abre el detalle, igual que antes. */
 function VaultCard({
   v, go, index = 0, strategyLabel,
 }: {
@@ -219,42 +148,33 @@ function VaultCard({
 }) {
   const strat = STELLAR_RAIL ? inferStrategyForVault(v) : null;
   const plan = strat ? planById(strat.planId) : (v.planId ? planById(v.planId) : planByApy(v.apy));
-  const tileColor = strat?.color ?? plan.color;
   // APY efectivo para que el saldo crezca en vivo aunque la bóveda guarde apy 0.
   const effApy = v.apy > 0 ? v.apy : strat ? strat.apyTarget : plan.apy;
-  const apyShown = `${FMT(effApy, 1)}%`;
+  const kind = strat ? coinKind(strat) : "other";
+  const [c1, c2] = COIN_GRADIENT[kind];
   return (
     <motion.div
-      className="card vault-card vault-card-v2"
+      className="vcard"
+      role="button"
+      tabIndex={0}
       onClick={() => go("boveda", v)}
-      style={{
-        cursor: "pointer", flex: "0 0 auto", width: 264, scrollSnapAlign: "start",
-        display: "flex", flexDirection: "column", padding: 18, "--sc": tileColor,
-      } as React.CSSProperties}
-      initial={{ opacity: 0, y: 12 }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") go("boveda", v); }}
+      style={{ "--vc1": c1, "--vc2": c2, zIndex: index + 1 } as React.CSSProperties}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
-      whileTap={{ scale: 0.975 }}
+      transition={{ duration: 0.45, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <VaultDial color={tileColor} size={46} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.nm}</p>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {strategyLabel ?? strat?.name ?? plan.name}
-          </p>
-        </div>
+      <span className="vc-ring" />
+      <div className="vc-top">
+        <p className="vc-nm">{v.nm}</p>
+        <span className="vc-chip">{strat?.assetSymbol ?? strategyLabel ?? plan.name} · {FMT(effApy, 1)}%</span>
       </div>
-      <div style={{ marginTop: 18 }}>
-        {/* Violeta = saldo en bóveda (convención de estado en toda la app). */}
-        <GrowingAmount base={v.bal} apy={effApy} size={38} align="left" color="#c4b5fd" id={`vault-${v.id}`} anchorMs={v.updatedAt} />
+      <p style={{ margin: "4px 0 0", fontSize: 12, opacity: 0.75 }}>{strategyLabel ?? strat?.name ?? plan.name}</p>
+      <div className="vc-bal">
+        <p className="k">En tu bóveda</p>
+        <GrowingAmount base={v.bal} apy={effApy} size={30} align="left" color="#fff" id={`vault-${v.id}`} anchorMs={v.updatedAt} />
       </div>
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span className="pos-pill"><Icon name="leaf" size={12} /> {apyShown} anual</span>
-        <span style={{ fontSize: 12.5, color: "var(--accent)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 2 }}>
-          Ver <Icon name="chevR" size={15} color="var(--accent)" />
-        </span>
-      </div>
+      <span className="vc-mark"><CoinSphere kind={kind} size={40} label={strat?.assetSymbol} /></span>
     </motion.div>
   );
 }
@@ -267,6 +187,8 @@ export function ScreenVaults({ go }: { go: Go }) {
   const [creating, setCreating] = useState<null | { stellar?: DefindexStrategyLive; evmPlan?: VaultPlan }>(null);
   const [recId] = useState<string | null>(() => loadRiskProfile());
   const recPlan = recId ? planById(recId) : null;
+  // Moneda elegida en "Elige dónde rinde" (solo presentación; la recomendada va primero).
+  const [picked, setPicked] = useState<string | null>(null);
 
   // Preferencia XLM: es la bóveda con la que el usuario sí puede depositar
   // (tiene XLM por Friendbot). Se preselecciona aunque el quiz recomiende otra.
@@ -291,6 +213,8 @@ export function ScreenVaults({ go }: { go: Go }) {
   // Ancla del timer del total = lectura de saldo más reciente entre las bóvedas.
   const totalAnchorMs = vaults.reduce((m, v) => Math.max(m, v.updatedAt ?? 0), 0) || undefined;
   const atCap = vaults.length >= MAX_VAULTS;
+  const pickedStrategy =
+    strategies.find((s) => s.planId === picked) ?? (recPlan && byPlanId(recPlan.id)) ?? defaultStrategy;
   const { isAuthenticated: pollarOk, wallet: pollarWallet } = usePollar();
   const pollarPk = pollarWallet?.address;
   const [orphanOnchain, setOrphanOnchain] = useState<
@@ -457,10 +381,7 @@ export function ScreenVaults({ go }: { go: Go }) {
             </span>
           </button>
         ) : (
-          <div
-            className="h-carousel"
-            style={{ display: "flex", gap: 12, overflowX: "auto", scrollSnapType: "x mandatory", padding: "2px 2px 6px", margin: "0 -2px" }}
-          >
+          <div className="vstack">
             {vaults.map((v, i) => (
               <VaultCard
                 key={v.id}
@@ -471,20 +392,8 @@ export function ScreenVaults({ go }: { go: Go }) {
               />
             ))}
             {!atCap && (
-              <button
-                type="button"
-                className="card vault-card"
-                onClick={() => setCreating({ stellar: defaultStrategy })}
-                style={{
-                  flex: "0 0 auto", width: 150, scrollSnapAlign: "start", cursor: "pointer",
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
-                  borderStyle: "dashed", color: "var(--txt-muted)", background: "transparent",
-                }}
-              >
-                <span style={{ width: 42, height: 42, borderRadius: 13, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>
-                  <Icon name="plus" size={20} />
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>Nueva bóveda</span>
+              <button type="button" className="vcard add" onClick={() => setCreating({ stellar: defaultStrategy })}>
+                <Icon name="plus" size={18} /> Nueva bóveda
               </button>
             )}
           </div>
@@ -497,7 +406,7 @@ export function ScreenVaults({ go }: { go: Go }) {
 
         {/* Activos de ahorro (Stellar) o perfiles de riesgo (EVM) */}
         <div className="sec-head" style={{ marginTop: 24 }}>
-          <h3>{STELLAR_RAIL ? "Activos de ahorro" : "Estrategias de ahorro"}</h3>
+          <h3>{STELLAR_RAIL ? "Elige dónde rinde" : "Estrategias de ahorro"}</h3>
         </div>
         {!STELLAR_RAIL && (
           <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
@@ -510,14 +419,21 @@ export function ScreenVaults({ go }: { go: Go }) {
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {STELLAR_RAIL
-            ? strategies.map((s) => (
-                <StrategyCard
-                  key={s.id}
-                  strategy={s}
-                  recommended={recPlan?.id === s.planId}
-                  onPick={atCap ? () => {} : () => setCreating({ stellar: s })}
-                />
-              ))
+            ? pickedStrategy && (
+                <div className="card" style={{ padding: "18px 18px 20px" }}>
+                  <BondPicker options={strategies} value={pickedStrategy.planId} onChange={setPicked} />
+                  {/* Mismo efecto que tocar la tarjeta de estrategia: abre "Nueva bóveda" con ese activo. */}
+                  <button
+                    className="btn btn-primary"
+                    style={{ marginTop: 16 }}
+                    disabled={atCap}
+                    onClick={atCap ? undefined : () => setCreating({ stellar: pickedStrategy })}
+                  >
+                    {recPlan?.id === pickedStrategy.planId && <Icon name="star" size={16} />}
+                    Abrir bóveda en {pickedStrategy.assetSymbol}
+                  </button>
+                </div>
+              )
             : RISK_PROFILES.map((p) => {
                 const locked = !isPlanUnlocked(p.id);
                 return (
@@ -598,34 +514,8 @@ function CreateVaultModalStellar({
           onChange={(e) => setName(e.target.value)}
         />
 
-        <span className="field-label" style={{ marginTop: 16 }}>Activo</span>
-        <div style={{ display: "grid", gap: 8 }}>
-          {strategies.map((s) => {
-            const active = s.planId === planId;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setPlanId(s.planId)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 12, borderRadius: 14,
-                  cursor: "pointer",
-                  border: active ? "1px solid var(--accent)" : "1px solid var(--line)",
-                  background: active ? "var(--accent-soft)" : "var(--surface-2)",
-                }}
-              >
-                <span style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: "var(--surface-2)", border: "1px solid var(--line)", color: s.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Icon name={strategyIconName(s)} size={20} color={s.color} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14.5 }}>{s.name}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--txt-muted)" }}>{s.exposure}</p>
-                </div>
-                <span className="num" style={{ fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>{strategyApyText(s).text}</span>
-              </button>
-            );
-          })}
-        </div>
+        <span className="field-label" style={{ marginTop: 16 }}>Dónde rinde</span>
+        <BondPicker options={strategies} value={planId} onChange={setPlanId} compact />
 
         <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={busy} onClick={() => onCreate(name, strategy)}>
           {busy ? <span className="spin" /> : <><Icon name="plus" size={18} /> Crear bóveda</>}
@@ -764,27 +654,33 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       <SubHeader title={v.nm} go={go} back="bovedas" />
       <div className="screen-pad" style={{ textAlign: "center" }}>
         {/* Hero — saldo creciendo en vivo, con halo animado */}
-        <div className="card glow" style={{ marginTop: 6, padding: "28px 22px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div
+          className="vault-hero"
+          style={(() => {
+            const [c1, c2] = COIN_GRADIENT[defindexStrategy ? coinKind(defindexStrategy) : "xlm"];
+            return { "--vc1": c1, "--vc2": c2 } as React.CSSProperties;
+          })()}
+        >
           <motion.div
             aria-hidden
             style={{
               position: "absolute", left: "50%", top: "46%", width: 260, height: 260,
               marginLeft: -130, marginTop: -130, borderRadius: "50%", pointerEvents: "none",
-              background: "radial-gradient(circle, var(--accent-2-soft), transparent 70%)",
+              background: "radial-gradient(circle, rgba(255,255,255,.18), transparent 70%)",
             }}
             animate={reduced ? undefined : { scale: [1, 1.18, 1], opacity: [0.45, 0.85, 0.45] }}
             transition={reduced ? undefined : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
           />
           {STELLAR_RAIL && defindexStrategy && (
-            <p style={{ position: "relative", margin: "0 0 8px", fontSize: 12, color: "var(--txt-muted)" }}>
-              Activo · <b style={{ color: "var(--txt)" }}>{defindexStrategy.name}</b>
+            <p style={{ position: "relative", margin: "0 0 8px", fontSize: 12, color: "rgba(255,255,255,.75)" }}>
+              Activo · <b style={{ color: "#fff" }}>{defindexStrategy.name}</b>
             </p>
           )}
           <div style={{ position: "relative" }}>
             {/* Violeta = saldo en bóveda (convención de estado en toda la app). */}
-            <GrowingAmount base={v.bal} apy={liveApy} size={56} color="#c4b5fd" id={`vault-${v.id}`} anchorMs={v.updatedAt} countUpOnMount />
+            <GrowingAmount base={v.bal} apy={liveApy} size={56} color="#fff" id={`vault-${v.id}`} anchorMs={v.updatedAt} countUpOnMount />
           </div>
-          <p style={{ position: "relative", fontSize: 13.5, color: "var(--txt-muted)", margin: "10px 0 0" }}>
+          <p style={{ position: "relative", fontSize: 13.5, color: "rgba(255,255,255,.75)", margin: "10px 0 0" }}>
             {STELLAR_RAIL ? `${vaultAsset} en bóveda` : "MXN en bóveda"}
           </p>
           {v.bal > 0 && liveApy > 0 && (
@@ -808,7 +704,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           <>
               <div className="card" style={{ marginTop: 16, textAlign: "left" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <AnimatedStrategyIcon name={strategyIconName(defindexStrategy)} color={defindexStrategy.color} size={44} />
+                  <CoinSphere kind={coinKind(defindexStrategy)} size={44} label={defindexStrategy.assetSymbol} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{defindexStrategy.name}</p>
                     <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>
@@ -1376,15 +1272,30 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
           </div>
         )}
 
-        <span className="field-label">
-          Monto ({STELLAR_RAIL ? assetSymbol : "MXN"})
-        </span>
-        <MoneyInput
-          className="input num-input"
-          placeholder="0.00"
-          value={amount}
-          onChange={setAmount}
-        />
+        {/* Monto grande y centrado; mismo MoneyInput y mismo estado que antes. */}
+        <div className="amount-xl">
+          <div className="ax-row">
+            <span className="ax-cur">$</span>
+            <MoneyInput
+              placeholder="0"
+              value={amount}
+              onChange={setAmount}
+              aria-label={`Monto en ${STELLAR_RAIL ? assetSymbol : "MXN"}`}
+              autoFocus
+              // el ancho sigue al número para que el "$" quede pegado
+              style={{ width: `${(formatWithCommas(amount) || "0").length + 0.6}ch` }}
+            />
+          </div>
+          <div className="ax-sym">{STELLAR_RAIL ? assetSymbol : "MXN"}</div>
+          {mode === "retirar" && max > 0 && Number.isFinite(max) && (
+            <div className="quick-amts">
+              {[0.25, 0.5].map((f) => (
+                <button key={f} type="button" className="chip" onClick={() => setAmount(String(Math.floor(max * f * 100) / 100))}>{f * 100}%</button>
+              ))}
+              <button type="button" className="chip" onClick={() => setAmount(String(Math.floor(max * 100) / 100))}>Todo</button>
+            </div>
+          )}
+        </div>
         {mode === "retirar" && (
           <p className="modal-sub" style={{ margin: "8px 0 0" }}>
             Disponible para retirar: ${FMT(max, 2)}

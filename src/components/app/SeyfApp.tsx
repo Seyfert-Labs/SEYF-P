@@ -26,17 +26,17 @@ const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[
 
 function TabBar({ screen, go }: { screen: Screen; go: Go }) {
   return (
-    <div className="tabbar">
+    <nav className="tabbar tabbar-v3" aria-label="Secciones">
       {TABS.map((t) => {
         const active = t.match.includes(screen);
         return (
-          <button key={t.id} className={`tab ${active ? "active" : ""}`} onClick={() => go(t.screen)}>
-            <Icon name={t.ic} size={24} stroke={active ? 2.4 : 2} />
+          <button key={t.id} className={`tab ${active ? "active" : ""}`} onClick={() => go(t.screen)} aria-current={active ? "page" : undefined} aria-label={t.lb}>
+            <Icon name={t.ic} size={21} stroke={active ? 2.4 : 2} />
             <span className="lb">{t.lb}</span>
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }
 
