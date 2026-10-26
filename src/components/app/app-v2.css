@@ -1,0 +1,172 @@
+/* SEYF app — capa visual v2: Inicio, Ahorro, Adelanto y Agregar dinero.
+   Cada sección tiene su propio color para que no todo se vea igual:
+   lima = dinero disponible / acciones · violeta = ahorro · azul = depósitos. */
+
+/* ---------- héroes con color ---------- */
+.hero-v2 {
+  position: relative; overflow: hidden; border-radius: var(--r-card); padding: 22px;
+  border: 1px solid rgba(167,139,250,.22);
+  background:
+    radial-gradient(120% 90% at 105% -10%, rgba(139,92,246,.48), transparent 55%),
+    radial-gradient(70% 60% at -10% 110%, rgba(200,255,77,.12), transparent 60%),
+    linear-gradient(165deg, #1d1638, #120f20 70%);
+  box-shadow: 0 24px 60px -30px rgba(139,92,246,.6);
+}
+.hero-v2.violet {
+  background:
+    radial-gradient(90% 80% at 100% 0%, rgba(183,155,255,.42), transparent 60%),
+    linear-gradient(160deg, #2a1a5e, #171230 75%);
+  border-color: rgba(183,155,255,.3);
+}
+.hero-v2.lime {
+  background:
+    radial-gradient(90% 80% at 100% 0%, rgba(200,255,77,.24), transparent 60%),
+    linear-gradient(160deg, #1b2410, #121019 75%);
+  border-color: rgba(200,255,77,.22);
+  box-shadow: 0 24px 60px -30px rgba(200,255,77,.35);
+}
+.hero-v2 .eyebrow { color: rgba(244,242,251,.62); }
+
+/* acciones rápidas: cada una con su color */
+.hero-v2 .quick .ic { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.1); color: var(--txt); }
+.hero-v2 .quick .tx { color: rgba(244,242,251,.78); }
+.quick.q-main .ic { background: var(--accent); color: var(--on-accent); border: none; box-shadow: 0 10px 24px -10px rgba(200,255,77,.7); }
+.quick.q-violet .ic { background: rgba(139,92,246,.28); color: #d8ccff; border-color: rgba(167,139,250,.4); }
+
+/* ---------- tarjeta "tu alcancía" en Inicio ---------- */
+.save-teaser {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px;
+  margin-top: 16px; padding: 18px 14px 18px 20px; border-radius: var(--r-card); cursor: pointer;
+  background: linear-gradient(135deg, rgba(139,92,246,.24), rgba(139,92,246,.06) 70%);
+  border: 1px solid rgba(139,92,246,.32); color: var(--txt); text-align: left; width: 100%;
+  font: inherit;
+}
+.save-teaser:active { transform: scale(.99); }
+.save-teaser .st-copy { flex: 1; min-width: 0; }
+.save-teaser .st-k { margin: 0; font-size: var(--t-xxs); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #c4b5fd; }
+.save-teaser .st-t { margin: 6px 0 0; font-size: var(--t-md); font-weight: 800; letter-spacing: -.01em; }
+.save-teaser .st-s { margin: 4px 0 0; font-size: var(--t-xs); color: var(--txt-muted); line-height: 1.4; }
+.save-teaser .st-cta { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-size: var(--t-xs); font-weight: 800; color: #d8ccff; }
+
+/* nudge de verificación más discreto */
+.nudge {
+  display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border-radius: 18px; cursor: pointer;
+  background: var(--surface); border: 1px dashed rgba(200,255,77,.35);
+}
+.nudge .ic { width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* estado vacío con ilustración */
+.empty-v2 { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 22px 12px 18px; gap: 6px; }
+.empty-v2 .ic { width: 48px; height: 48px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); color: var(--txt-muted); display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+.empty-v2 .t { margin: 0; font-weight: 800; font-size: var(--t-sm); }
+.empty-v2 .s { margin: 0; font-size: var(--t-xs); color: var(--txt-muted); line-height: 1.45; max-width: 260px; }
+.empty-v2 .chip { margin-top: 10px; color: var(--accent); border-color: rgba(200,255,77,.3); }
+
+/* ---------- Ahorro ---------- */
+.savings-hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; }
+.savings-hero .piggy { margin: -8px -10px -14px 0; }
+.strat-card {
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: var(--r-card); cursor: pointer;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--sc) 17%, var(--surface)) 0%, var(--surface) 62%);
+  border: 1px solid color-mix(in srgb, var(--sc) 30%, transparent);
+  transition: transform .12s;
+}
+.strat-card:active { transform: scale(.985); }
+.strat-card .nm { margin: 0; font-weight: 800; font-size: 16px; }
+.strat-card .ex { margin: 3px 0 0; font-size: 12px; color: var(--txt-muted); }
+.strat-card .apy { font-weight: 800; font-size: 21px; color: var(--sc); text-align: right; }
+.strat-card .apy-lb { font-size: 11px; color: var(--txt-dim); font-weight: 700; text-align: right; }
+.strat-card.rec { border-color: var(--accent); }
+
+.vault-card-v2 {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--sc) 20%, var(--surface)) 0%, var(--surface) 70%) !important;
+  border-color: color-mix(in srgb, var(--sc) 32%, transparent) !important;
+}
+
+.first-vault {
+  width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: var(--r-card); cursor: pointer;
+  background: var(--surface); border: 1.5px dashed rgba(167,139,250,.45); color: var(--txt); font: inherit; text-align: left;
+}
+.first-vault .t { margin: 0; font-weight: 800; font-size: var(--t-sm); }
+.first-vault .s { margin: 3px 0 0; font-size: var(--t-xs); color: var(--txt-muted); }
+
+/* ---------- Adelanto ---------- */
+.adv-hero { display: flex; align-items: center; gap: 14px; }
+.adv-points { display: grid; gap: 10px; margin-top: 16px; }
+.adv-points div { display: flex; align-items: flex-start; gap: 10px; font-size: var(--t-xs); color: rgba(244,242,251,.82); line-height: 1.45; }
+.adv-points .n { width: 22px; height: 22px; border-radius: 8px; flex-shrink: 0; background: rgba(200,255,77,.16); color: var(--accent); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+
+/* ---------- Agregar dinero (Fondear) ---------- */
+.fund-steps { display: flex; align-items: flex-start; margin: 4px 0 2px; }
+.fund-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; position: relative; text-align: center; }
+.fund-step::before { content: ""; position: absolute; top: 15px; left: -50%; right: 50%; height: 2px; background: var(--surface-3); z-index: 0; }
+.fund-step:first-child::before { display: none; }
+.fund-step.done::before, .fund-step.now::before { background: var(--accent); }
+.fund-step .dot {
+  position: relative; z-index: 1; width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-3); color: var(--txt-dim); font-weight: 800; font-size: 13px; border: 2px solid var(--surface);
+}
+.fund-step.done .dot { background: var(--accent); color: var(--on-accent); }
+.fund-step.now .dot { background: var(--surface); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5px var(--accent-soft); }
+.fund-step .lb { font-size: 11.5px; font-weight: 700; color: var(--txt-muted); }
+.fund-step.now .lb, .fund-step.done .lb { color: var(--txt); }
+
+.fund-qr {
+  margin-top: 14px; padding: 20px 18px; border-radius: var(--r-card); text-align: center;
+  background: radial-gradient(90% 70% at 50% 0%, rgba(91,140,255,.22), transparent 70%), var(--surface);
+  border: 1px solid rgba(124,158,255,.25);
+}
+.fund-qr .addr { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 9px 14px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-size: 14px; font-weight: 700; letter-spacing: .02em; }
+.fund-howto { display: grid; gap: 10px; margin-top: 14px; padding: 16px; border-radius: 20px; background: var(--surface-2); }
+.fund-howto div { display: flex; align-items: center; gap: 10px; font-size: var(--t-xs); color: var(--txt-muted); }
+.fund-howto b { color: var(--txt); }
+.fund-howto .n { width: 22px; height: 22px; border-radius: 8px; flex-shrink: 0; background: rgba(124,158,255,.18); color: #9db4ff; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.fund-bal { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 16px; border-radius: 20px; background: var(--accent-soft); border: 1px solid rgba(200,255,77,.3); }
+
+.sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.sheet-head .ic { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(124,158,255,.18); color: #9db4ff; }
+
+/* ---------- animaciones ---------- */
+.piggy { display: block; overflow: visible; }
+.piggy .pig-body { transform-box: fill-box; transform-origin: 50% 100%; animation: pigBob 1.2s ease-in-out infinite; }
+.piggy .pig-drop { opacity: 0; animation: pigDrop 3.6s cubic-bezier(.5,0,.75,0) infinite; }
+.piggy .pig-drop.d1 { animation-delay: 1.2s; }
+.piggy .pig-drop.d2 { animation-delay: 2.4s; }
+.piggy .pig-yield { opacity: 0; transform-box: fill-box; transform-origin: center; animation: pigYield 3s ease-out infinite; }
+.piggy .pig-yield.y0 { animation-delay: .6s; }
+.piggy .pig-yield.y1 { animation-delay: 1.6s; }
+.piggy .pig-yield.y2 { animation-delay: 2.5s; }
+.piggy .pig-eye { transform-box: fill-box; transform-origin: center; animation: pigBlink 4.5s infinite; }
+@keyframes pigDrop {
+  0% { opacity: 0; transform: translateY(-14px); }
+  10% { opacity: 1; }
+  40% { opacity: 1; transform: translateY(38px); }
+  46%, 100% { opacity: 0; transform: translateY(44px); }
+}
+@keyframes pigBob { 0%, 100% { transform: scale(1, 1); } 40% { transform: scale(1.015, .975); } 60% { transform: scale(.995, 1.01); } }
+@keyframes pigYield {
+  0% { opacity: 0; transform: translate(0, 10px) scale(.5); }
+  20% { opacity: 1; transform: translate(0, -4px) scale(1); }
+  100% { opacity: 0; transform: translate(10px, -46px) scale(.8); }
+}
+@keyframes pigBlink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+
+.vault-dial { display: inline-flex; flex-shrink: 0; }
+.vault-dial .vd-wheel { transform-box: fill-box; transform-origin: center; animation: vdSpin 7s cubic-bezier(.6,0,.3,1) infinite; }
+@keyframes vdSpin { 0%, 12% { transform: rotate(0); } 40% { transform: rotate(150deg); } 62% { transform: rotate(60deg); } 85%, 100% { transform: rotate(0); } }
+
+.adv-bolt { display: block; overflow: visible; flex-shrink: 0; }
+.adv-bolt .ab-coin { transform-box: fill-box; transform-origin: center; animation: abPulse 2.4s ease-in-out infinite; }
+.adv-bolt .ab-ring { transform-box: fill-box; transform-origin: center; animation: abRing 2.4s ease-out infinite; }
+.adv-bolt .ab-spark { opacity: 0; animation: abSpark 2.4s ease-in-out infinite; }
+.adv-bolt .ab-spark.s1 { animation-delay: .5s; }
+.adv-bolt .ab-spark.s2 { animation-delay: 1.1s; }
+@keyframes abPulse { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.06) rotate(-4deg); } }
+@keyframes abRing { 0% { transform: scale(.8); opacity: .6; } 100% { transform: scale(1.12); opacity: 0; } }
+@keyframes abSpark { 0%, 100% { opacity: 0; transform: translateY(4px); } 50% { opacity: 1; transform: translateY(-4px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .piggy .pig-body, .piggy .pig-drop, .piggy .pig-yield, .piggy .pig-eye,
+  .vault-dial .vd-wheel, .adv-bolt .ab-coin, .adv-bolt .ab-ring, .adv-bolt .ab-spark { animation: none; }
+  .piggy .pig-yield.y1 { opacity: 1; }
+}

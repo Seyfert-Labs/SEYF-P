@@ -2,7 +2,7 @@
 
 export type Screen =
   | "home" | "wallet" | "bovedas" | "boveda"
-  | "card" | "convertir" | "cambio"
+  | "adelanto" | "convertir" | "cambio"
   | "perfil" | "notifs" | "txn" | "recompensas" | "kyc" | "activo";
 
 /** Navega a una pantalla, opcionalmente con contexto (bono/bóveda/txn seleccionado). */

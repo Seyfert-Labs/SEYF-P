@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui";
 import { Celebration } from "../Celebration";
+import { PiggyBank, VaultDial } from "../SavingsArt";
 import { SubHeader, AvatarButton } from "../shared";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
 import { GrowingAmount, YieldRate } from "../GrowingAmount";
@@ -183,28 +184,25 @@ function StrategyCard({
   recommended?: boolean;
 }) {
   const apy = strategyApyText(strategy);
+  // Cada activo con su color (fondo, borde, dial y tasa) para distinguirlos de un vistazo.
   return (
     <div
-      className="card bond-card"
+      className={`strat-card${recommended ? " rec" : ""}`}
       onClick={onPick}
-      style={{
-        cursor: "pointer",
-        border: recommended ? "1px solid var(--accent)" : undefined,
-        background: recommended ? "var(--accent-soft)" : undefined,
-      }}
+      style={{ "--sc": strategy.color } as React.CSSProperties}
     >
-      <AnimatedStrategyIcon name={strategyIconName(strategy)} color={strategy.color} />
+      <VaultDial color={strategy.color} size={50} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{strategy.name}</p>
+          <p className="nm">{strategy.name}</p>
           {recommended && <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>}
         </div>
-        <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{strategy.exposure}</p>
+        <p className="ex">{strategy.exposure}</p>
         <div style={{ marginTop: 6 }}><RiskBadge risk={strategy.risk} /></div>
       </div>
-      <div className="yield" style={{ textAlign: "right" }}>
-        <div className="num" style={{ fontWeight: 800, fontSize: 22, color: "var(--accent)" }}>{apy.text}</div>
-        <div className="lb">{apy.estimated ? "anual est." : "anual"}</div>
+      <div>
+        <div className="apy num">{apy.text}</div>
+        <div className="apy-lb">{apy.estimated ? "anual est." : "anual"}</div>
       </div>
     </div>
   );
@@ -222,25 +220,24 @@ function VaultCard({
   const strat = STELLAR_RAIL ? inferStrategyForVault(v) : null;
   const plan = strat ? planById(strat.planId) : (v.planId ? planById(v.planId) : planByApy(v.apy));
   const tileColor = strat?.color ?? plan.color;
-  const iconName = strat ? strategyIconName({ id: strat.id, risk: strat.risk }) : riskIcon(plan.risk);
   // APY efectivo para que el saldo crezca en vivo aunque la bóveda guarde apy 0.
   const effApy = v.apy > 0 ? v.apy : strat ? strat.apyTarget : plan.apy;
   const apyShown = `${FMT(effApy, 1)}%`;
   return (
     <motion.div
-      className="card vault-card"
+      className="card vault-card vault-card-v2"
       onClick={() => go("boveda", v)}
       style={{
         cursor: "pointer", flex: "0 0 auto", width: 264, scrollSnapAlign: "start",
-        display: "flex", flexDirection: "column", padding: 18,
-      }}
+        display: "flex", flexDirection: "column", padding: 18, "--sc": tileColor,
+      } as React.CSSProperties}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
       whileTap={{ scale: 0.975 }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <AnimatedStrategyIcon name={iconName} color={tileColor} size={44} />
+        <VaultDial color={tileColor} size={46} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.nm}</p>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -373,11 +370,17 @@ export function ScreenVaults({ go }: { go: Go }) {
         )}
 
         {/* Hero — ahorro total creciendo en vivo */}
-        <div className="card glow" style={{ padding: "24px 22px" }}>
-          <p className="eyebrow">Total en bóvedas</p>
-          <div style={{ marginTop: 14 }}>
-            {/* Violeta = saldo en bóveda (misma convención que el split del Inicio). */}
-            <GrowingAmount base={totalSaved} apy={weightedApy} size={56} align="left" color="#c4b5fd" id="vaults-total" anchorMs={totalAnchorMs} />
+        {/* Héroe: la alcancía recibe monedas y suelta moneditas de rendimiento. */}
+        <div className="hero-v2 violet">
+          <div className="savings-hero">
+            <div style={{ minWidth: 0 }}>
+              <p className="eyebrow">Tu alcancía</p>
+              <div style={{ marginTop: 12 }}>
+                {/* Violeta = saldo en bóveda (misma convención que el split del Inicio). */}
+                <GrowingAmount base={totalSaved} apy={weightedApy} size={44} align="left" color="#e2d9ff" id="vaults-total" anchorMs={totalAnchorMs} />
+              </div>
+            </div>
+            <PiggyBank size={124} live={totalSaved > 0} />
           </div>
           {totalSaved > 0 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
@@ -385,7 +388,7 @@ export function ScreenVaults({ go }: { go: Go }) {
               <YieldRate base={totalSaved} apy={weightedApy} />
             </div>
           ) : (
-            <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            <p style={{ margin: "12px 0 0", fontSize: 13, color: "rgba(244,242,251,.75)", lineHeight: 1.5 }}>
               Abre una bóveda y mira tu dinero crecer al instante, segundo a segundo.
             </p>
           )}
@@ -443,12 +446,15 @@ export function ScreenVaults({ go }: { go: Go }) {
           <span style={{ fontSize: 12, color: "var(--txt-dim)", fontWeight: 700 }}>{vaults.length}/{MAX_VAULTS}</span>
         </div>
         {vaults.length === 0 ? (
-          <button
-            className="btn btn-ghost"
-            onClick={() => setCreating({ stellar: defaultStrategy })}
-            style={{ width: "100%", justifyContent: "center", borderStyle: "dashed" }}
-          >
-            <Icon name="plus" size={18} /> Crear mi primera bóveda
+          <button type="button" className="first-vault" onClick={() => setCreating({ stellar: defaultStrategy })}>
+            <VaultDial color="#A78BFA" size={50} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="t">Crea tu primera bóveda</p>
+              <p className="s">Ponle nombre a tu meta y elige dónde rinde.</p>
+            </div>
+            <span style={{ width: 36, height: 36, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="plus" size={18} />
+            </span>
           </button>
         ) : (
           <div
@@ -949,7 +955,7 @@ export function ScreenConvertSoon({ go }: { go: Go }) {
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
-      <SubHeader title="Convertir" go={go} back="card" />
+      <SubHeader title="Convertir" go={go} back="home" />
       <div className="screen-pad">
         <div className="card" style={{ textAlign: "center", padding: "28px 20px" }}>
           <Icon name="swap" size={30} color="var(--accent)" />
@@ -1084,7 +1090,7 @@ export function ScreenConvert({ go }: { go: Go }) {
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
-      <SubHeader title="Convertir" go={go} back="card" />
+      <SubHeader title="Convertir" go={go} back="home" />
       <div className="screen-pad">
         <div style={{ position: "relative" }}>
           <div className="conv-field">

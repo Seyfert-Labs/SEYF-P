@@ -34,10 +34,13 @@ export function DepositModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
-        <p className="modal-title">Agregar dinero</p>
-        <p className="modal-sub" style={{ marginTop: 4 }}>
-          Tu cuenta recibe USDC (dólar digital 1:1) por la red Stellar. Desde ahí lo mandas a tu bóveda.
-        </p>
+        <div className="sheet-head">
+          <span className="ic"><Icon name="recv" size={22} /></span>
+          <div style={{ minWidth: 0 }}>
+            <p className="modal-title" style={{ margin: 0 }}>Agregar dinero</p>
+            <p className="modal-sub" style={{ margin: "2px 0 0" }}>Recibe dólares digitales (USDC) y ponlos a rendir.</p>
+          </div>
+        </div>
 
         {ctx ? (
           <FondearScreen ctx={ctx} />
@@ -45,8 +48,12 @@ export function DepositModal({
           <div className="card" style={{ marginTop: 14 }}><div className="skel" style={{ height: 80 }} /></div>
         )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
-          <span className="chip"><Icon name="bank" size={12} /> Depósito por SPEI · próximamente</span>
+        <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--surface-2)" }}>
+          <Icon name="bank" size={20} color="var(--txt-muted)" />
+          <p style={{ margin: 0, flex: 1, fontSize: "var(--t-xs)", color: "var(--txt-muted)" }}>
+            Depósito con pesos por <b style={{ color: "var(--txt)" }}>SPEI</b>
+          </p>
+          <span className="chip" style={{ cursor: "default" }}>Próximamente</span>
         </div>
 
         <button className="btn btn-ghost" style={{ marginTop: 20 }} onClick={onClose}>Cerrar</button>
