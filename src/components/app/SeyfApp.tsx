@@ -1,15 +1,18 @@
 "use client";
 
 /* SEYF — shell de la app: router + tab bar (responsivo, sin marco de teléfono).
-   Gating por sesión: onboarding → login (Privy) → app. */
+   Gating por sesión: onboarding → login (Pollar: correo + código) → app. */
 import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens/core";
-import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
+import { ScreenVaults, ScreenVaultDetail, ScreenConvert, ScreenConvertSoon } from "./screens/invest";
+import { SPEI_ENABLED } from "@/lib/rails";
 import { ScreenCard, ScreenProfile, ScreenNotifs } from "./screens/account";
 import { ScreenKyc } from "./screens/kyc";
 import { ScreenAssetDetail } from "./screens/asset-detail";
+import { ScreenLogin } from "./screens/login";
+import { RetiroProvider, useAppRetiro } from "./RetiroContext";
 import { useWallet } from "@/components/wallet/WalletContext";
 
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
@@ -52,9 +55,31 @@ function Splash() {
   );
 }
 
+/** Aviso mientras se abre la sesión SEP-10 (sin ella no se lee ni se firma el ahorro). */
+function SessionBanner() {
+  const app = useAppRetiro();
+  if (!app || app.sep10.state === "ok") return null;
+  return (
+    <div style={{ position: "fixed", left: 0, right: 0, top: 0, zIndex: 50, padding: "10px 16px", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <div className={`alert ${app.sep10.state === "error" ? "alert-error" : "alert-info"}`} style={{ margin: 0, maxWidth: 440, display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
+        {app.sep10.state === "pending" ? (
+          <>
+            <span className="spin" /> Abriendo tu sesión segura…
+          </>
+        ) : (
+          <>
+            No se pudo abrir tu sesión segura.
+            <button className="chip" onClick={() => void app.sep10.retry()}>Reintentar</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SeyfApp() {
   const wallet = useWallet();
-  const [enteredDemo, setEnteredDemo] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [route, setRoute] = useState<{ screen: Screen; ctx: unknown }>({ screen: "home", ctx: null });
 
   const go = useCallback<Go>((screen, ctx = null) => {
@@ -65,11 +90,11 @@ export default function SeyfApp() {
     });
   }, []);
 
-  // Con Privy: gatear por sesión real. Sin Privy: flujo demo local.
-  const showApp = wallet.enabled ? wallet.authenticated : enteredDemo;
-  const onEnter = wallet.enabled ? wallet.login : () => setEnteredDemo(true);
+  // Gatear por la sesión real de Pollar: sin wallet Stellar no hay app.
+  const showApp = wallet.authenticated;
+  const onEnter = () => setLoggingIn(true);
 
-  if (wallet.enabled && !wallet.ready) return <Splash />;
+  if (!wallet.ready) return <Splash />;
 
   const SCREENS: Record<Screen, React.ReactNode> = {
     home: <ScreenHome go={go} />,
@@ -77,8 +102,9 @@ export default function SeyfApp() {
     bovedas: <ScreenVaults go={go} />,
     boveda: <ScreenVaultDetail go={go} ctx={route.ctx} />,
     card: <ScreenCard go={go} />,
-    convertir: <ScreenConvert go={go} />,
-    cambio: <ScreenConvert go={go} />,
+    // La conversión depende de la rampa SPEI: en mainnet aún es "próximamente".
+    convertir: SPEI_ENABLED ? <ScreenConvert go={go} /> : <ScreenConvertSoon go={go} />,
+    cambio: SPEI_ENABLED ? <ScreenConvert go={go} /> : <ScreenConvertSoon go={go} />,
     perfil: <ScreenProfile go={go} />,
     recompensas: <ScreenProfile go={go} />,
     kyc: <ScreenKyc go={go} />,
@@ -89,18 +115,22 @@ export default function SeyfApp() {
 
   const showTabs = !["boveda", "convertir", "cambio", "txn", "kyc", "activo"].includes(route.screen);
 
+  // RetiroProvider fuera del div con `key`: así no se remonta (ni relee la red) al navegar.
   return (
+    <RetiroProvider>
     <div className="app-shell">
       <div className="uto-root style-expresivo" key={showApp ? route.screen : "onb"}>
         {!showApp ? (
-          <Onboarding onDone={onEnter} />
+          loggingIn ? <ScreenLogin onBack={() => setLoggingIn(false)} /> : <Onboarding onDone={onEnter} />
         ) : (
           <>
+            <SessionBanner />
             {SCREENS[route.screen] || SCREENS.home}
             {showTabs && <TabBar screen={route.screen} go={go} />}
           </>
         )}
       </div>
     </div>
+    </RetiroProvider>
   );
 }

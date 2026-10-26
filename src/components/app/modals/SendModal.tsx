@@ -18,6 +18,7 @@ import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { useStellarConnect } from "../StellarConnectGate";
 import { sendStellarToSeyf, type SeyfPayAsset } from "@/lib/seyf/send-stellar";
 import { stellarTxExplorerUrl } from "@/lib/etherfuse/stellar-tx-url";
+import { SPEI_ENABLED } from "@/lib/rails";
 
 type SendMode = "bank" | "seyf";
 
@@ -38,7 +39,7 @@ export function SendModal({
   const redeem = useJunoAction((amount: number, id: string) => junoActions.redeem(amount, id));
 
   const stellarEnabled = stellar.enabled;
-  const [mode, setMode] = useState<SendMode>("bank");
+  const [mode, setMode] = useState<SendMode>(SPEI_ENABLED ? "bank" : "seyf");
 
   const [selected, setSelected] = useState<UserBank | null>(null);
   const [bankAmount, setBankAmount] = useState("");
@@ -163,7 +164,8 @@ export function SendModal({
         <p className="modal-title">Enviar</p>
 
         {/* Selector de riel: banco (SPEI) o cuenta SEYF (Stellar) */}
-        {stellarEnabled && (
+        {/* Sin SPEI (mainnet) solo queda el envío a otra cuenta SEYF. */}
+        {stellarEnabled && SPEI_ENABLED && (
           <div style={{ display: "flex", gap: 6, padding: 4, background: "var(--surface-2)", borderRadius: 13, margin: "4px 0 16px" }}>
             {([["bank", "A banco", "bank"], ["seyf", "Cuenta SEYF", "globe"]] as const).map(([m, label, icon]) => (
               <button

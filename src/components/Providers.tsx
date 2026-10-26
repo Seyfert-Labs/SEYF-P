@@ -1,56 +1,17 @@
 "use client";
 
-/* Provee autenticación + wallets embebidas (Privy) a toda la app.
-   Login social (Google / Email OTP), wallet creada sin seed phrase.
-   Si no hay App ID, expone un WalletContext por defecto (modo demo). */
-import { PrivyProvider } from "@privy-io/react-auth";
-import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
-import { activeChain } from "@/lib/chain";
-import { WalletCtx, defaultWalletState } from "./wallet/WalletContext";
-import PrivyBridge from "./wallet/PrivyBridge";
+/* Provee la wallet Stellar (Pollar: correo + código, sin seed phrase) a toda la
+   app. SEYF es full Stellar: no hay Privy ni EVM. */
+import PollarBridge from "./wallet/PollarBridge";
 import SeyfPollarProvider from "./providers/SeyfPollarProvider";
 import { StellarConnectProvider } from "./app/StellarConnectGate";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
-
-  // Sin App ID configurado: modo demo (sin Privy), contexto por defecto.
-  // Pollar envuelve igual: la wallet Stellar de verificación vive dentro del shell.
-  if (!appId) {
-    return (
-      <WalletCtx.Provider value={defaultWalletState}>
-        <SeyfPollarProvider>
-          <StellarConnectProvider>{children}</StellarConnectProvider>
-        </SeyfPollarProvider>
-      </WalletCtx.Provider>
-    );
-  }
-
   return (
-    <PrivyProvider
-      appId={appId}
-      config={{
-        loginMethods: ["email"],
-        appearance: {
-          theme: "dark",
-          accentColor: "#8B5CF6",
-          walletChainType: "ethereum-only",
-        },
-        defaultChain: activeChain,
-        supportedChains: [activeChain],
-        embeddedWallets: {
-          ethereum: { createOnLogin: "users-without-wallets" },
-          showWalletUIs: false,
-        },
-      }}
-    >
-      <SmartWalletsProvider>
-        <PrivyBridge>
-          <SeyfPollarProvider>
-            <StellarConnectProvider>{children}</StellarConnectProvider>
-          </SeyfPollarProvider>
-        </PrivyBridge>
-      </SmartWalletsProvider>
-    </PrivyProvider>
+    <SeyfPollarProvider>
+      <PollarBridge>
+        <StellarConnectProvider>{children}</StellarConnectProvider>
+      </PollarBridge>
+    </SeyfPollarProvider>
   );
 }

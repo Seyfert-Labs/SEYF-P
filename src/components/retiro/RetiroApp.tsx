@@ -31,7 +31,7 @@ const TABS: { id: Tab; lb: string; ic: string }[] = [
 type SessionState = 'pending' | 'ok' | 'error'
 
 /** Espera el token SEP-10 que abre SeyfAuthBridge; si no llega, deja reintentar. */
-function useSep10(publicKey: string | null, getClient: () => PollarClient) {
+export function useSep10(publicKey: string | null, getClient: () => PollarClient) {
   // El estado va atado a la cuenta: si cambia la cuenta, vuelve a "pending" sin otro render.
   const [result, setResult] = useState<{ account: string; state: SessionState } | null>(null)
   const state: SessionState = result && result.account === publicKey ? result.state : 'pending'
