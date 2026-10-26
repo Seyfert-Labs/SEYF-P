@@ -378,3 +378,19 @@
 .scale-quote .sq-v small { font-size: 11px; color: var(--txt-dim); font-weight: 800; }
 .scale-quote .sq-arrow { margin-bottom: 2px; width: 30px; height: 30px; border-radius: 999px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--surface-3); color: var(--txt); font-weight: 800; }
 .scale-quote .sq-note { margin: 12px 0 0; font-size: var(--t-xxs); color: var(--txt-dim); line-height: 1.5; }
+
+/* Nueva bóveda: pasos numerados y errores visibles */
+.cv-step { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; }
+.cv-n { width: 24px; height: 24px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #fff; color: #0A0A0F; font-weight: 800; font-size: 12px; }
+.cv-lb { font-size: 15px; font-weight: 800; letter-spacing: -.01em; color: var(--txt); }
+.cv-help { margin: 6px 2px 0; font-size: 12px; color: var(--txt-dim); }
+.cv-help.err { color: var(--neg); font-weight: 700; }
+.uto-root .input.input-err, .input.input-err { border-color: var(--neg); box-shadow: 0 0 0 3px rgba(255,122,122,.15); }
+.cv-note { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line-strong); font-size: 12.5px; line-height: 1.45; color: var(--txt); }
+
+/* Enviar: activo como píldoras sólidas y saldo disponible */
+.send-asset { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
+.send-asset button { min-width: 84px; height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--txt-muted); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.send-asset button.on { background: #fff; color: #0A0A0F; border-color: #fff; }
+.send-avail { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 0 0; font-size: var(--t-xs); color: var(--txt-dim); }
+.send-avail b { color: var(--txt-muted); }

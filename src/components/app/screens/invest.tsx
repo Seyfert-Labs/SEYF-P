@@ -182,7 +182,8 @@ function VaultCard({
 
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
-  const { vaults, addVault, totalSaved, busy, onchain, ready } = useVaultsRail(wallet.address);
+  const { vaults, addVault, totalSaved, busy, onchain, ready, sessionOk } = useVaultsRail(wallet.address);
+  const [createError, setCreateError] = useState<string | null>(null);
   const { strategies, byPlanId } = useDefindexStrategies();
   const [opening, setOpening] = useState(false);
   const [creating, setCreating] = useState<null | { stellar?: DefindexStrategyLive; evmPlan?: VaultPlan }>(null);
@@ -250,6 +251,7 @@ export function ScreenVaults({ go }: { go: Go }) {
 
   const handleCreate = async (name: string, strategy: DefindexStrategyLive) => {
     setOpening(true);
+    setCreateError(null);
     try {
       await addVault({
         nm: name.trim() || strategy.name,
@@ -260,6 +262,8 @@ export function ScreenVaults({ go }: { go: Go }) {
         strategyId: strategy.id,
       });
       setCreating(null);
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : "No se pudo crear la bóveda. Intenta de nuevo.");
     } finally {
       setOpening(false);
     }
@@ -365,12 +369,26 @@ export function ScreenVaults({ go }: { go: Go }) {
           </div>
         )}
 
+        {STELLAR_RAIL && ready && !sessionOk && (
+          <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)" }}>
+            <Icon name="info" size={20} color="var(--txt-muted)" />
+            <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
+              Tu sesión segura no está abierta: ves tu saldo, pero los nombres de tus bóvedas aparecen al abrirla.
+            </p>
+          </div>
+        )}
+
         {/* Mis bóvedas — metas con nombre propio del usuario */}
         <div className="sec-head">
           <h3>Mis bóvedas</h3>
           <span style={{ fontSize: 12, color: "var(--txt-dim)", fontWeight: 700 }}>{vaults.length}/{MAX_VAULTS}</span>
         </div>
-        {vaults.length === 0 ? (
+        {!ready ? (
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="spin" style={{ color: "var(--accent)" }} />
+            <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.45 }}>Cargando tus bóvedas…</p>
+          </div>
+        ) : vaults.length === 0 ? (
           <button type="button" className="first-vault" onClick={() => setCreating({ stellar: defaultStrategy })}>
             <VaultDial color="#C8FF4D" size={50} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -478,7 +496,11 @@ export function ScreenVaults({ go }: { go: Go }) {
             recId={recId}
             strategies={offered}
             busy={opening}
-            onClose={() => setCreating(null)}
+            vaults={vaults}
+            sessionOk={sessionOk}
+            error={createError}
+            onOpenExisting={(v) => { setCreating(null); go("boveda", v); }}
+            onClose={() => { setCreating(null); setCreateError(null); }}
             onCreate={handleCreate}
           />
         </Portal>
@@ -498,18 +520,25 @@ export function ScreenVaults({ go }: { go: Go }) {
   );
 }
 
-/** Crear bóveda Stellar: nombre + estrategia DeFindex (CETES/USDC/XLM). */
+/** Crear bóveda Stellar: nombre + estrategia DeFindex (CETES/USDC/XLM).
+    Valida el nombre y avisa antes de crear: si ya hay una bóveda en ese activo
+    (una posición on-chain por activo) o si la sesión segura no está abierta. */
 function CreateVaultModalStellar({
-  preset, recId, strategies, busy, onClose, onCreate,
+  preset, recId, strategies, busy, vaults, sessionOk, error, onOpenExisting, onClose, onCreate,
 }: {
   preset: DefindexStrategyLive;
   recId: string | null;
   strategies: DefindexStrategyLive[];
   busy: boolean;
+  vaults: UserVault[];
+  sessionOk: boolean;
+  error: string | null;
+  onOpenExisting: (v: UserVault) => void;
   onClose: () => void;
   onCreate: (name: string, strategy: DefindexStrategyLive) => void;
 }) {
   const [name, setName] = useState("");
+  const [touched, setTouched] = useState(false);
   const defaultId =
     preset?.planId
     ?? (recId && strategies.find((s) => s.planId === recId)?.planId)
@@ -517,31 +546,79 @@ function CreateVaultModalStellar({
     ?? "conservador";
   const [planId, setPlanId] = useState<string>(defaultId);
   const strategy = strategies.find((s) => s.planId === planId) ?? preset;
+  const existing = vaults.find((v) => inferPlanIdForVault(v) === strategy?.planId);
+  const nameMissing = name.trim().length === 0;
+  const showNameError = touched && nameMissing;
+
+  const submit = () => {
+    setTouched(true);
+    if (nameMissing || existing || !sessionOk) return;
+    onCreate(name, strategy);
+  };
 
   return (
     <div className="modal-overlay" onClick={busy ? undefined : onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
         <p className="modal-title">Nueva bóveda</p>
-        <p className="modal-sub" style={{ marginTop: 2 }}>
-          Ponle nombre a tu meta y elige el activo donde rendirá.
-        </p>
+        <p className="modal-sub" style={{ marginTop: 2 }}>Dos pasos: ponle nombre y elige dónde rinde.</p>
 
-        <span className="field-label" style={{ marginTop: 14 }}>Nombre de tu bóveda</span>
+        <div className="cv-step">
+          <span className="cv-n">1</span>
+          <label className="cv-lb" htmlFor="cv-name">¿Para qué es esta bóveda?</label>
+        </div>
         <input
-          className="input"
+          id="cv-name"
+          className={`input${showNameError ? " input-err" : ""}`}
           placeholder="Ej. Fondo de emergencia, Viaje, Enganche…"
           value={name}
           maxLength={32}
+          autoFocus
+          aria-invalid={showNameError}
+          aria-describedby="cv-name-help"
           onChange={(e) => setName(e.target.value)}
+          onBlur={() => setTouched(true)}
         />
+        <p id="cv-name-help" className={`cv-help${showNameError ? " err" : ""}`}>
+          {showNameError ? "Escribe un nombre para tu bóveda." : `${name.trim().length}/32 · Así la verás en tu lista.`}
+        </p>
 
-        <span className="field-label" style={{ marginTop: 16 }}>Dónde rinde</span>
+        <div className="cv-step" style={{ marginTop: 14 }}>
+          <span className="cv-n">2</span>
+          <span className="cv-lb">Dónde rinde</span>
+        </div>
         <BondPicker options={strategies} value={planId} onChange={setPlanId} compact />
 
-        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={busy} onClick={() => onCreate(name, strategy)}>
-          {busy ? <span className="spin" /> : <><Icon name="plus" size={18} /> Crear bóveda</>}
-        </button>
+        {existing && (
+          <div className="cv-note">
+            <Icon name="info" size={18} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 800 }}>Ya tienes una bóveda en {strategy?.assetSymbol}</p>
+              <p style={{ margin: "3px 0 0", color: "var(--txt-muted)" }}>
+                «{existing.nm}» ya guarda tu ahorro en {strategy?.assetSymbol}. Abónale ahí; no se puede abrir otra en el mismo activo.
+              </p>
+            </div>
+          </div>
+        )}
+        {!existing && !sessionOk && (
+          <div className="cv-note">
+            <Icon name="shield" size={18} />
+            <p style={{ margin: 0, flex: 1, color: "var(--txt-muted)" }}>
+              Abre tu sesión segura (aviso de abajo) para poder guardar la bóveda.
+            </p>
+          </div>
+        )}
+        {error && <div className="alert alert-error">{error}</div>}
+
+        {existing ? (
+          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => onOpenExisting(existing)}>
+            Ir a «{existing.nm}»
+          </button>
+        ) : (
+          <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={busy || !sessionOk} onClick={submit}>
+            {busy ? <span className="spin" /> : <><Icon name="plus" size={18} /> Crear bóveda</>}
+          </button>
+        )}
         <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose} disabled={busy}>Cancelar</button>
       </div>
     </div>
