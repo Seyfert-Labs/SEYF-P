@@ -51,7 +51,8 @@ export async function fundStellarWallet(publicKey: string): Promise<FundResult> 
  * operación que firme (trustline, depósito/retiro a bóvedas DeFindex).
  */
 export function useEnsureStellarFunding() {
-  const { walletAddress } = usePollar()
+  const { wallet } = usePollar()
+  const walletAddress = wallet?.address ?? null
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
 

@@ -13,7 +13,8 @@ import { clearSeyfAuthToken, seyfAuthAccount } from '@/lib/stellar/auth-token'
  * /api/db/*, que ahora exigen identidad probada.
  */
 export default function SeyfAuthBridge() {
-  const { isAuthenticated, walletAddress, getClient } = usePollar()
+  const { isAuthenticated, wallet, getClient } = usePollar()
+  const walletAddress = wallet?.address ?? null
   const mintedFor = useRef<string | null>(null)
 
   useEffect(() => {

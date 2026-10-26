@@ -134,9 +134,11 @@ function phaseFromAuth(step: AuthState['step']): StellarEnrollPhase {
  * acredita los bonos (detalle de implementación; nunca se expone al usuario).
  */
 export function useSeyfStellarWallet() {
-  const { isAuthenticated, walletAddress, walletBalance, refreshBalance, openLoginModal, logout, getClient } = usePollar()
-  const refreshRef = useRef(refreshBalance)
-  refreshRef.current = refreshBalance
+  // Pollar ≥0.12: la wallet viene en `wallet.address` y el saldo se refresca sin argumentos.
+  const { isAuthenticated, wallet: pollarWallet, walletBalance, refreshWalletBalance, openLoginModal, logout, getClient } = usePollar()
+  const walletAddress = pollarWallet?.address ?? null
+  const refreshRef = useRef<(pk?: string) => Promise<void>>(() => refreshWalletBalance())
+  refreshRef.current = () => refreshWalletBalance()
 
   const [phase, setPhase] = useState<StellarEnrollPhase>('idle')
   const [error, setError] = useState<string | null>(null)

@@ -5,7 +5,7 @@ import { readPollarAccessToken, readPollarPublicKey } from '@/lib/pollar/session
 
 type PollarSessionSlice = {
   token?: { accessToken?: string }
-  wallet?: { publicKey?: string | null }
+  wallet?: { publicKey?: string | null; address?: string | null }
   data?: { providers?: { wallet?: { address?: string } } }
 }
 
@@ -29,7 +29,9 @@ function sessionFromClient(client: PollarClient): PollarSessionSlice | null {
 export function resolvePollarPublicKey(client: PollarClient): string | null {
   const mem = sessionFromClient(client)
   const fromMem =
-    mem?.wallet?.publicKey?.trim() || mem?.data?.providers?.wallet?.address?.trim()
+    mem?.wallet?.address?.trim() ||
+    mem?.wallet?.publicKey?.trim() ||
+    mem?.data?.providers?.wallet?.address?.trim()
   if (fromMem) return fromMem
   return readPollarPublicKey()
 }
@@ -117,19 +119,14 @@ function pollarApiError(data: unknown, error: { details?: string; message?: stri
  * Firma un XDR externo usando el cliente Pollar (API key + Bearer en memoria).
  */
 export async function pollarSignXdr(client: PollarClient, unsignedXdr: string, publicKey: string): Promise<string> {
-  const api = pollarApi(client)
-  if (!api) {
-    throw new Error('Cliente Pollar no inicializado. Recarga la página e intenta de nuevo.')
+  void publicKey // Pollar ≥0.12 firma con la wallet de la sesión.
+  // skipSponsorship: el fee-bump lo pone SEYF en el servidor; Pollar solo firma.
+  const out = await client.signTx(unsignedXdr, { skipSponsorship: true })
+  if (out.status === 'signed') return out.signedXdr
+  if (out.status === 'cosign_pending') {
+    throw new Error('Tu wallet pide una aprobación adicional. Complétala e intenta de nuevo.')
   }
-
-  const network = client.getNetwork()
-  const body = { network, publicKey, unsignedXdr }
-
-  const { data, error } = await api.POST('/tx/sign', { body })
-  const signed = extractSignedXdr(data)
-  if (signed) return signed
-
-  throw new Error(pollarApiError(data, error, 'Pollar no pudo firmar la transacción'))
+  throw new Error(pollarApiError({ code: out.code }, { details: out.details }, 'Pollar no pudo firmar la transacción'))
 }
 
 /** Origen de la API de Pollar sin el sufijo de versión (`…/v1` → `…`). */
@@ -166,33 +163,16 @@ export async function pollarSignSep10Challenge(
   client: PollarClient,
   input: PollarSep10SignInput,
 ): Promise<string> {
-  const apiKey = pollarPublishableKey(client)
-  if (!apiKey) {
-    throw new Error('Falta NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY (o NEXT_PUBLIC_POLLAR_API_KEY).')
-  }
-  const accessToken = resolvePollarAccessToken(client)
-  if (!accessToken) {
-    throw new Error('Tu sesión Stellar expiró. Vuelve a ingresar el código OTP.')
-  }
-
-  const body: Record<string, unknown> = { address: input.address, challengeXdr: input.challengeXdr }
-  if (input.homeDomains?.length) body.homeDomains = input.homeDomains
-  if (input.webAuthDomain) body.webAuthDomain = input.webAuthDomain
-
-  const res = await fetch(`${pollarApiOrigin(client)}/v3/stellar/sep10/sign`, {
-    method: 'POST',
-    headers: {
-      'x-pollar-api-key': apiKey,
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+  const out = await client.stellar.sep10.sign({
+    challengeXdr: input.challengeXdr,
+    ...(input.homeDomains?.length ? { homeDomains: input.homeDomains } : {}),
+    ...(input.webAuthDomain ? { webAuthDomain: input.webAuthDomain } : {}),
   })
-  const data = (await res.json().catch(() => null)) as unknown
-  const signed = res.ok ? extractSignedXdr(data) : null
-  if (signed) return signed
-
-  throw new Error(
-    pollarApiError(data, undefined, `Pollar no pudo firmar el challenge SEP-10 (HTTP ${res.status})`),
-  )
+  if (out.status === 'signed') {
+    if (out.signerAddress && out.signerAddress !== input.address) {
+      throw new Error('La firma SEP-10 no corresponde a tu cuenta. Vuelve a entrar.')
+    }
+    return out.signedXdr
+  }
+  throw new Error(pollarApiError({ code: out.code }, { details: out.details }, 'Pollar no pudo firmar el challenge SEP-10'))
 }

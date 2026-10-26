@@ -294,7 +294,8 @@ export function ScreenVaults({ go }: { go: Go }) {
   // Ancla del timer del total = lectura de saldo más reciente entre las bóvedas.
   const totalAnchorMs = vaults.reduce((m, v) => Math.max(m, v.updatedAt ?? 0), 0) || undefined;
   const atCap = vaults.length >= MAX_VAULTS;
-  const { isAuthenticated: pollarOk, walletAddress: pollarPk } = usePollar();
+  const { isAuthenticated: pollarOk, wallet: pollarWallet } = usePollar();
+  const pollarPk = pollarWallet?.address;
   const [orphanOnchain, setOrphanOnchain] = useState<
     { planId: string; name: string; assetSymbol: string; underlyingBalance: number; strategyId: string }[]
   >([]);
