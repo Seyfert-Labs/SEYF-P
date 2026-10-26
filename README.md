@@ -127,7 +127,7 @@ soroban/seyf_advance   → the contract (Rust, soroban-sdk 29, 17 tests)
 ```
 
 **Signing flow:** the server builds and simulates the transaction → Pollar shows it and the user
-signs → the server wraps it in a fee-bump paid by the sponsor → Stellar RPC → poll until final.
+signs → the server wraps it in a fee-bump paid by the sponsor and submits it (Horizon) → final result.
 The chain is the source of truth for balances. Supabase only stores labels such as vault names.
 
 ## Run it

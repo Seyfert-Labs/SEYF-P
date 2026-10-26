@@ -126,6 +126,7 @@ sequenceDiagram
     participant P as Pollar dialog
     participant S as SEYF server (Next.js)
     participant R as Stellar RPC
+    participant H as Horizon
     participant C as Soroban (vault / seyf_advance)
 
     U->>S: action (deposit · open · repay · send)
@@ -136,9 +137,9 @@ sequenceDiagram
     P-->>U: signed XDR
     U->>S: POST /api/stellar/sponsor/submit
     S->>S: allowlist check (contract, vault, USDC SAC, trustline) + resourceFee cap
-    S->>R: fee-bump signed by the sponsor → sendTransaction
-    R->>C: execute
-    S->>R: pollTransaction until SUCCESS
+    S->>H: fee-bump signed by the sponsor → submitTransaction
+    H->>C: execute
+    H-->>S: result (success / failure)
     S-->>U: transaction hash
 ```
 
