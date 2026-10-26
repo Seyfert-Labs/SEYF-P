@@ -1,6 +1,7 @@
 'use client'
 
 import type { PollarClient } from '@pollar/core'
+import { TransactionBuilder } from '@stellar/stellar-sdk'
 import { readPollarAccessToken, readPollarPublicKey } from '@/lib/pollar/session'
 
 type PollarSessionSlice = {
@@ -150,8 +151,26 @@ function pollarPublishableKey(client: PollarClient): string | null {
 export type PollarSep10SignInput = {
   address: string
   challengeXdr: string
+  networkPassphrase: string
   homeDomains?: string[]
   webAuthDomain?: string
+}
+
+/**
+ * Antes de firmar un challenge por la vía genérica de transacciones: tiene que ser
+ * un challenge SEP-10 de verdad (secuencia 0, imposible de enviar a la red; solo
+ * `manageData`; la primera operación a nombre de la cuenta del usuario).
+ */
+function assertSep10Shape(xdr: string, address: string, networkPassphrase: string): void {
+  const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase)
+  const ops = 'operations' in tx ? tx.operations : []
+  const ok =
+    'sequence' in tx &&
+    tx.sequence === '0' &&
+    ops.length > 0 &&
+    ops.every((op) => op.type === 'manageData') &&
+    ops[0].source === address
+  if (!ok) throw new Error('El challenge de sesión no es válido. No se firmó nada.')
 }
 
 /**
@@ -174,5 +193,19 @@ export async function pollarSignSep10Challenge(
     }
     return out.signedXdr
   }
-  throw new Error(pollarApiError({ code: out.code }, { details: out.details }, 'Pollar no pudo firmar el challenge SEP-10'))
+
+  // Wallets de Turnkey (co-firma 2 de 2 o autocustodia): `/stellar/sep10/sign` firma
+  // solo del lado de Pollar y falla con INTERNAL_ERROR, porque la llave necesita al
+  // dispositivo. `signTx` sí pasa por la co-firma del dispositivo. El challenge ya se
+  // validó en `sep10-client` (red y dominios) y, con secuencia 0 y la cuenta del
+  // servidor como origen, no se puede enviar a la red: firmarlo solo prueba la cuenta.
+  assertSep10Shape(input.challengeXdr, input.address, input.networkPassphrase)
+  const viaTx = await client.signTx(input.challengeXdr, { skipSponsorship: true })
+  if (viaTx.status === 'signed') return viaTx.signedXdr
+  if (viaTx.status === 'cosign_pending') {
+    throw new Error('Aprueba la firma en tu dispositivo para abrir tu sesión segura.')
+  }
+  throw new Error(
+    pollarApiError({ code: viaTx.code ?? out.code }, { details: viaTx.details ?? out.details }, 'Pollar no pudo firmar el challenge SEP-10'),
+  )
 }

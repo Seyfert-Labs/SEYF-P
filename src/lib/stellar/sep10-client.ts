@@ -63,6 +63,7 @@ async function mintToken(client: PollarClient, publicKey: string): Promise<strin
   const signedXdr = await pollarSignSep10Challenge(client, {
     address: publicKey,
     challengeXdr: challenge.transaction,
+    networkPassphrase: expectedPassphrase,
     ...challengeDomains(challenge.transaction, expectedPassphrase, publicKey),
   })
 
