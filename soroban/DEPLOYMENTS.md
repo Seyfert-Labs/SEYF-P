@@ -24,7 +24,7 @@ cambian metadatos de compilación. Se usó Stellar CLI 28.1.0.
 | Admin (`seyf-admin`) | `GA7OITMN2PC55EPIMQL5SWX6ZGT55HEHJEIC7FDAHCZWCPLFZZ5N6V7U` |
 | Keeper (`seyf-keeper-hot`, solo paga `settle`) | `GAYVVUKEUZQ76FYKORZNQL2S3HU56VSFSBE4KTPJXCLASB3XELHXTSC3` |
 | Sponsor de reservas y comisiones (`seyf-sponsor-hot`) | `GDPVVG4AWVXDS6WBS4PEBGH7UVJKFJUKC26UVBCG7LYIYIM3S6EQHB72` |
-| Firma de challenges SEP-10 (`seyf-sep10`, sin fondos) | `GAOG5JOMKZTTVQWBJIFDMOGCEVAGP435LSRQDXXSD3QGB4MGFFRCMFIS` |
+| Firma de challenges SEP-10 (`seyf-sep10-hot`, sin fondos) | `GCICR4ID7D6MSU4N7ZST3U7YCSRO6YCDOUKWAYZHHR6JD4BWKC46LQ5E` |
 
 Las llaves se guardan de dos maneras distintas y ninguna está en el repo:
 
