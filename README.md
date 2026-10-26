@@ -27,7 +27,10 @@ advanced today by our Soroban contract. No seed phrase, no XLM for fees.**
 
 ---
 
-**HackMeridian 2026 · Category: Scale · Track: Stellar Composed**
+**HackMeridian 2026 · Category: Scale · Track: Stellar Composed** (two or more ecosystem projects
+combined). Of this year's priorities, SEYF covers **smart contracts** (our own Soroban contract on
+mainnet). It does not cover smart accounts: the wallet is a Pollar co-signed account, and the
+passkey only recovers it. It does not cover cross-chain either.
 
 ## The problem
 
@@ -156,11 +159,21 @@ Details: [docs/contracts.md § Known limits](docs/contracts.md#known-limits-of-t
 
 ## What's next (SCF)
 
+Target: the SCF Build Award, **Integration Track**
+([details and requirements](docs/hackmeridian-2026.md#2-scf-eligibility)).
+
 | Tranche | Deliverable |
 | --- | --- |
-| 1 | Our own non-upgradable DeFindex USDC vault (multisig roles), audit of `seyf_advance` (SCF Audit Bank) |
+| 1 | Our own non-upgradable DeFindex USDC vault (multisig roles), `cargo scout-audit` + STRIDE threat model for `seyf_advance` (prerequisites for the SCF Audit Bank) |
 | 2 | MXN on/off-ramp via SPEI (Etherfuse, already integrated on testnet) and tokenized CETES |
-| 3 | Raise caps after the audit, passkeys (smart accounts), public launch in Mexico |
+| 3 | Raise caps after the audit, public launch in Mexico, on-chain metric: USDC NAV in the vault + advance volume |
+
+## AI disclosure
+
+HackMeridian allows AI-assisted development, and SCF asks for full disclosure. Parts of the code,
+the contract tests and this documentation were written with an AI coding assistant (Claude Code),
+with the team reviewing them. Every mainnet transaction linked here was signed by the team and
+can be checked on stellar.expert.
 
 ## Team
 

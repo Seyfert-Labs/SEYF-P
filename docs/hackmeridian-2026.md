@@ -38,22 +38,35 @@ passkeys and smart accounts, and the stellar-sdk 16 upgrade. See the roadmap bel
 
 ## 2. SCF eligibility
 
-| SCF requirement | SEYF |
+Checked against the SCF Handbook (Build Award: Submission Criteria, Integration Track, Open Track,
+Audit Bank official rules) via Stellar Raven on 2026-10-26.
+
+**Track fit.** SEYF fits the **Integration Track**: it combines existing building blocks (a wallet,
+a DeFi vault, a lending protocol, a stablecoin and, next, an on/off-ramp) into an everyday
+savings product. `seyf_advance` is the only new protocol piece. If it were pitched on its own as a
+reusable primitive, the right fit would be the **Open Track**.
+
+| Integration Track requirement | SEYF |
 | --- | --- |
-| Builds on Stellar, with meaningful use of Soroban | Its own contract, `seyf_advance`, composed with DeFindex, Blend and the USDC SAC |
-| Open source, public repo | This repo. The contract and its tests are in `soroban/` |
-| Architecture complete at application time | Full architecture deployed and running on mainnet ([README § Architecture](../README.md#architecture)) |
-| Clear tranches (MVP → testnet expansion → mainnet launch) | We are already past MVP on mainnet in beta. The proposed tranches are below. |
-| Audit path | SCF Audit Bank for `seyf_advance` before raising caps |
+| Integrates at least one building block from the official SCF Integration List | Pollar, DeFindex, Blend, Circle USDC, and Etherfuse (next). *Which of these are on the current quarterly list is still to be confirmed against the list itself.* |
+| Explain what is integrated, why it matters and the existing traction | Sections above. Live on mainnet with real transactions; user traction is still beta-sized. |
+| Most of the budget goes to integration costs | Tranches below are integration-led (vault, ramp, wallet) |
+| **On-chain success metric for tranche 3** (NAV, cumulative volume or similar) | Proposed: USDC NAV that SEYF users hold in the vault, plus cumulative advance volume through `seyf_advance`. *The target number is for the team to set.* |
+| Self-contained submission with architecture and deliverables | [README](../README.md), [contracts.md](contracts.md), [how-it-works.md](how-it-works.md) |
+| Disclosure of AI-assisted work | [README § AI disclosure](../README.md#ai-disclosure) |
 
 **Proposed Build Award tranches**
 
 1. **Hardening.** Our own non-upgradable DeFindex USDC vault with multisig roles instead of a
-   third-party vault, an audit of `seyf_advance`, and a pass with `cargo scout-audit`.
+   third-party vault, a `cargo scout-audit` pass, and a STRIDE threat model for `seyf_advance`.
 2. **Pesos in and out.** An MXN on/off-ramp over SPEI via Etherfuse, already integrated on testnet,
    plus tokenized CETES as a second savings asset.
-3. **Launch.** Higher caps after the audit, passkeys (Smart Account Kit), and a public launch in
-   Mexico.
+3. **Launch.** Higher caps after the audit, and a public launch in Mexico measured by the on-chain
+   metric above.
+
+**Audit path.** The SCF Audit Bank only covers **SCF-funded** projects. It requires code deployed
+on testnet (✅ done), extensive tests (✅ 17), the results of a self-service scan with a
+remediation plan (to do), and a STRIDE threat model (to do). Until then, mainnet stays capped.
 
 ## 3. Production readiness
 
@@ -80,8 +93,8 @@ passkeys and smart accounts, and the stellar-sdk 16 upgrade. See the roadmap bel
   held crypto. The Etherfuse SPEI rail (testnet) is the next step to bring MXN liquidity onto
   Stellar.
 - **Feedback upstream.** During the event we documented integration issues with Pollar 0.12: the
-  DPoP nonce handshake, `SDK_WALLET_RECOVERY_REQUIRED` before signing, and SEP-10 signing on
-  Turnkey wallets. The workarounds are in the code (`24be722`, `846b367`).
+  DPoP nonce handshake, `SDK_WALLET_RECOVERY_REQUIRED` before signing, `SDK_COSIGN_DEVICE_NOT_ENROLLED` on a new browser, and SEP-10 signing on
+  Turnkey wallets. The workarounds are in the code (`24be722`, `846b367`, `ce24b61`).
 
 ---
 
@@ -95,7 +108,7 @@ passkeys and smart accounts, and the stellar-sdk 16 upgrade. See the roadmap bel
 | Mainnet | Deploy, funded treasury, full CLI cycle plus a full app cycle, allowlist opened (`7691367`, `7feab77`) |
 | Keeper | Automatic `settle` from GitHub Actions (`647d7ad`, `f1939b4`) |
 | Backend | `/api/vault/*` and `/api/advance/*` routes, an RPC client, BigInt units, an allowlisted sponsor with a capped `resourceFee` (`37d90b0`, `ad5cf28`, `8a2bc9f`) |
-| Auth | Pollar v3 SEP-10 signing, account-proof for Turnkey wallets, recovery check before the session (`5cd2856`, `17734a6`, `846b367`) |
+| Auth | Pollar v3 SEP-10 signing, account-proof for Turnkey wallets, recovery check before the session, "authorize this browser" on non-enrolled devices (`5cd2856`, `17734a6`, `846b367`, `ce24b61`) |
 | SEP-1 | `stellar.toml` on www.seyf.app with the mainnet keys (`e4f3042`, `379f6c5`, `235a2a7`) |
 | App | `/retiro` flow, then the full `/app` on Pollar and mainnet, a redesign, USDC-only on mainnet, vault creation validation (`eb45ed8`, `311540a`, `ecfff75`, `8177b5f`, `6d7a696`) |
 | Landing | Scroll narrative, 3D symbol and coins, ES/EN/PT (`54096a2`, `2a825c7`, `335be02`) |
