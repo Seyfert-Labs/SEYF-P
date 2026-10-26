@@ -43,8 +43,10 @@ export function useSep10(publicKey: string | null, getClient: () => PollarClient
     const tick = () => {
       if (cancelled) return
       if (peekSeyfAuthToken() && seyfAuthAccount() === publicKey) return setResult({ account: publicKey, state: 'ok' })
-      if (Date.now() - started > 25_000) return setResult({ account: publicKey, state: 'error' })
-      setTimeout(tick, 400)
+      // Tras 25 s se ofrece reintentar, pero se sigue esperando: confirmar la firma
+      // en el diálogo de Pollar puede tardar más y el token llega después.
+      if (Date.now() - started > 25_000) setResult({ account: publicKey, state: 'error' })
+      setTimeout(tick, Date.now() - started > 25_000 ? 1_000 : 400)
     }
     const first = setTimeout(tick, 0)
     return () => {
