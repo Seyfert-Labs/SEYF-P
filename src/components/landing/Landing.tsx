@@ -3,7 +3,7 @@
 /* SEYF — Landing page.
    Narrativa por scroll: hero "cinemático" con el símbolo SEYF en 3D (three.js)
    pinneado mientras cambian los mensajes, historia del producto con el celular
-   fijo, bonos en carrusel horizontal guiado por scroll y tarjeta que gira en 3D.
+   fijo y bonos en carrusel horizontal guiado por scroll con cada país en relieve.
    Smooth scroll con Lenis; animaciones ligadas al scroll con motion (useScroll).
    Todo respeta prefers-reduced-motion. CTAs → /app. */
 import Link from "next/link";
@@ -27,6 +27,7 @@ import { CountryRelief, type CountryCode } from "./CountryRelief";
 
 // three.js solo en el navegador y fuera del bundle inicial
 const Symbol3D = dynamic(() => import("@/components/brand/Symbol3D"), { ssr: false });
+const CoinsLayer = dynamic(() => import("./CoinsLayer"), { ssr: false });
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 // instancia de Lenis compartida (para scrollTo programático desde las secciones)
@@ -257,6 +258,8 @@ function HeroCinema() {
   // en el beat 2 el símbolo se encoge para caber entre "Rinde" y "9% anual"
   const symScale = useTransform(p, [0.26, 0.38, 0.6, 0.74], [1, 0.58, 0.58, 0.8]);
   const hint = useTransform(p, [0, 0.06], [1, 0]);
+  // una parada por mensaje: propuesta, "Rinde 9%", "Sin jerga"
+  useSnapSection(ref, [0, 0.48, 0.88]);
 
   return (
     <section className="hero-cinema" ref={ref}>
@@ -340,94 +343,148 @@ function HeroCinema() {
   );
 }
 
-/** Celular con el mockup fiel de la app; tilt 3D siguiendo el mouse. */
-function Phone({ screen }: { screen: number }) {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const tiltRef = useRef<HTMLDivElement>(null);
-  const onMove = (ev: React.MouseEvent) => {
-    const stage = stageRef.current;
-    const tilt = tiltRef.current;
-    if (!stage || !tilt) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const r = stage.getBoundingClientRect();
-    tilt.style.setProperty("--ptx", `${((ev.clientX - r.left) / r.width - 0.5) * 12}deg`);
-    tilt.style.setProperty("--pty", `${-((ev.clientY - r.top) / r.height - 0.5) * 12}deg`);
-  };
-  const onLeave = () => {
-    tiltRef.current?.style.setProperty("--ptx", "0deg");
-    tiltRef.current?.style.setProperty("--pty", "0deg");
-  };
-  return (
-    <div className="phone-stage" ref={stageRef} onMouseMove={onMove} onMouseLeave={onLeave}>
-      <div className="phone-tilt" ref={tiltRef}>
-        <div className="phone">
-          <div className="phone-screen">
-            <AppMock screen={screen} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Historia del producto: el celular queda fijo y cada paso "se detiene" (snap)
-    para que no se pase de largo. Los pasos también se pueden tocar. */
-function PhoneStory() {
-  const ref = useRef<HTMLElement>(null);
-  const [screen, setScreen] = useState(0);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
-  useMotionValueEvent(scrollYProgress, "change", (v) => setScreen(Math.min(2, Math.max(0, Math.floor(v * 3)))));
-
-  // posición de scroll (px) donde el paso i queda centrado en su tramo
-  const stepY = (i: number) => {
-    const el = ref.current;
-    if (!el) return 0;
+/** "Acomodo" en una sección pinneada: el scroll es libre (nunca se bloquea); al
+    detenerse dentro de la sección, se desliza a la parada siguiente en la dirección
+    en que ibas (o a la anterior si subías). Pasando la última/primera parada no
+    hace nada, para poder salir. `points` = avance (0–1) de cada parada. */
+function useSnapSection(ref: React.RefObject<HTMLElement | null>, points: number[]) {
+  const settling = useRef(false);
+  const geo = () => {
+    const el = ref.current!;
     const top = el.getBoundingClientRect().top + window.scrollY;
-    return top + (el.offsetHeight - window.innerHeight) * ((i + 0.5) / 3);
+    return { top, dist: Math.max(1, el.offsetHeight - window.innerHeight) };
   };
-  const goTo = (y: number) => {
-    if (lenisRef.current) lenisRef.current.scrollTo(y, { duration: 0.9 });
+  const goTo = (i: number) => {
+    if (!ref.current) return;
+    const { top, dist } = geo();
+    const y = top + dist * points[i];
+    if (Math.abs(y - window.scrollY) < 4) return;
+    settling.current = true;
+    const done = () => (settling.current = false);
+    window.setTimeout(done, 1300); // por si el usuario interrumpe la animación
+    if (lenisRef.current) lenisRef.current.scrollTo(y, { duration: 1, onComplete: done });
     else window.scrollTo({ top: y, behavior: "smooth" });
   };
-
-  // snap con dirección: al soltar el scroll, si te moviste hacia abajo avanza al
-  // siguiente paso; hacia arriba, regresa. En el primer/último paso deja salir.
-  const lastStep = useRef(0);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let t = 0;
+    let start = -1; // avance cuando empezó el gesto actual
     const onScroll = () => {
+      if (settling.current || !ref.current) return;
+      const { top, dist } = geo();
+      const v = (window.scrollY - top) / dist;
+      if (start < 0) start = v;
       window.clearTimeout(t);
       t = window.setTimeout(() => {
-        const el = ref.current;
-        if (!el) return;
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        const v = (window.scrollY - top) / (el.offsetHeight - window.innerHeight);
-        if (v <= 0.02 || v >= 0.98) {
-          lastStep.current = v <= 0.02 ? 0 : 2; // fuera de la sección: no secuestrar el scroll
-          return;
-        }
-        const cur = lastStep.current;
-        const delta = v - (cur + 0.5) / 3;
-        let target = cur;
-        if (delta > 0.035) {
-          if (cur === 2) return; // bajando desde el último paso: sale de la sección
-          target = Math.min(2, Math.max(cur + 1, Math.floor(v * 3)));
-        } else if (delta < -0.035) {
-          if (cur === 0) return; // subiendo desde el primer paso: sale hacia arriba
-          target = Math.max(0, Math.min(cur - 1, Math.floor(v * 3)));
-        }
-        lastStep.current = target;
-        const y = stepY(target);
-        if (Math.abs(y - window.scrollY) > 6) goTo(y);
-      }, 140);
+        const from = start;
+        start = -1;
+        if (v <= 0.001 || v >= 0.999) return;
+        const down = v > from;
+        // bajando → la siguiente parada adelante; subiendo → la anterior
+        const i = down ? points.findIndex((p) => p >= v - 0.005) : points.map((p) => p <= v + 0.005).lastIndexOf(true);
+        if (i >= 0) goTo(i);
+      }, 170);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.clearTimeout(t);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  return goTo;
+}
+
+/* Por paso: ángulo del celular, color del brillo y tarjetas que "salen" del teléfono. */
+const STORY_FX = [
+  { ry: -18, rx: 6, glow: "rgba(200,255,77,.30)", chips: [
+    { k: "SPEI recibido", v: "+$5,000.00", tone: "lime", pos: "c-tl" },
+    { k: "Tu CLABE", v: "646 180 1234 5678 90", tone: "plain", pos: "c-br" },
+  ] },
+  { ry: 16, rx: 4, glow: "rgba(91,140,255,.30)", chips: [
+    { k: "Tipo de cambio", v: "1 USD = 17.40", tone: "plain", pos: "c-tr" },
+    { k: "Comisión", v: "$0.00", tone: "lime", pos: "c-bl" },
+  ] },
+  { ry: -10, rx: 10, glow: "rgba(139,92,246,.38)", chips: [
+    { k: "Viaje a Japón", v: "64% de la meta", tone: "violet", pos: "c-tl" },
+    { k: "Rinde", v: "11.2% anual", tone: "lime", pos: "c-bl" },
+  ] },
+];
+
+/** Celular en 3D: cambia de ángulo por paso, tarjetas flotantes con parallax
+    (más cerca = se mueven más) y tilt siguiendo el mouse. */
+function Phone({ screen }: { screen: number }) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const phoneRef = useRef<HTMLDivElement>(null);
+  const fx = STORY_FX[screen];
+  const onMove = (ev: React.MouseEvent) => {
+    const stage = stageRef.current;
+    if (!stage || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = stage.getBoundingClientRect();
+    stage.style.setProperty("--px", `${(ev.clientX - r.left) / r.width - 0.5}`);
+    stage.style.setProperty("--py", `${(ev.clientY - r.top) / r.height - 0.5}`);
+  };
+  const onLeave = () => {
+    stageRef.current?.style.setProperty("--px", "0");
+    stageRef.current?.style.setProperty("--py", "0");
+  };
+  return (
+    <div className="phone-stage" ref={stageRef} onMouseMove={onMove} onMouseLeave={onLeave} style={{ "--glow": fx.glow } as React.CSSProperties}>
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={screen}
+          className="story-num display"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -40 }}
+          transition={{ duration: 0.6, ease: EASE }}
+          aria-hidden
+        >
+          {STEPS[screen].n}
+        </motion.span>
+      </AnimatePresence>
+      <motion.div
+        className="phone-3d"
+        animate={{ rotateY: fx.ry, rotateX: fx.rx }}
+        transition={{ duration: 1.1, ease: EASE }}
+      >
+        <div className="phone-tilt">
+          <div className="phone" ref={phoneRef}>
+            <div className="phone-screen">
+              <AppMock screen={screen} />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+      {/* monedas 3D: llueven, orbitan o se apilan según el paso */}
+      <CoinsLayer mode={screen} phoneRef={phoneRef} className="coins-layer" />
+      <AnimatePresence>
+        {fx.chips.map((c, i) => (
+          <motion.div
+            key={`${screen}-${i}`}
+            className={`float-chip ${c.pos} t-${c.tone}`}
+            initial={{ opacity: 0, scale: 0.7, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.6, delay: 0.35 + i * 0.12, ease: EASE }}
+          >
+            <span className="k">{c.k}</span>
+            <span className="v num">{c.v}</span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Historia del producto: el celular queda fijo y cada paso "se detiene" (snap
+    por gesto) para que no se pase de largo. Los pasos también se pueden tocar. */
+function PhoneStory() {
+  const ref = useRef<HTMLElement>(null);
+  const [screen, setScreen] = useState(0);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
+  useMotionValueEvent(scrollYProgress, "change", (v) => setScreen(Math.min(2, Math.max(0, Math.floor(v * 3)))));
+  const goTo = useSnapSection(ref, [1 / 6, 1 / 2, 5 / 6]);
 
   return (
     <section className="story" id="producto" ref={ref}>
@@ -438,7 +495,7 @@ function PhoneStory() {
             <h2 className="sec-title display">Tres pasos. Cero complicaciones.</h2>
             <div className="steps">
               {STEPS.map((s, i) => (
-                <button key={s.n} className={`step${screen === i ? " on" : ""}`} onClick={() => { lastStep.current = i; goTo(stepY(i)); }}>
+                <button key={s.n} className={`step${screen === i ? " on" : ""}`} onClick={() => goTo(i)}>
                   <StepBar progress={scrollYProgress} i={i} />
                   <span className="step-n num">{s.n}</span>
                   <span className="step-body">
@@ -557,73 +614,6 @@ function BondsRail() {
   );
 }
 
-/** Tarjeta que gira en 3D al entrar en pantalla + tilt con el mouse. */
-function CardShowcase() {
-  const ref = useRef<HTMLElement>(null);
-  const creditRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const rotY = useTransform(scrollYProgress, [0, 0.5, 1], [-38, 0, 24]);
-  const rotX = useTransform(scrollYProgress, [0, 0.5, 1], [18, 0, -10]);
-  const ty = useTransform(scrollYProgress, [0, 0.5, 1], [80, 0, -40]);
-  const onMove = (ev: React.MouseEvent) => {
-    const card = creditRef.current;
-    if (!card || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const r = card.getBoundingClientRect();
-    const px = (ev.clientX - r.left) / r.width - 0.5;
-    const py = (ev.clientY - r.top) / r.height - 0.5;
-    card.style.transform = `rotateY(${px * 14}deg) rotateX(${-py * 14}deg)`;
-    card.style.setProperty("--gx", `${(px + 0.5) * 100}%`);
-    card.style.setProperty("--gy", `${(py + 0.5) * 100}%`);
-  };
-  const onLeave = () => {
-    if (creditRef.current) creditRef.current.style.transform = "rotateY(0) rotateX(0)";
-  };
-  return (
-    <section className="sec-pad" id="tarjeta" ref={ref}>
-      <div className="wrap split">
-        <div className="card-stage">
-          <motion.div style={{ rotateY: rotY, rotateX: rotX, y: ty, transformPerspective: 1200 }}>
-            <div className="credit" ref={creditRef} onMouseMove={onMove} onMouseLeave={onLeave}>
-              <div className="sheen" /><div className="blob" /><div className="glare" />
-              <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <span className="display" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 22, fontWeight: 800 }}><SeyfSymbol size={22} /> SEYF</span>
-                <div className="chip" />
-              </div>
-              <div style={{ position: "relative" }}>
-                <div className="num" style={{ fontSize: 20, letterSpacing: ".14em" }}>4821 ··· ··· 7‑903</div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 16 }}>
-                  <div><div style={{ fontSize: 10, color: "var(--muted)", letterSpacing: ".08em" }}>TITULAR</div><div style={{ fontSize: 15, fontWeight: 700, marginTop: 3 }}>DIEGO ROBLES</div></div>
-                  <span className="display" style={{ fontSize: 17, fontStyle: "italic", fontWeight: 800, color: "var(--accent)" }}>VISA</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-          <div className="card-shadow" />
-        </div>
-        <Reveal>
-          <span className="sec-tag">Tarjeta global</span>
-          <h2 className="sec-title display" style={{ fontSize: "clamp(32px, 4vw, 44px)" }}>Gasta en cualquier moneda, sin sorpresas.</h2>
-          <div className="feat-list">
-            {[
-              { ti: "Tipo de cambio real", de: "Convertimos al cambio real del mercado, sin margen oculto ni comisión." },
-              { ti: "Saldos en múltiples divisas", de: "Guarda MXN, USD, BRL y KRW y paga con el que prefieras." },
-              { ti: "Control total", de: "Congela la tarjeta, cambia tu PIN y recibe alertas de cada cargo al instante." },
-            ].map((f) => (
-              <div className="feat-item" key={f.ti}><span className="ck"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l4.5 4.5L19 7" /></svg></span><div><div className="ti">{f.ti}</div><div className="de">{f.de}</div></div></div>
-            ))}
-          </div>
-          <div className="cur-chips">
-            <span className="cur-chip">$ MXN</span>
-            <span className="cur-chip"><span className="cur-flag"><FlagUS s={18} /></span> USD</span>
-            <span className="cur-chip"><span className="cur-flag"><FlagBR s={18} /></span> BRL</span>
-            <span className="cur-chip"><span className="cur-flag"><FlagKR s={18} /></span> KRW</span>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
 /** Reveal al entrar en pantalla (blur + subida). */
 function Reveal({ children, delay = 0, className, style }: { children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties }) {
   const reduced = useReducedMotion();
@@ -652,6 +642,81 @@ function SecHead({ tag, title, sub, center = false }: { tag: string; title: stri
   );
 }
 
+const PARTNERS = [
+  { name: "Stellar", role: "Red de pagos · liquidación en ~5 s", logo: "/partners/stellar.svg", h: 30, url: "https://stellar.org", color: "#ffffff" },
+  { name: "DeFindex", role: "Bóvedas de rendimiento on-chain", logo: "/partners/defindex.svg", h: 30, url: "https://defindex.io", color: "#DEC9F4" },
+  { name: "Pollar", role: "Wallet sin seed phrase", logo: "/partners/pollar.png", h: 22, url: "https://pollar.xyz", color: "#6c8cff" },
+  { name: "Etherfuse", role: "CETES tokenizados · SPEI", logo: "/partners/etherfuse.svg", h: 24, url: "https://www.etherfuse.com", color: "#C8FF4D" },
+];
+
+const LAYERS = [
+  { ti: "Saldo asegurado", de: "Protección de hasta $3,000,000 MXN por usuario en cuentas reguladas.", ic: <><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></> },
+  { ti: "Cifrado AES‑256", de: "Cada dato y movimiento viaja cifrado de extremo a extremo.", ic: <><rect x="5" y="10" width="14" height="10" rx="2.5" /><path d="M8 10V7a4 4 0 018 0v3" /></> },
+  { ti: "Acceso biométrico", de: "Face ID, PIN y verificación en 2 pasos para que solo tú entres a tu dinero.", ic: <><path d="M12 11v3a5 5 0 01-1.5 3.5" /><path d="M8.5 7.5a5 5 0 017 1.5" /><path d="M6.5 12a6.5 6.5 0 0111-4.7" /></> },
+];
+
+/** Placa de vidrio de la pila: la capa 0 es la base; las de arriba se separan más. */
+function Plate({ layer, i, gap, on }: { layer: (typeof LAYERS)[number]; i: number; gap: MotionValue<number>; on: boolean }) {
+  const z = useTransform(gap, (g) => i * g); // la elevación de la activa va en CSS (.plate.on)
+  return (
+    <motion.div className={`plate p${i}${on ? " on" : ""}`} style={{ translateZ: z }}>
+      <span className="plate-ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{layer.ic}</svg></span>
+      <span className="plate-lb">{layer.ti}</span>
+    </motion.div>
+  );
+}
+
+/** "Blindado en cada capa", literal: pila isométrica de placas de vidrio que se
+    separan con el scroll; la capa activa se eleva y brilla. Cambia sola cada 3 s
+    o al pasar el mouse por la lista. */
+function SecurityStack() {
+  const ref = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(0);
+  const [hover, setHover] = useState(false);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
+  const gap = useTransform(scrollYProgress, [0, 1], [8, 74]);
+  const spin = useTransform(scrollYProgress, [0, 1], [-60, -45]);
+  const coreZ = useTransform(gap, (g) => LAYERS.length * g + 40);
+  useEffect(() => {
+    if (hover || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setActive((a) => (a + 1) % LAYERS.length), 3000);
+    return () => clearInterval(id);
+  }, [hover]);
+  return (
+    <section className="sec-pad" id="seguridad" ref={ref}>
+      <div className="wrap split sec-stack-grid">
+        <div>
+          <Reveal><span className="sec-tag">Seguridad primero</span></Reveal>
+          <Reveal delay={0.05}><h2 className="sec-title display">Tu dinero, blindado en cada capa.</h2></Reveal>
+          <Reveal delay={0.1}><p className="sec-sub">Construido con estándares institucionales — y la transparencia on-chain que nadie más te da.</p></Reveal>
+          <div className="layer-list" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+            {LAYERS.map((l, i) => (
+              <button key={l.ti} className={`layer-item${active === i ? " on" : ""}`} onMouseEnter={() => setActive(i)} onFocus={() => setActive(i)} onClick={() => setActive(i)}>
+                <span className="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{l.ic}</svg></span>
+                <span className="tx">
+                  <span className="ti">{l.ti}</span>
+                  <span className="de">{l.de}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="stack-stage" aria-hidden>
+          <div className="stack-glow" />
+          <motion.div className="stack" style={{ rotateZ: spin }}>
+            {LAYERS.map((l, i) => (
+              <Plate key={l.ti} layer={l} i={i} gap={gap} on={active === i} />
+            ))}
+            <motion.div className="plate-core" style={{ translateZ: coreZ }}>
+              <SeyfSymbol size={56} />
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- landing ---------- */
 export default function Landing() {
   const [navHidden, setNavHidden] = useState(false);
@@ -663,7 +728,8 @@ export default function Landing() {
   // smooth scroll (Lenis) — usa el scroll nativo, así que useScroll sigue funcionando
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const lenis = new Lenis({ duration: 1.15, anchors: { offset: -80 }, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
+    // lerp bajo + rueda menos sensible: el scroll se siente pesado/suave y las transiciones se alcanzan a ver
+    const lenis = new Lenis({ lerp: 0.09, wheelMultiplier: 0.75, touchMultiplier: 1, anchors: { offset: -80 } });
     lenisRef.current = lenis;
     let raf = 0;
     const loop = (time: number) => {
@@ -720,7 +786,6 @@ export default function Landing() {
         <div className="nav-links">
           <a href="#producto">Producto</a>
           <a href="#bonos">Bonos</a>
-          <a href="#tarjeta">Tarjeta</a>
           <a href="#seguridad">Seguridad</a>
         </div>
         <div className="nav-cta">
@@ -775,71 +840,30 @@ export default function Landing() {
 
         <BondsRail />
 
-        <CardShowcase />
-
-        {/* FX */}
-        <section className="sec-pad">
-          <div className="wrap split">
-            <Reveal>
-              <span className="sec-tag">Tipo de cambio</span>
-              <h2 className="sec-title display" style={{ fontSize: "clamp(32px, 4vw, 44px)" }}>El mismo cambio que ves en Google.</h2>
-              <p className="sec-sub">Sin márgenes inflados ni letras chiquitas. Te damos el tipo de cambio interbancario real, en tiempo real.</p>
-              <div style={{ marginTop: 24 }}><span className="match-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12l4.5 4.5L19 7" /></svg> Igual a Google · 0% comisión</span></div>
-            </Reveal>
-            <Reveal className="fx-panel" delay={0.1}>
-              <div className="fx-head"><span>Divisa</span><span>MXN</span></div>
-              <div className="fx-line"><span className="flag"><FlagUS s={32} /></span><div><div style={{ fontWeight: 700, fontSize: 14 }}>USD</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Dólar estadounidense</div></div><div className="rate num">$<Counter target={17.1252} decimals={4} /></div></div>
-              <div className="fx-line"><span className="flag"><FlagBR s={32} /></span><div><div style={{ fontWeight: 700, fontSize: 14 }}>BRL</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Real brasileño</div></div><div className="rate num">$<Counter target={3.482} decimals={4} /></div></div>
-              <div className="fx-line"><span className="flag"><FlagKR s={32} /></span><div><div style={{ fontWeight: 700, fontSize: 14 }}>KRW</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Won surcoreano</div></div><div className="rate num">$<Counter target={0.01243} decimals={5} /></div></div>
-            </Reveal>
-          </div>
-        </section>
-
         {/* ALIADOS */}
         <section className="sec-pad" id="aliados">
           <div className="wrap">
-            <SecHead center tag="Aliados" title="Respaldado por la mejor infraestructura." sub="Conectamos liquidez, custodia y rieles de pago de primer nivel para que tu dinero se mueva seguro." />
-            <div className="logo-wall">
-              <Reveal className="ally">
-                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="15" cy="15" r="12" /><path d="M7 17.5l16-6.5M7 13l16-6.5M7 22l16-6.5" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                <span className="ally-name">Stellar</span>
-              </Reveal>
-              <Reveal className="ally" delay={0.06}>
-                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3l10 6v12l-10 6L5 21V9l10-6z" /><path d="M15 9v12M10.5 12l9 6M19.5 12l-9 6" strokeWidth="1.6" opacity="0.85" /></svg>
-                <span className="ally-name">etherfuse</span>
-              </Reveal>
-              <Reveal className="ally" delay={0.12}>
-                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="15" cy="15" r="12" /><path d="M11 9v12M11 9h4.5a3 3 0 010 6H11m0 0h5a3 3 0 010 6h-5" strokeWidth="2" /></svg>
-                <span style={{ display: "flex", flexDirection: "column" }}><span className="ally-name">bitso</span><span className="ally-sub">Business</span></span>
-              </Reveal>
-              <Reveal className="ally" delay={0.18}>
-                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 11h15l-3.5-3.5M24 19H9l3.5 3.5" /></svg>
-                <span style={{ display: "flex", flexDirection: "column" }}><span className="ally-name" style={{ letterSpacing: ".04em" }}>SPEI</span><span className="ally-sub">Transferencias</span></span>
-              </Reveal>
-            </div>
-            <p className="ally-note">Integraciones ilustrativas para fines de demostración.</p>
-          </div>
-        </section>
-
-        {/* SEGURIDAD */}
-        <section className="sec-pad" id="seguridad">
-          <div className="wrap">
-            <SecHead center tag="Seguridad primero" title="Tu dinero, blindado en cada capa." sub="Construido con estándares institucionales — y la transparencia on-chain que nadie más te da." />
-            <div className="sec-grid">
-              {[
-                { ti: "Saldo asegurado", de: "Protección de hasta $3,000,000 MXN por usuario en cuentas reguladas.", ic: <><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></> },
-                { ti: "Cifrado AES‑256", de: "Cada dato y movimiento viaja cifrado de extremo a extremo.", ic: <><rect x="5" y="10" width="14" height="10" rx="2.5" /><path d="M8 10V7a4 4 0 018 0v3" /></> },
-                { ti: "Acceso biométrico", de: "Face ID, PIN y verificación en 2 pasos para que solo tú entres a tu dinero.", ic: <><path d="M12 11v3a5 5 0 01-1.5 3.5" /><path d="M8.5 7.5a5 5 0 017 1.5" /><path d="M6.5 12a6.5 6.5 0 0111-4.7" /></> },
-              ].map((c, i) => (
-                <Reveal key={c.ti} className="sec-card" delay={i * 0.08}>
-                  <div className="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{c.ic}</svg></div>
-                  <h4>{c.ti}</h4>
-                  <p>{c.de}</p>
+            <SecHead center tag="Construido con" title="La mejor infraestructura de Stellar." sub="Cada pieza de SEYF corre sobre protocolos abiertos y auditables del ecosistema." />
+            <div className="ally-grid">
+              {PARTNERS.map((p, i) => (
+                <Reveal key={p.name} delay={i * 0.07}>
+                  <a className="ally" href={p.url} target="_blank" rel="noopener noreferrer" style={{ "--c": p.color } as React.CSSProperties}>
+                    <span className="ally-logo">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.logo} alt={p.name} style={{ height: p.h }} />
+                    </span>
+                    <span className="ally-role">{p.role}</span>
+                    <span className="ally-arrow" aria-hidden>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 17L17 7M9 7h8v8" /></svg>
+                    </span>
+                  </a>
                 </Reveal>
               ))}
             </div>
           </div>
         </section>
+
+        <SecurityStack />
 
         {/* FAQ */}
         <section className="sec-pad">
@@ -887,16 +911,11 @@ export default function Landing() {
                 <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk"><SeyfSymbol size={20} /></span> SEYF</a>
                 <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 280, margin: 0 }}>La super app de finanzas para ahorrar, invertir y gastar sin fronteras.</p>
               </div>
-              <div className="foot-col"><h5>Producto</h5><a href="#producto">Pesos digitales</a><a href="#bonos">Bonos</a><a href="#producto">Bóvedas</a><a href="#tarjeta">Tarjeta</a></div>
+              <div className="foot-col"><h5>Producto</h5><a href="#producto">Pesos digitales</a><a href="#bonos">Bonos</a><a href="#producto">Bóvedas</a></div>
               <div className="foot-col"><h5>Compañía</h5><a href="#">Sobre nosotros</a><a href="#seguridad">Seguridad</a><a href="#">Carreras</a><a href="#">Prensa</a></div>
               <div className="foot-col"><h5>Legal</h5><a href="#">Términos</a><a href="#">Privacidad</a><a href="#">Comisiones</a><a href="#">Soporte</a></div>
               <div className="foot-col">
                 <h5>Inversionistas</h5>
-                <a className="foot-pitch" href="/seyf-pitch.html" target="_blank" rel="noopener noreferrer">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="20" y2="10" /><line x1="18" x2="18" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="16" /></svg>
-                  Pitch · Lean Canvas
-                </a>
-                <p className="foot-pitch-note">Conoce el modelo de negocio, la tecnología y la tracción de SEYF.</p>
                 <a href="mailto:inversionistas@seyf.app">Contacto inversión</a>
               </div>
             </div>

@@ -118,16 +118,7 @@ export default function Symbol3D({
     rig.add(symbol);
     scene.add(rig);
 
-    // anillo orbital + partículas: el "dinero" que gira alrededor
-    const ringGeo = new THREE.TorusGeometry(2.05, 0.004, 8, 240);
-    const ringMat = new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: 0.35 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI * 0.42;
-    const ring2 = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: VIOLET, transparent: true, opacity: 0.3 }));
-    ring2.rotation.set(Math.PI * 0.55, 0.5, 0);
-    ring2.scale.setScalar(1.18);
-    rig.add(ring, ring2);
-
+    // partículas: el "dinero" que flota alrededor
     const N = 420;
     const pGeo = new THREE.BufferGeometry();
     const pPos = new Float32Array(N * 3);
@@ -166,8 +157,10 @@ export default function Symbol3D({
       const h = host.clientHeight || 1;
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
-      // en pantallas angostas alejamos la cámara para que el símbolo no se corte
-      camera.position.z = (w / h < 1.1 ? 13.4 : 10.9) / scale;
+      // en pantallas angostas (verticales) alejamos la cámara para que el símbolo
+      // (~3.2 u de ancho con partículas cerca) quepa a lo ancho y no se corte
+      const fitWidth = 1.7 / (Math.tan(((camera.fov / 2) * Math.PI) / 180) * camera.aspect);
+      camera.position.z = Math.max(10.9, fitWidth) / scale;
       camera.updateProjectionMatrix();
     };
     resize();
@@ -205,8 +198,6 @@ export default function Symbol3D({
       rig.rotation.z = -p * Math.PI;
       rig.rotation.y = Math.sin(p * Math.PI * 2) * 0.32 + mouse.x * 0.25;
       rig.rotation.x = mouse.y * 0.16;
-      ring.rotation.z = t * 0.18;
-      ring2.rotation.z = -t * 0.12;
       points.rotation.y = t * 0.03 + p * 1.2;
       renderer.render(scene, camera);
     };
