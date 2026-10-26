@@ -41,11 +41,15 @@ export default function SeyfAuthBridge() {
     }
   }, [isAuthenticated, walletAddress, getClient])
 
+  // Solo al cerrar sesión (true → false). Al recargar, Pollar arranca en false
+  // mientras reanuda la sesión: borrar ahí obligaba a firmar de nuevo cada recarga.
+  const wasAuthenticated = useRef(false)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (wasAuthenticated.current && !isAuthenticated) {
       clearSeyfAuthToken()
       mintedFor.current = null
     }
+    wasAuthenticated.current = isAuthenticated
   }, [isAuthenticated])
 
   return null
