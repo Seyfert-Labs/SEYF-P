@@ -1,0 +1,53 @@
+name: Keeper
+
+# Liquida (`settle`) los adelantos de seyf_advance cuyo rendimiento ya cubre el
+# adelanto. GitHub solo corre `schedule` desde la rama por defecto: el cron
+# funciona cuando `meridian` es la default (decisión 4 del plan).
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Solo simular, sin enviar transacciones'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeper
+  cancel-in-progress: false
+
+jobs:
+  settle:
+    # Sin contrato configurado no hay nada que hacer: se salta en vez de fallar
+    # cada 10 minutos.
+    if: vars.NEXT_PUBLIC_STELLAR_ADVANCE_CONTRACT != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # Sin scripts de instalación: el keeper solo necesita @stellar/stellar-sdk.
+      - name: Install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run keeper
+        run: node scripts/keeper.mjs
+        env:
+          NEXT_PUBLIC_STELLAR_NETWORK: ${{ vars.NEXT_PUBLIC_STELLAR_NETWORK }}
+          NEXT_PUBLIC_STELLAR_ADVANCE_CONTRACT: ${{ vars.NEXT_PUBLIC_STELLAR_ADVANCE_CONTRACT }}
+          KEEPER_START_LEDGER: ${{ vars.KEEPER_START_LEDGER }}
+          KEEPER_EXTRA_USERS: ${{ vars.KEEPER_EXTRA_USERS }}
+          SOROBAN_RPC_URL: ${{ vars.SOROBAN_RPC_URL }}
+          KEEPER_SECRET: ${{ secrets.KEEPER_SECRET }}
+          # Dry-run si se pide en la corrida manual, o para todas con la variable KEEPER_DRY_RUN=1.
+          KEEPER_DRY_RUN: ${{ (inputs.dry_run || vars.KEEPER_DRY_RUN == '1') && '1' || '' }}

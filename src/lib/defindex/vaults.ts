@@ -10,8 +10,10 @@ import {
 export { DEFINDEX_STRATEGIES, resolveStrategy, strategyByPlanId }
 export type { DefindexStrategyConfig }
 
+// SEYF es full Stellar: el riel de bóvedas Stellar está encendido salvo que se
+// apague explícitamente (NEXT_PUBLIC_STELLAR_VAULTS=false).
 export const STELLAR_VAULTS_ENABLED =
-  (process.env.NEXT_PUBLIC_STELLAR_VAULTS || '').trim().toLowerCase() === 'true'
+  (process.env.NEXT_PUBLIC_STELLAR_VAULTS || '').trim().toLowerCase() !== 'false'
 
 /** Vault por defecto (XLM, primera del catálogo) — compat con env legacy. */
 export const DEFINDEX_VAULT_ADDRESS = (

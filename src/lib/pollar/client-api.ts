@@ -1,11 +1,12 @@
 'use client'
 
 import type { PollarClient } from '@pollar/core'
+import { TransactionBuilder } from '@stellar/stellar-sdk'
 import { readPollarAccessToken, readPollarPublicKey } from '@/lib/pollar/session'
 
 type PollarSessionSlice = {
   token?: { accessToken?: string }
-  wallet?: { publicKey?: string | null }
+  wallet?: { publicKey?: string | null; address?: string | null }
   data?: { providers?: { wallet?: { address?: string } } }
 }
 
@@ -29,7 +30,9 @@ function sessionFromClient(client: PollarClient): PollarSessionSlice | null {
 export function resolvePollarPublicKey(client: PollarClient): string | null {
   const mem = sessionFromClient(client)
   const fromMem =
-    mem?.wallet?.publicKey?.trim() || mem?.data?.providers?.wallet?.address?.trim()
+    mem?.wallet?.address?.trim() ||
+    mem?.wallet?.publicKey?.trim() ||
+    mem?.data?.providers?.wallet?.address?.trim()
   if (fromMem) return fromMem
   return readPollarPublicKey()
 }
@@ -100,6 +103,9 @@ function pollarApiError(data: unknown, error: { details?: string; message?: stri
     if (code === 'ORIGIN_NOT_ALLOWED') {
       return 'Este dominio no está autorizado en Pollar. Agrega tu URL en el dashboard de Pollar (testnet).'
     }
+    if (code === 'API_KEY_TYPE_NOT_ALLOWED' || code === 'API_KEY_NOT_FOUND') {
+      return `La API key de Pollar no sirve para esta operación (${code}). Revisa NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY.`
+    }
     if (code === 'UNAUTHORIZED' || code === 'SESSION_EXPIRED') {
       return 'Tu sesión Stellar expiró. Vuelve a ingresar el código OTP.'
     }
@@ -114,17 +120,90 @@ function pollarApiError(data: unknown, error: { details?: string; message?: stri
  * Firma un XDR externo usando el cliente Pollar (API key + Bearer en memoria).
  */
 export async function pollarSignXdr(client: PollarClient, unsignedXdr: string, publicKey: string): Promise<string> {
-  const api = pollarApi(client)
-  if (!api) {
-    throw new Error('Cliente Pollar no inicializado. Recarga la página e intenta de nuevo.')
+  void publicKey // Pollar ≥0.12 firma con la wallet de la sesión.
+  // skipSponsorship: el fee-bump lo pone SEYF en el servidor; Pollar solo firma.
+  const out = await client.signTx(unsignedXdr, { skipSponsorship: true })
+  if (out.status === 'signed') return out.signedXdr
+  if (out.status === 'cosign_pending') {
+    throw new Error('Tu wallet pide una aprobación adicional. Complétala e intenta de nuevo.')
+  }
+  throw new Error(pollarApiError({ code: out.code }, { details: out.details }, 'Pollar no pudo firmar la transacción'))
+}
+
+/** Origen de la API de Pollar sin el sufijo de versión (`…/v1` → `…`). */
+function pollarApiOrigin(client: PollarClient): string {
+  const basePath = (client as unknown as { basePath?: string }).basePath?.trim()
+  const origin = basePath ? basePath.replace(/\/v\d+\/?$/, '') : ''
+  return origin || 'https://sdk.api.pollar.xyz'
+}
+
+/** Misma llave publicable que monta `SeyfPollarProvider`. */
+function pollarPublishableKey(client: PollarClient): string | null {
+  const fromClient = (client as unknown as { apiKey?: string }).apiKey?.trim()
+  return (
+    fromClient ||
+    process.env.NEXT_PUBLIC_POLLAR_PUBLISHABLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_POLLAR_API_KEY?.trim() ||
+    null
+  )
+}
+
+export type PollarSep10SignInput = {
+  address: string
+  challengeXdr: string
+  homeDomains?: string[]
+  webAuthDomain?: string
+}
+
+/**
+ * Firma la prueba de cuenta de `/api/auth/sep10?mode=account` con `signTx`, que sí
+ * pasa por la co-firma del dispositivo (Turnkey). Antes verifica que sea una prueba
+ * y no una transacción real: secuencia 0 (ninguna cuenta la acepta, no se puede
+ * enviar a la red), origen = la cuenta del usuario y solo operaciones `manageData`.
+ */
+export async function pollarSignAccountProof(
+  client: PollarClient,
+  xdr: string,
+  address: string,
+  networkPassphrase: string,
+): Promise<string> {
+  const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase)
+  const ok =
+    'sequence' in tx &&
+    tx.sequence === '0' &&
+    tx.source === address &&
+    tx.operations.length > 0 &&
+    tx.operations.every((op) => op.type === 'manageData' && op.source === address)
+  if (!ok) throw new Error('El challenge de sesión no es válido. No se firmó nada.')
+
+  const out = await client.signTx(xdr, { skipSponsorship: true })
+  if (out.status === 'signed') return out.signedXdr
+  if (out.status === 'cosign_pending') {
+    throw new Error('Aprueba la firma en tu dispositivo para abrir tu sesión segura.')
+  }
+  throw new Error(pollarApiError({ code: out.code }, { details: out.details }, 'Pollar no pudo firmar tu sesión segura'))
+}
+
+/**
+ * Firma un challenge SEP-10 con la API v3 de Pollar (`/v3/stellar/sep10/sign`).
+ * `/v1/tx/sign` no firma challenges SEP-10. La red la fija la API key; el resto
+ * de firmas sigue por `pollarSignXdr`.
+ */
+export async function pollarSignSep10Challenge(
+  client: PollarClient,
+  input: PollarSep10SignInput,
+): Promise<string> {
+  const out = await client.stellar.sep10.sign({
+    challengeXdr: input.challengeXdr,
+    ...(input.homeDomains?.length ? { homeDomains: input.homeDomains } : {}),
+    ...(input.webAuthDomain ? { webAuthDomain: input.webAuthDomain } : {}),
+  })
+  if (out.status === 'signed') {
+    if (out.signerAddress && out.signerAddress !== input.address) {
+      throw new Error('La firma SEP-10 no corresponde a tu cuenta. Vuelve a entrar.')
+    }
+    return out.signedXdr
   }
 
-  const network = client.getNetwork()
-  const body = { network, publicKey, unsignedXdr }
-
-  const { data, error } = await api.POST('/tx/sign', { body })
-  const signed = extractSignedXdr(data)
-  if (signed) return signed
-
-  throw new Error(pollarApiError(data, error, 'Pollar no pudo firmar la transacción'))
+  throw new Error(pollarApiError({ code: out.code }, { details: out.details }, 'Pollar no pudo firmar el challenge SEP-10'))
 }

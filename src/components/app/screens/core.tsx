@@ -2,7 +2,7 @@
 
 /* UTONOMA — pantallas core: Onboarding, Home, Wallet (wired a Juno) */
 import React, { useEffect, useState } from "react";
-import { Icon, Spark } from "../ui";
+import { Icon } from "../ui";
 import { TopBar, SubHeader, TxnRow, PendingTxnRow, ConvTxnRow } from "../shared";
 import { TXNS, FMT, type Txn } from "../data";
 import type { Go } from "../nav";
@@ -19,87 +19,27 @@ import { DepositModal } from "../modals/DepositModal";
 import { SendModal } from "../modals/SendModal";
 import { MoreSheet } from "../modals/MoreSheet";
 import { OnboardingQuiz } from "../RiskQuiz";
-import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
+import { GrowthBars } from "../SavingsArt";
 import { loadRiskProfile, planById } from "../data";
 import { Portal } from "../Portal";
 import { ClabeCard } from "../ClabeCard";
 import { ProjectionCard } from "../ProjectionCard";
 import { GrowingAmount } from "../GrowingAmount";
-import { motion } from "motion/react";
-import { SeyfWordmark } from "@/components/brand/SeyfLogo";
-import { OnboardingHero } from "../OnboardingHero";
-import { CurrencyTicker } from "../CurrencyTicker";
+import { IntroScreen } from "../IntroScreen";
+import "../onboarding.css";
 import { SEYF_VAULTS_ADDRESS, SEYF_ADVANCE_ADDRESS } from "@/lib/chain";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { stellarTxExplorerUrl as stellarExplorerTxUrl } from "@/lib/etherfuse/stellar-tx-url";
-import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
+import { STELLAR_VAULTS_ENABLED, assetSymbolForPlan } from "@/lib/defindex/vaults";
 
 /* ---------------- ONBOARDING ---------------- */
-const ONB_EASE = [0.22, 1, 0.36, 1] as const;
 // Fases: 0 = Hero, 1 = Quiz de perfil (5 preguntas full-screen)
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState(0);
 
   if (phase === 0) {
-    const feats: { ic: string; tx: string }[] = [
-      { ic: "globe", tx: "Bonos soberanos de 7 países en un toque" },
-      { ic: "bolt", tx: "Adelanta tu rendimiento cuando lo necesites" },
-      { ic: "shield", tx: "0% de comisión · retira al instante" },
-    ];
-    return (
-      <div className="onb screen-enter" style={{ paddingTop: 40, overflowY: "auto" }}>
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: ONB_EASE }}>
-          <SeyfWordmark height={30} />
-        </motion.div>
-        <div className="onb-hero" style={{ justifyContent: "center", gap: 22 }}>
-          <div>
-            <motion.h1 style={{ fontSize: 44, lineHeight: 1.03 }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.05, ease: ONB_EASE }}>
-              Tu dinero rinde el <em>doble que tu Afore</em>.
-            </motion.h1>
-            <motion.p className="sub" style={{ fontSize: 16.5 }} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.13, ease: ONB_EASE }}>
-              Ahorra en bonos soberanos de México y el mundo. Liquidez sin penalización y 0% de comisión sobre tu saldo.
-            </motion.p>
-          </div>
-
-          <OnboardingHero />
-
-          {/* Ticker de bonos soberanos por país (banda a ancho completo) */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.9, ease: ONB_EASE }}
-            style={{ marginInline: -28 }}
-          >
-            <p className="eyebrow" style={{ textAlign: "center", marginBottom: 10 }}>Bonos soberanos del mundo</p>
-            <CurrencyTicker />
-          </motion.div>
-
-          <div>
-            {feats.map((f, i) => (
-              <motion.div
-                key={f.ic}
-                className="feat"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.45, delay: 1.2 + i * 0.1, ease: ONB_EASE }}
-              >
-                <span className="tk"><Icon name={f.ic} size={15} /></span>
-                <span className="tx">{f.tx}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-        <motion.div
-          style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 28, paddingTop: 4 }}
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3, ease: ONB_EASE }}
-        >
-          <button className="btn btn-primary" onClick={() => setPhase(1)}>Comenzar gratis</button>
-          <button className="btn btn-ghost" onClick={onDone}>Ya tengo cuenta</button>
-        </motion.div>
-      </div>
-    );
+    // Intro animada con el símbolo SEYF; "Comenzar" pasa al quiz, "Ya tengo cuenta" abre el login
+    return <IntroScreen onStart={() => setPhase(1)} onLogin={onDone} />;
   }
 
   // Fase 1: quiz full-screen — al terminar llama a onDone (trigger login)
@@ -145,16 +85,17 @@ export const stellarAssetName = (code: string): string => STELLAR_ASSET_INFO[cod
 /* ---------------- HOME (patrimonio + balance MXNB en vivo) ---------------- */
 export function ScreenHome({ go }: { go: Go }) {
   const [hide, setHide] = useState(false);
-  const [modal, setModal] = useState<null | "deposit" | "send" | "advance" | "more">(null);
+  const [modal, setModal] = useState<null | "deposit" | "send" | "more">(null);
   const wallet = useWallet();
   const stellar = useSeyfStellarWallet();
-  const homeTxns = useOnchainTxns(wallet.address);
+  // Movimientos EVM (MXNB en Arbitrum) ya no aplican: SEYF es full Stellar.
+  const homeTxns = useOnchainTxns(undefined);
   const stellarTxns = useStellarTxns(stellar.publicKey ?? undefined);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
   // Riel correcto (Stellar/DeFindex o EVM) para que "En bóveda" del home coincida
   // con el saldo real reconciliado de la pantalla de Ahorro (mismo hook, misma fuente).
-  const { vaults, totalSaved, onchain } = useVaultsRail(wallet.address);
+  const { vaults, totalSaved } = useVaultsRail(wallet.address);
   const kyc = useKycStatus();
   const refreshBal = wallet.refreshBalance;
 
@@ -189,34 +130,27 @@ export function ScreenHome({ go }: { go: Go }) {
   // Precios reales en MXN de TODOS los activos de la wallet Stellar: Bitso (ticker
   // público por book) para cripto/fiat y quote offramp de Etherfuse para CETES.
   // Sin hardcodeo; genérico para cualquier activo → listo para mainnet.
+  // Activo de cada bóveda (en mainnet, USDC): su saldo viene en esa unidad, no en MXN.
+  const vaultAssets = vaults.map((v) => ({ code: assetSymbolForPlan(v.planId).toUpperCase(), bal: v.bal }));
   const { valueOf: mxnValueOf } = useAssetPricesMxn(
-    stellarAssets.map((a) => a.code),
+    [...new Set([...stellarAssets.map((a) => a.code), ...vaultAssets.map((a) => a.code)])],
     stellar.publicKey,
   );
+  // "En bóveda" en MXN, igual que "Disponible", para poder sumarlos.
+  const savedMxn = vaultAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
   const stellarMxn = stellarAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
   // "Disponible" del hero = valor real en MXN de los activos Stellar (no MXNB de Arbitrum).
   const pesos = realData ? stellarMxn : 48250.4;
   // Patrimonio = un solo dinero en dos estados: Disponible (líquido, no rinde) +
   // En bóveda (invertido, rinde). Co-denominados en MXN, por eso se suman aquí;
   // las divisas/activos Stellar viven aparte en "Otros activos" (otras unidades).
-  const hasVault = totalSaved > 0;
-  const patrimonio = pesos + totalSaved;
+  const hasVault = savedMxn > 0;
+  const patrimonio = pesos + savedMxn;
   // Solo la porción invertida rinde → tasa efectiva sobre el patrimonio total,
   // para que el número crezca en vivo a la velocidad real (no a la de la bóveda).
-  const blendedApy = hasVault && patrimonio > 0 ? (weightedApy * totalSaved) / patrimonio : 0;
-  // vaultId numérico para el adelanto (solo válido en modo on-chain).
-  // Adelanto: es POR bóveda. Desde Home el usuario no está posicionado en ninguna,
-  // así que solo adelantamos directo si hay UNA sola bóveda (no ambiguo). Con varias,
-  // lo mandamos a Ahorro a elegir/posicionarse en una y adelantar desde su detalle.
-  const advanceVault = onchain && vaults.length === 1 ? vaults[0] : undefined;
-  const advanceVaultId = advanceVault ? parseInt(advanceVault.id) : undefined;
-  const onAdvance = () => {
-    if (onchain && vaults.length > 1) {
-      go("bovedas"); // varias bóvedas → elige en cuál posicionarte
-    } else {
-      setModal("advance"); // 0 o 1 bóveda → modal directo (maneja el caso sin ahorro)
-    }
-  };
+  const blendedApy = hasVault && patrimonio > 0 ? (weightedApy * savedMxn) / patrimonio : 0;
+  // El adelanto tiene su propia pestaña (vault USDC + `seyf_advance`).
+  const onAdvance = () => go("adelanto");
 
   return (
     <div className="screen screen-enter">
@@ -224,11 +158,11 @@ export function ScreenHome({ go }: { go: Go }) {
       <TopBar go={go} />
       <div className="screen-pad">
 
-        {/* ── 1. HERO: balance + quick row ── */}
-        <div className="card glow" style={{ padding: 22 }}>
+        {/* ── 1. SALDO: grande y sin caja; acciones en píldoras ── */}
+        <div className="home-bal">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <p className="eyebrow">{hasVault ? "Patrimonio total" : "Saldo disponible · MXN"}</p>
-            <button className="icon-btn" style={{ width: 24, height: 24, background: "none", border: "none" }} onClick={() => setHide(!hide)}>
+            <button className="icon-btn" style={{ width: 32, height: 32 }} onClick={() => setHide(!hide)} aria-label={hide ? "Mostrar saldo" : "Ocultar saldo"}>
               <Icon name="eye" size={16} color="var(--txt-dim)" />
             </button>
           </div>
@@ -243,7 +177,7 @@ export function ScreenHome({ go }: { go: Go }) {
             <div style={{ marginTop: 14 }}>
               {/* Número grande = patrimonio (crece a la tasa efectiva). Sin bóveda,
                   es el disponible puro y no crece. Mismo tamaño (56) que Ahorro. */}
-              <GrowingAmount base={hasVault ? patrimonio : pesos} apy={blendedApy} size={56} align="left" id="home-patrimonio" />
+              <GrowingAmount base={hasVault ? patrimonio : pesos} apy={blendedApy} size={62} align="left" id="home-patrimonio" />
             </div>
           )}
           {hasVault && !hide && (
@@ -260,28 +194,25 @@ export function ScreenHome({ go }: { go: Go }) {
                 <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--txt-muted)", fontWeight: 700 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 3, background: "var(--accent-2)" }} /> En bóveda
                 </span>
-                <GrowingAmount base={totalSaved} apy={weightedApy} size={16} align="left" color="#c4b5fd" id="home-boveda" />
+                <GrowingAmount base={savedMxn} apy={weightedApy} size={16} align="left" color="#c4b5fd" id="home-boveda" />
               </div>
             </div>
           )}
 
-          <div className="quick-row" style={{ marginTop: 18, gap: 6 }}>
-            <button className="quick" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
-            <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
-            <button className="quick" onClick={onAdvance}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
-            <button className="quick" onClick={() => setModal("more")}><span className="ic" style={{ fontSize: 20, letterSpacing: 2, fontWeight: 800, lineHeight: 1 }}>···</span><span className="tx">Más</span></button>
+          {/* Mismas acciones que antes (mismos handlers), ahora como píldoras. */}
+          <div className="pill-row">
+            <button className="pill-btn main" onClick={() => setModal("deposit")}><Icon name="plus" size={17} /> Agregar</button>
+            <button className="pill-btn" onClick={() => setModal("send")}><Icon name="send" size={16} /> Enviar</button>
+            <button className="pill-btn" onClick={onAdvance}><Icon name="bolt" size={16} /> Adelanto</button>
+            <button className="pill-btn icon" onClick={() => setModal("more")} aria-label="Más opciones"><span style={{ fontSize: 18, letterSpacing: 1, lineHeight: 1 }}>···</span></button>
           </div>
         </div>
 
         {/* ── 1a. NUDGE de verificación (no bloquea nada; solo invita) ── */}
         {kyc.enabled && !kyc.loading && !kyc.verified && (
-          <div
-            className="card"
-            onClick={() => go("kyc")}
-            style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: "var(--accent-soft)", border: "none" }}
-          >
-            <span style={{ width: 34, height: 34, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Icon name="shield" size={18} />
+          <div className="nudge" onClick={() => go("kyc")}>
+            <span className="ic">
+              <Icon name="shield" size={17} />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--txt)" }}>Verifica tu cuenta</p>
@@ -293,7 +224,30 @@ export function ScreenHome({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* ── 1b. OTROS ACTIVOS — saldos líquidos (divisas de conversiones + wallet Stellar).
+        {/* ── 1b. TU AHORRO — tarjeta sólida con barras de crecimiento animadas.
+              Sin ahorro todavía, invita a abrir la primera bóveda. ── */}
+        <button type="button" className="save-teaser" onClick={() => go("bovedas")}>
+          <div className="st-copy">
+            <p className="st-k">Tu ahorro</p>
+            {totalSaved > 0 ? (
+              <>
+                <div style={{ marginTop: 6 }}>
+                  <GrowingAmount base={savedMxn} apy={weightedApy} size={26} align="left" color="#fff" id="home-alcancia" />
+                </div>
+                <p className="st-s">Creciendo ahora mismo, segundo a segundo.</p>
+              </>
+            ) : (
+              <>
+                <p className="st-t">Pon a trabajar tu dinero</p>
+                <p className="st-s">Abre una bóveda y mira cómo rinde todos los días.</p>
+              </>
+            )}
+            <span className="st-cta">{totalSaved > 0 ? "Ver mi ahorro" : "Empezar a ahorrar"} <Icon name="chevR" size={14} /></span>
+          </div>
+          <GrowthBars size={96} live={totalSaved > 0} />
+        </button>
+
+        {/* ── 1c. OTROS ACTIVOS — saldos líquidos (divisas de conversiones + wallet Stellar).
                 Etiquetado "Disponible" para separarlo por ESTADO de "Mi ahorro" (bóvedas). ── */}
         {realData && stellarAssets.length > 0 && (
           <>
@@ -316,11 +270,14 @@ export function ScreenHome({ go }: { go: Go }) {
 
 
         {/* ── 2. MOVIMIENTOS ── */}
-        <div className="sec-head" style={{ marginTop: 22 }}>
-          <h3>Movimientos recientes</h3>
-          <span className="link" onClick={() => go("wallet")}>Ver todo</span>
-        </div>
-        <div className="card" style={{ padding: "4px 18px" }}>
+        {/* Hoja de vidrio que "sube" sobre el fondo, como en las referencias */}
+        <div className="sheet-panel">
+          <div className="sp-grab" />
+          <div className="sp-head">
+            <h3>Movimientos</h3>
+            <button type="button" className="chip" onClick={() => go("wallet")}>Ver todo <Icon name="chevR" size={13} /></button>
+          </div>
+          <div style={{ marginTop: 6 }}>
           {realData ? (
             pend.pending.length === 0 && conv.conversions.length === 0 && homeTxns.txns.length === 0 && stellarTxns.ops.length === 0 ? (
               (homeTxns.loading || stellarTxns.loading) ? (
@@ -328,9 +285,12 @@ export function ScreenHome({ go }: { go: Go }) {
                   <span className="spin" style={{ color: "var(--accent)" }} />
                 </div>
               ) : (
-                <p style={{ padding: "16px 4px", fontSize: 13, color: "var(--txt-muted)", textAlign: "center" }}>
-                  Aún no tienes movimientos. Agrega fondos para empezar.
-                </p>
+                <div className="empty-v2">
+                  <span className="ic"><Icon name="clock" size={22} /></span>
+                  <p className="t">Aún no hay movimientos</p>
+                  <p className="s">Cuando agregues dinero, aquí verás cada depósito, envío y rendimiento.</p>
+                  <button type="button" className="chip" onClick={() => setModal("deposit")}><Icon name="plus" size={13} /> Agregar dinero</button>
+                </div>
               )
             ) : (
               <div className="list">
@@ -341,52 +301,20 @@ export function ScreenHome({ go }: { go: Go }) {
           ) : (
             <div className="list">{TXNS.slice(0, 3).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
           )}
+          </div>
         </div>
-
-        {/* ── 3. AHORRO — solo si tiene bóveda activa ── */}
-        {totalSaved > 0 && (
-          <>
-            <div className="sec-head" style={{ marginTop: 22 }}><h3>Mi ahorro</h3></div>
-            <div className="card" style={{ padding: "6px 18px" }}>
-              <AcctRow go={go} to="bovedas" ic="vault" nm="Bóveda de retiro" su={`${FMT(weightedApy, 1)}% anual`} vl={totalSaved} series={[30, 32, 31, 34, 36, 38, 37, 40]} />
-            </div>
-          </>
-        )}
 
         {/* ── 4. PROYECCIÓN — hasta el fondo, expandida e ilustrativa. Se coloca al
               final (y separada de "Mi ahorro") para no confundirse con un saldo de bóveda. ── */}
         <div className="sec-head" style={{ marginTop: 26 }}><h3>Proyección a futuro</h3></div>
-        <ProjectionCard current={totalSaved} apy={profileApy} defaultOpen />
+        <ProjectionCard current={savedMxn} apy={profileApy} />
 
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} /></Portal>}
+      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onGoSavings={() => go("bovedas")} onSuccess={() => { refreshBal(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} /></Portal>}
       {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
-      {modal === "advance" && (
-        <Portal>
-          <LiquidityAdvanceModal
-            saved={advanceVault?.bal ?? 0}
-            apy={advanceVault?.apy ?? weightedApy}
-            vaultId={advanceVaultId}
-            onClose={() => setModal(null)}
-          />
-        </Portal>
-      )}
       {modal === "more" && <Portal><MoreSheet onClose={() => setModal(null)} /></Portal>}
-    </div>
-  );
-}
-
-function AcctRow({ go, to, ic, nm, su, vl, series }: { go: Go; to: Parameters<Go>[0]; ic: string; nm: string; su: string; vl: number; series: number[] }) {
-  return (
-    <div className="lrow" onClick={() => go(to)}>
-      {/* Violeta = en bóveda (invertido), convención de estado en toda la app. */}
-      <div className="ava"><Icon name={ic} size={20} color="var(--accent-2)" /></div>
-      <div className="mid"><p className="ti">{nm}</p><p className="su">{su}</p></div>
-      <Spark data={series} w={56} h={26} color="var(--accent-2)" fillArea />
-      <div className="amt" style={{ marginLeft: 8 }}><div className="a num">${FMT(vl, 0)}</div></div>
-      <Icon name="chevR" size={16} color="var(--txt-dim)" />
     </div>
   );
 }

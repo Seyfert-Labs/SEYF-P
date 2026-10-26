@@ -7,6 +7,9 @@ import { isValidStellarPublicKey, normalizeStellarPublicKey } from '@/lib/etherf
 import { pollStellarBalance, STELLAR_BALANCE_CHANGED_EVT } from '@/lib/seyf/stellar-balance-refresh'
 import { installPollarOtpErrorShim } from '@/lib/pollar/otp-error-shim'
 
+/** Último refresco automático de saldo, compartido por todas las instancias del hook. */
+let lastAutoRefreshAt = 0
+
 export type SeyfStellarSession = {
   stellarAddress: string
   publicKey: string
@@ -134,9 +137,11 @@ function phaseFromAuth(step: AuthState['step']): StellarEnrollPhase {
  * acredita los bonos (detalle de implementación; nunca se expone al usuario).
  */
 export function useSeyfStellarWallet() {
-  const { isAuthenticated, walletAddress, walletBalance, refreshBalance, openLoginModal, logout, getClient } = usePollar()
-  const refreshRef = useRef(refreshBalance)
-  refreshRef.current = refreshBalance
+  // Pollar ≥0.12: la wallet viene en `wallet.address` y el saldo se refresca sin argumentos.
+  const { isAuthenticated, wallet: pollarWallet, walletBalance, refreshWalletBalance, openLoginModal, logout, getClient } = usePollar()
+  const walletAddress = pollarWallet?.address ?? null
+  const refreshRef = useRef<(pk?: string) => Promise<void>>(() => refreshWalletBalance())
+  refreshRef.current = () => refreshWalletBalance()
 
   const [phase, setPhase] = useState<StellarEnrollPhase>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -248,19 +253,26 @@ export function useSeyfStellarWallet() {
     await pollStellarBalance((pk) => refreshRef.current?.(pk), publicKey)
   }, [publicKey])
 
-  // Polling en vivo mientras la wallet está conectada.
+  // Polling en vivo mientras la wallet está conectada. Muchas pantallas montan
+  // este hook a la vez: el refresco automático se comparte (uno cada 5 s como mucho).
+  const refreshBalanceShared = useCallback(async () => {
+    if (Date.now() - lastAutoRefreshAt < 5_000) return
+    lastAutoRefreshAt = Date.now()
+    await refreshBalanceNow()
+  }, [refreshBalanceNow])
+
   useEffect(() => {
     if (!isAuthenticated || !publicKey) return
-    void refreshBalanceNow()
-    const id = setInterval(() => void refreshBalanceNow(), 20_000)
+    void refreshBalanceShared()
+    const id = setInterval(() => void refreshBalanceShared(), 20_000)
     return () => clearInterval(id)
-  }, [isAuthenticated, publicKey, refreshBalanceNow])
+  }, [isAuthenticated, publicKey, refreshBalanceShared])
 
   // Al volver a la pestaña / tras una tx, re-sincroniza.
   useEffect(() => {
     if (!isAuthenticated || !publicKey) return
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refreshBalanceNow()
+      if (document.visibilityState === 'visible') void refreshBalanceShared()
     }
     const onBalanceEvent = () => void refreshBalanceNow()
     document.addEventListener('visibilitychange', onVisible)
@@ -269,7 +281,7 @@ export function useSeyfStellarWallet() {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener(STELLAR_BALANCE_CHANGED_EVT, onBalanceEvent)
     }
-  }, [isAuthenticated, publicKey, refreshBalanceNow])
+  }, [isAuthenticated, publicKey, refreshBalanceNow, refreshBalanceShared])
 
   const cetesBalance = useMemo(() => {
     const row = assetBalances.find((b) => (b.code || '').toUpperCase().includes('CETES'))

@@ -5,10 +5,13 @@ import React, { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui";
 import { Celebration } from "../Celebration";
+import { GrowthBars, VaultDial } from "../SavingsArt";
+import { BondPicker, COIN_GRADIENT, CoinSphere, coinKind } from "../BondCoins";
 import { SubHeader, AvatarButton } from "../shared";
+import { IS_MAINNET } from "@/lib/rails";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
 import { GrowingAmount, YieldRate } from "../GrowingAmount";
-import { MoneyInput } from "../MoneyInput";
+import { MoneyInput, formatWithCommas } from "../MoneyInput";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { usePollar } from "@pollar/react";
@@ -19,8 +22,8 @@ import { useDefindexStrategies, type DefindexStrategyLive } from "@/hooks/useDef
 import { useStellarConnect } from "../StellarConnectGate";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
-import { useAdvance } from "@/hooks/useAdvance";
-import { explorerBase } from "@/lib/chain";
+import { useAppRetiro } from "../RetiroContext";
+import { toBigInt, unitsToNumber } from "@/components/retiro/units";
 import { stellarTxExplorerUrl } from "@/lib/etherfuse/stellar-tx-url";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { tradableSdexAssets, sdexAssetByCode, type SdexAsset } from "@/lib/sdex/assets";
@@ -102,44 +105,6 @@ function PlanTile({ risk, size = 46 }: { risk: RiskLevel; size?: number }) {
   );
 }
 
-/** Icono representativo de cada estrategia DeFindex (reemplaza el emoji). */
-const STRATEGY_ICON: Record<string, string> = { cetes: "shield", usdc: "globe", xlm: "trend" };
-function strategyIconName(s: { id?: string; risk: RiskLevel }): string {
-  return (s.id && STRATEGY_ICON[s.id]) || riskIcon(s.risk);
-}
-
-/** Tile con icono animado (flota + late suave) para las tarjetas de estrategia.
- *  Mismo tamaño/estilo de caja que los iconos de Inicio (`.ava` 44px, borde sutil)
- *  para que no se vean más grandes; el color va solo en el glifo. */
-function AnimatedStrategyIcon({ name, color, size = 44 }: { name: string; color: string; size?: number }) {
-  const reduced = useReducedMotion();
-  return (
-    <motion.span
-      style={{
-        width: size, height: size, borderRadius: 14, flexShrink: 0,
-        background: "var(--surface-2)", border: "1px solid var(--line)", color,
-        display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
-      }}
-      animate={reduced ? undefined : { y: [0, -2.5, 0] }}
-      transition={reduced ? undefined : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-    >
-      <motion.span
-        style={{ display: "flex" }}
-        animate={reduced ? undefined : { scale: [1, 1.1, 1] }}
-        transition={reduced ? undefined : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <Icon name={name} size={size * 0.46} color={color} />
-      </motion.span>
-    </motion.span>
-  );
-}
-
-/** APY a mostrar: el vivo de DeFindex si llegó; si no, el de referencia del catálogo. */
-function strategyApyText(s: { apy: number | null; apyTarget?: number }): { text: string; estimated: boolean } {
-  if (s.apy != null && Number.isFinite(s.apy)) return { text: `${FMT(s.apy, 1)}%`, estimated: false };
-  if (s.apyTarget != null && Number.isFinite(s.apyTarget)) return { text: `${FMT(s.apyTarget, 1)}%`, estimated: true };
-  return { text: "—", estimated: false };
-}
 
 function PlanCard({ plan, onPick, recommended, locked }: { plan: VaultPlan; onPick: () => void; recommended?: boolean; locked?: boolean }) {
   return (
@@ -172,45 +137,8 @@ function PlanCard({ plan, onPick, recommended, locked }: { plan: VaultPlan; onPi
   );
 }
 
-/** Tarjeta de estrategia DeFindex (CETES / USDC / XLM) — contrato on-chain, no la bóveda del usuario. */
-function StrategyCard({
-  strategy,
-  onPick,
-  recommended,
-}: {
-  strategy: DefindexStrategyLive;
-  onPick: () => void;
-  recommended?: boolean;
-}) {
-  const apy = strategyApyText(strategy);
-  return (
-    <div
-      className="card bond-card"
-      onClick={onPick}
-      style={{
-        cursor: "pointer",
-        border: recommended ? "1px solid var(--accent)" : undefined,
-        background: recommended ? "var(--accent-soft)" : undefined,
-      }}
-    >
-      <AnimatedStrategyIcon name={strategyIconName(strategy)} color={strategy.color} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>{strategy.name}</p>
-          {recommended && <span className="pos-pill"><Icon name="star" size={11} /> Para ti</span>}
-        </div>
-        <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>{strategy.exposure}</p>
-        <div style={{ marginTop: 6 }}><RiskBadge risk={strategy.risk} /></div>
-      </div>
-      <div className="yield" style={{ textAlign: "right" }}>
-        <div className="num" style={{ fontWeight: 800, fontSize: 22, color: "var(--accent)" }}>{apy.text}</div>
-        <div className="lb">{apy.estimated ? "anual est." : "anual"}</div>
-      </div>
-    </div>
-  );
-}
-
-/** Tarjeta de bóveda para el carrusel horizontal: saldo grande creciendo en vivo. */
+/** Bóveda como tarjeta (estilo cartera): se apilan y cada una lleva el color
+    y la moneda de su activo. Tocarla abre el detalle, igual que antes. */
 function VaultCard({
   v, go, index = 0, strategyLabel,
 }: {
@@ -221,50 +149,41 @@ function VaultCard({
 }) {
   const strat = STELLAR_RAIL ? inferStrategyForVault(v) : null;
   const plan = strat ? planById(strat.planId) : (v.planId ? planById(v.planId) : planByApy(v.apy));
-  const tileColor = strat?.color ?? plan.color;
-  const iconName = strat ? strategyIconName({ id: strat.id, risk: strat.risk }) : riskIcon(plan.risk);
   // APY efectivo para que el saldo crezca en vivo aunque la bóveda guarde apy 0.
   const effApy = v.apy > 0 ? v.apy : strat ? strat.apyTarget : plan.apy;
-  const apyShown = `${FMT(effApy, 1)}%`;
+  const kind = strat ? coinKind(strat) : "other";
+  const [c1, c2] = COIN_GRADIENT[kind];
   return (
     <motion.div
-      className="card vault-card"
+      className="vcard"
+      role="button"
+      tabIndex={0}
       onClick={() => go("boveda", v)}
-      style={{
-        cursor: "pointer", flex: "0 0 auto", width: 264, scrollSnapAlign: "start",
-        display: "flex", flexDirection: "column", padding: 18,
-      }}
-      initial={{ opacity: 0, y: 12 }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") go("boveda", v); }}
+      style={{ "--vc1": c1, "--vc2": c2, zIndex: index + 1 } as React.CSSProperties}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
-      whileTap={{ scale: 0.975 }}
+      transition={{ duration: 0.45, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <AnimatedStrategyIcon name={iconName} color={tileColor} size={44} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.nm}</p>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--txt-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {strategyLabel ?? strat?.name ?? plan.name}
-          </p>
-        </div>
+      <span className="vc-ring" />
+      <div className="vc-top">
+        <p className="vc-nm">{v.nm}</p>
+        <span className="vc-chip">{strat?.assetSymbol ?? strategyLabel ?? plan.name} · {FMT(effApy, 1)}%</span>
       </div>
-      <div style={{ marginTop: 18 }}>
-        {/* Violeta = saldo en bóveda (convención de estado en toda la app). */}
-        <GrowingAmount base={v.bal} apy={effApy} size={38} align="left" color="#c4b5fd" id={`vault-${v.id}`} anchorMs={v.updatedAt} />
+      <p style={{ margin: "4px 0 0", fontSize: 12, opacity: 0.75 }}>{strategyLabel ?? strat?.name ?? plan.name}</p>
+      <div className="vc-bal">
+        <p className="k">En tu bóveda</p>
+        <GrowingAmount base={v.bal} apy={effApy} size={30} align="left" color="#fff" id={`vault-${v.id}`} anchorMs={v.updatedAt} />
       </div>
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span className="pos-pill"><Icon name="leaf" size={12} /> {apyShown} anual</span>
-        <span style={{ fontSize: 12.5, color: "var(--accent)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 2 }}>
-          Ver <Icon name="chevR" size={15} color="var(--accent)" />
-        </span>
-      </div>
+      <span className="vc-mark"><CoinSphere kind={kind} size={40} label={strat?.assetSymbol} /></span>
     </motion.div>
   );
 }
 
 export function ScreenVaults({ go }: { go: Go }) {
   const wallet = useWallet();
-  const { vaults, addVault, totalSaved, busy, onchain, ready } = useVaultsRail(wallet.address);
+  const { vaults, addVault, totalSaved, busy, onchain, ready, sessionOk } = useVaultsRail(wallet.address);
+  const [createError, setCreateError] = useState<string | null>(null);
   const { strategies, byPlanId } = useDefindexStrategies();
   const [opening, setOpening] = useState(false);
   const [creating, setCreating] = useState<null | { stellar?: DefindexStrategyLive; evmPlan?: VaultPlan }>(null);
@@ -273,8 +192,13 @@ export function ScreenVaults({ go }: { go: Go }) {
 
   // Preferencia XLM: es la bóveda con la que el usuario sí puede depositar
   // (tiene XLM por Friendbot). Se preselecciona aunque el quiz recomiende otra.
-  const defaultStrategy =
-    byPlanId("balanceado") ?? (recPlan && byPlanId(recPlan.id)) ?? strategies[0];
+  // En mainnet solo opera el vault USDC (el del adelanto); CETES y XLM son de testnet.
+  // Si el catálogo no trae USDC, no se oculta nada (mejor ver opciones que una pantalla vacía).
+  const usdcOnly = strategies.filter((s) => s.assetSymbol === "USDC");
+  const offered = IS_MAINNET && usdcOnly.length > 0 ? usdcOnly : strategies;
+  const defaultStrategy = IS_MAINNET
+    ? offered[0]
+    : byPlanId("balanceado") ?? (recPlan && byPlanId(recPlan.id)) ?? strategies[0];
 
   // APY efectivo de una bóveda: el guardado si existe, si no el vivo de DeFindex
   // y, en su defecto, el de referencia del catálogo. Evita que el APY salga 0/—.
@@ -294,7 +218,8 @@ export function ScreenVaults({ go }: { go: Go }) {
   // Ancla del timer del total = lectura de saldo más reciente entre las bóvedas.
   const totalAnchorMs = vaults.reduce((m, v) => Math.max(m, v.updatedAt ?? 0), 0) || undefined;
   const atCap = vaults.length >= MAX_VAULTS;
-  const { isAuthenticated: pollarOk, walletAddress: pollarPk } = usePollar();
+  const { isAuthenticated: pollarOk, wallet: pollarWallet } = usePollar();
+  const pollarPk = pollarWallet?.address;
   const [orphanOnchain, setOrphanOnchain] = useState<
     { planId: string; name: string; assetSymbol: string; underlyingBalance: number; strategyId: string }[]
   >([]);
@@ -326,6 +251,7 @@ export function ScreenVaults({ go }: { go: Go }) {
 
   const handleCreate = async (name: string, strategy: DefindexStrategyLive) => {
     setOpening(true);
+    setCreateError(null);
     try {
       await addVault({
         nm: name.trim() || strategy.name,
@@ -336,6 +262,8 @@ export function ScreenVaults({ go }: { go: Go }) {
         strategyId: strategy.id,
       });
       setCreating(null);
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : "No se pudo crear la bóveda. Intenta de nuevo.");
     } finally {
       setOpening(false);
     }
@@ -365,18 +293,23 @@ export function ScreenVaults({ go }: { go: Go }) {
       </div>
       <div className="screen-pad">
         {(busy || opening) && (
-          <div className="card" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--accent-soft)", border: "none" }}>
+          <div className="card" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)" }}>
             <span className="spin" style={{ color: "var(--accent)" }} />
             <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)" }}>Procesando en la red… esto tarda unos segundos.</p>
           </div>
         )}
 
         {/* Hero — ahorro total creciendo en vivo */}
-        <div className="card glow" style={{ padding: "24px 22px" }}>
-          <p className="eyebrow">Total en bóvedas</p>
-          <div style={{ marginTop: 14 }}>
-            {/* Violeta = saldo en bóveda (misma convención que el split del Inicio). */}
-            <GrowingAmount base={totalSaved} apy={weightedApy} size={56} align="left" color="#c4b5fd" id="vaults-total" anchorMs={totalAnchorMs} />
+        {/* Héroe sólido: barras de crecimiento animadas. */}
+        <div className="hero-v2">
+          <div className="savings-hero">
+            <div style={{ minWidth: 0 }}>
+              <p className="eyebrow">Tu ahorro total</p>
+              <div style={{ marginTop: 12 }}>
+                                <GrowingAmount base={totalSaved} apy={weightedApy} size={44} align="left" color="#fff" id="vaults-total" anchorMs={totalAnchorMs} />
+              </div>
+            </div>
+            <GrowthBars size={112} live={totalSaved > 0} />
           </div>
           {totalSaved > 0 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
@@ -384,7 +317,7 @@ export function ScreenVaults({ go }: { go: Go }) {
               <YieldRate base={totalSaved} apy={weightedApy} />
             </div>
           ) : (
-            <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            <p style={{ margin: "12px 0 0", fontSize: 13, color: "rgba(244,242,251,.75)", lineHeight: 1.5 }}>
               Abre una bóveda y mira tu dinero crecer al instante, segundo a segundo.
             </p>
           )}
@@ -403,7 +336,7 @@ export function ScreenVaults({ go }: { go: Go }) {
         )}
 
         {STELLAR_RAIL && orphanOnchain.length > 0 && (
-          <div className="card" style={{ marginTop: 14, padding: "14px 16px", background: "var(--accent-soft)", border: "1px solid var(--accent)" }}>
+          <div className="card" style={{ marginTop: 14, padding: "14px 16px", background: "var(--surface-2)", border: "1px solid var(--accent)" }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "var(--txt)" }}>
               Tienes saldo invertido sin bóveda asignada
             </p>
@@ -436,24 +369,38 @@ export function ScreenVaults({ go }: { go: Go }) {
           </div>
         )}
 
+        {STELLAR_RAIL && ready && !sessionOk && (
+          <div className="card" style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)" }}>
+            <Icon name="info" size={20} color="var(--txt-muted)" />
+            <p style={{ margin: 0, fontSize: 12, color: "var(--txt-muted)", lineHeight: 1.45 }}>
+              Tu sesión segura no está abierta: ves tu saldo, pero los nombres de tus bóvedas aparecen al abrirla.
+            </p>
+          </div>
+        )}
+
         {/* Mis bóvedas — metas con nombre propio del usuario */}
         <div className="sec-head">
           <h3>Mis bóvedas</h3>
           <span style={{ fontSize: 12, color: "var(--txt-dim)", fontWeight: 700 }}>{vaults.length}/{MAX_VAULTS}</span>
         </div>
-        {vaults.length === 0 ? (
-          <button
-            className="btn btn-ghost"
-            onClick={() => setCreating({ stellar: defaultStrategy })}
-            style={{ width: "100%", justifyContent: "center", borderStyle: "dashed" }}
-          >
-            <Icon name="plus" size={18} /> Crear mi primera bóveda
+        {!ready ? (
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="spin" style={{ color: "var(--accent)" }} />
+            <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.45 }}>Cargando tus bóvedas…</p>
+          </div>
+        ) : vaults.length === 0 ? (
+          <button type="button" className="first-vault" onClick={() => setCreating({ stellar: defaultStrategy })}>
+            <VaultDial color="#C8FF4D" size={50} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="t">Crea tu primera bóveda</p>
+              <p className="s">Ponle nombre a tu meta y elige dónde rinde.</p>
+            </div>
+            <span style={{ width: 36, height: 36, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="plus" size={18} />
+            </span>
           </button>
         ) : (
-          <div
-            className="h-carousel"
-            style={{ display: "flex", gap: 12, overflowX: "auto", scrollSnapType: "x mandatory", padding: "2px 2px 6px", margin: "0 -2px" }}
-          >
+          <div className="vstack">
             {vaults.map((v, i) => (
               <VaultCard
                 key={v.id}
@@ -464,20 +411,8 @@ export function ScreenVaults({ go }: { go: Go }) {
               />
             ))}
             {!atCap && (
-              <button
-                type="button"
-                className="card vault-card"
-                onClick={() => setCreating({ stellar: defaultStrategy })}
-                style={{
-                  flex: "0 0 auto", width: 150, scrollSnapAlign: "start", cursor: "pointer",
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
-                  borderStyle: "dashed", color: "var(--txt-muted)", background: "transparent",
-                }}
-              >
-                <span style={{ width: 42, height: 42, borderRadius: 13, background: "var(--surface-2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>
-                  <Icon name="plus" size={20} />
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>Nueva bóveda</span>
+              <button type="button" className="vcard add" onClick={() => setCreating({ stellar: defaultStrategy })}>
+                <Icon name="plus" size={18} /> Nueva bóveda
               </button>
             )}
           </div>
@@ -490,8 +425,13 @@ export function ScreenVaults({ go }: { go: Go }) {
 
         {/* Activos de ahorro (Stellar) o perfiles de riesgo (EVM) */}
         <div className="sec-head" style={{ marginTop: 24 }}>
-          <h3>{STELLAR_RAIL ? "Activos de ahorro" : "Estrategias de ahorro"}</h3>
+          <h3>{STELLAR_RAIL ? "Tasas de hoy" : "Estrategias de ahorro"}</h3>
         </div>
+        {STELLAR_RAIL && (
+          <p style={{ margin: "0 2px 12px", fontSize: 12.5, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            Lo que paga hoy cada activo. Cambia con el mercado.
+          </p>
+        )}
         {!STELLAR_RAIL && (
           <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
             {recPlan ? (
@@ -503,14 +443,37 @@ export function ScreenVaults({ go }: { go: Go }) {
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {STELLAR_RAIL
-            ? strategies.map((s) => (
-                <StrategyCard
-                  key={s.id}
-                  strategy={s}
-                  recommended={recPlan?.id === s.planId}
-                  onPick={atCap ? () => {} : () => setCreating({ stellar: s })}
-                />
-              ))
+            ? offered.length > 0 && (
+                // Lista informativa de tasas (la elección con monedas vive solo en "Nueva bóveda").
+                // Tocar una fila hace lo mismo que antes el botón "Abrir bóveda en …".
+                <div className="card rate-list">
+                  {offered.map((s) => {
+                    const apy = s.apy ?? s.apyTarget;
+                    return (
+                      <button
+                        key={s.planId}
+                        type="button"
+                        className="rate-row"
+                        disabled={atCap}
+                        onClick={atCap ? undefined : () => setCreating({ stellar: s })}
+                      >
+                        <CoinSphere kind={coinKind(s)} size={38} label={s.assetSymbol} />
+                        <div className="rr-mid">
+                          <p className="rr-nm">
+                            {s.assetSymbol ?? s.name}
+                            {recPlan?.id === s.planId && <span style={{ marginLeft: 6, verticalAlign: -1 }}><Icon name="star" size={12} color="var(--accent)" /></span>}
+                          </p>
+                          <p className="rr-ex">{s.exposure} · Riesgo {s.risk.toLowerCase()}</p>
+                        </div>
+                        <div className="rr-apy">
+                          <div className="v num">{apy != null && Number.isFinite(apy) ? `${FMT(apy, 1)}%` : "—"}</div>
+                          <div className="k">anual</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )
             : RISK_PROFILES.map((p) => {
                 const locked = !isPlanUnlocked(p.id);
                 return (
@@ -531,9 +494,13 @@ export function ScreenVaults({ go }: { go: Go }) {
           <CreateVaultModalStellar
             preset={creating.stellar ?? defaultStrategy}
             recId={recId}
-            strategies={strategies}
+            strategies={offered}
             busy={opening}
-            onClose={() => setCreating(null)}
+            vaults={vaults}
+            sessionOk={sessionOk}
+            error={createError}
+            onOpenExisting={(v) => { setCreating(null); go("boveda", v); }}
+            onClose={() => { setCreating(null); setCreateError(null); }}
             onCreate={handleCreate}
           />
         </Portal>
@@ -553,18 +520,25 @@ export function ScreenVaults({ go }: { go: Go }) {
   );
 }
 
-/** Crear bóveda Stellar: nombre + estrategia DeFindex (CETES/USDC/XLM). */
+/** Crear bóveda Stellar: nombre + estrategia DeFindex (CETES/USDC/XLM).
+    Valida el nombre y avisa antes de crear: si ya hay una bóveda en ese activo
+    (una posición on-chain por activo) o si la sesión segura no está abierta. */
 function CreateVaultModalStellar({
-  preset, recId, strategies, busy, onClose, onCreate,
+  preset, recId, strategies, busy, vaults, sessionOk, error, onOpenExisting, onClose, onCreate,
 }: {
   preset: DefindexStrategyLive;
   recId: string | null;
   strategies: DefindexStrategyLive[];
   busy: boolean;
+  vaults: UserVault[];
+  sessionOk: boolean;
+  error: string | null;
+  onOpenExisting: (v: UserVault) => void;
   onClose: () => void;
   onCreate: (name: string, strategy: DefindexStrategyLive) => void;
 }) {
   const [name, setName] = useState("");
+  const [touched, setTouched] = useState(false);
   const defaultId =
     preset?.planId
     ?? (recId && strategies.find((s) => s.planId === recId)?.planId)
@@ -572,57 +546,79 @@ function CreateVaultModalStellar({
     ?? "conservador";
   const [planId, setPlanId] = useState<string>(defaultId);
   const strategy = strategies.find((s) => s.planId === planId) ?? preset;
+  const existing = vaults.find((v) => inferPlanIdForVault(v) === strategy?.planId);
+  const nameMissing = name.trim().length === 0;
+  const showNameError = touched && nameMissing;
+
+  const submit = () => {
+    setTouched(true);
+    if (nameMissing || existing || !sessionOk) return;
+    onCreate(name, strategy);
+  };
 
   return (
     <div className="modal-overlay" onClick={busy ? undefined : onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
         <p className="modal-title">Nueva bóveda</p>
-        <p className="modal-sub" style={{ marginTop: 2 }}>
-          Ponle nombre a tu meta y elige el activo donde rendirá.
-        </p>
+        <p className="modal-sub" style={{ marginTop: 2 }}>Dos pasos: ponle nombre y elige dónde rinde.</p>
 
-        <span className="field-label" style={{ marginTop: 14 }}>Nombre de tu bóveda</span>
+        <div className="cv-step">
+          <span className="cv-n">1</span>
+          <label className="cv-lb" htmlFor="cv-name">¿Para qué es esta bóveda?</label>
+        </div>
         <input
-          className="input"
+          id="cv-name"
+          className={`input${showNameError ? " input-err" : ""}`}
           placeholder="Ej. Fondo de emergencia, Viaje, Enganche…"
           value={name}
           maxLength={32}
+          autoFocus
+          aria-invalid={showNameError}
+          aria-describedby="cv-name-help"
           onChange={(e) => setName(e.target.value)}
+          onBlur={() => setTouched(true)}
         />
+        <p id="cv-name-help" className={`cv-help${showNameError ? " err" : ""}`}>
+          {showNameError ? "Escribe un nombre para tu bóveda." : `${name.trim().length}/32 · Así la verás en tu lista.`}
+        </p>
 
-        <span className="field-label" style={{ marginTop: 16 }}>Activo</span>
-        <div style={{ display: "grid", gap: 8 }}>
-          {strategies.map((s) => {
-            const active = s.planId === planId;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setPlanId(s.planId)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 12, borderRadius: 14,
-                  cursor: "pointer",
-                  border: active ? "1px solid var(--accent)" : "1px solid var(--line)",
-                  background: active ? "var(--accent-soft)" : "var(--surface-2)",
-                }}
-              >
-                <span style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: "var(--surface-2)", border: "1px solid var(--line)", color: s.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Icon name={strategyIconName(s)} size={20} color={s.color} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14.5 }}>{s.name}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "var(--txt-muted)" }}>{s.exposure}</p>
-                </div>
-                <span className="num" style={{ fontWeight: 800, fontSize: 16, color: "var(--accent)" }}>{strategyApyText(s).text}</span>
-              </button>
-            );
-          })}
+        <div className="cv-step" style={{ marginTop: 14 }}>
+          <span className="cv-n">2</span>
+          <span className="cv-lb">Dónde rinde</span>
         </div>
+        <BondPicker options={strategies} value={planId} onChange={setPlanId} compact />
 
-        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={busy} onClick={() => onCreate(name, strategy)}>
-          {busy ? <span className="spin" /> : <><Icon name="plus" size={18} /> Crear bóveda</>}
-        </button>
+        {existing && (
+          <div className="cv-note">
+            <Icon name="info" size={18} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 800 }}>Ya tienes una bóveda en {strategy?.assetSymbol}</p>
+              <p style={{ margin: "3px 0 0", color: "var(--txt-muted)" }}>
+                «{existing.nm}» ya guarda tu ahorro en {strategy?.assetSymbol}. Abónale ahí; no se puede abrir otra en el mismo activo.
+              </p>
+            </div>
+          </div>
+        )}
+        {!existing && !sessionOk && (
+          <div className="cv-note">
+            <Icon name="shield" size={18} />
+            <p style={{ margin: 0, flex: 1, color: "var(--txt-muted)" }}>
+              Abre tu sesión segura (aviso de abajo) para poder guardar la bóveda.
+            </p>
+          </div>
+        )}
+        {error && <div className="alert alert-error">{error}</div>}
+
+        {existing ? (
+          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => onOpenExisting(existing)}>
+            Ir a «{existing.nm}»
+          </button>
+        ) : (
+          <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={busy || !sessionOk} onClick={submit}>
+            {busy ? <span className="spin" /> : <><Icon name="plus" size={18} /> Crear bóveda</>}
+          </button>
+        )}
         <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose} disabled={busy}>Cancelar</button>
       </div>
     </div>
@@ -707,7 +703,7 @@ function CreateVaultModalEvm({
 /* ---------------- VAULT DETAIL ---------------- */
 export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   const wallet = useWallet();
-  const { vaults, updateBalance, removeVault, busy, onchain, limits } = useVaultsRail(wallet.address);
+  const { vaults, updateBalance, removeVault, reload, busy, onchain, limits } = useVaultsRail(wallet.address);
   const { byPlanId } = useDefindexStrategies();
   const ctxV = ctx as UserVault | undefined;
   const v = vaults.find((x) => x.id === ctxV?.id) ?? ctxV;
@@ -724,10 +720,14 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         : defindexStrategy?.apyTarget ?? 0;
   const vaultAsset = defindexStrategy?.assetSymbol ?? "MXN";
 
-  // vaultId numérico solo cuando estamos on-chain (ids son índices del contrato).
-  // Se calcula antes del early return para no violar reglas de hooks.
-  const numVaultId = onchain && v ? parseInt(v.id) : undefined;
-  const advanceState = useAdvance(wallet.address, numVaultId);
+  // Adelanto (`seyf_advance`): al abrirlo, las acciones del vault pasan al
+  // contrato en garantía, así que el saldo de la bóveda ya es solo lo libre.
+  const retiro = useAppRetiro();
+  const advPos = retiro?.ctx.data.advance.data?.position ?? null;
+  const advStatus = retiro?.ctx.data.advance.data?.unlockStatus ?? null;
+  const isAdvanceVault = Boolean(STELLAR_RAIL && defindexStrategy?.assetSymbol === "USDC");
+  const advanceDebt = isAdvanceVault && advPos ? unitsToNumber(toBigInt(advPos.advance)) : 0;
+  const advanceEscrow = isAdvanceVault && advPos ? unitsToNumber(toBigInt(advStatus?.valueNow ?? advPos.valueAtOpen)) : 0;
   const { ensureConnected } = useStellarConnect();
   // En el riel Stellar se puede abonar/retirar si la vault está configurada,
   // aunque Pollar aún no esté conectada: la conexión se pide al hacer la acción.
@@ -753,27 +753,33 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       <SubHeader title={v.nm} go={go} back="bovedas" />
       <div className="screen-pad" style={{ textAlign: "center" }}>
         {/* Hero — saldo creciendo en vivo, con halo animado */}
-        <div className="card glow" style={{ marginTop: 6, padding: "28px 22px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div
+          className="vault-hero"
+          style={(() => {
+            const [c1, c2] = COIN_GRADIENT[defindexStrategy ? coinKind(defindexStrategy) : "xlm"];
+            return { "--vc1": c1, "--vc2": c2 } as React.CSSProperties;
+          })()}
+        >
           <motion.div
             aria-hidden
             style={{
               position: "absolute", left: "50%", top: "46%", width: 260, height: 260,
               marginLeft: -130, marginTop: -130, borderRadius: "50%", pointerEvents: "none",
-              background: "radial-gradient(circle, var(--accent-2-soft), transparent 70%)",
+              background: "radial-gradient(circle, rgba(255,255,255,.18), transparent 70%)",
             }}
             animate={reduced ? undefined : { scale: [1, 1.18, 1], opacity: [0.45, 0.85, 0.45] }}
             transition={reduced ? undefined : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
           />
           {STELLAR_RAIL && defindexStrategy && (
-            <p style={{ position: "relative", margin: "0 0 8px", fontSize: 12, color: "var(--txt-muted)" }}>
-              Activo · <b style={{ color: "var(--txt)" }}>{defindexStrategy.name}</b>
+            <p style={{ position: "relative", margin: "0 0 8px", fontSize: 12, color: "rgba(255,255,255,.75)" }}>
+              Activo · <b style={{ color: "#fff" }}>{defindexStrategy.name}</b>
             </p>
           )}
           <div style={{ position: "relative" }}>
             {/* Violeta = saldo en bóveda (convención de estado en toda la app). */}
-            <GrowingAmount base={v.bal} apy={liveApy} size={56} color="#c4b5fd" id={`vault-${v.id}`} anchorMs={v.updatedAt} countUpOnMount />
+            <GrowingAmount base={v.bal} apy={liveApy} size={56} color="#fff" id={`vault-${v.id}`} anchorMs={v.updatedAt} countUpOnMount />
           </div>
-          <p style={{ position: "relative", fontSize: 13.5, color: "var(--txt-muted)", margin: "10px 0 0" }}>
+          <p style={{ position: "relative", fontSize: 13.5, color: "rgba(255,255,255,.75)", margin: "10px 0 0" }}>
             {STELLAR_RAIL ? `${vaultAsset} en bóveda` : "MXN en bóveda"}
           </p>
           {v.bal > 0 && liveApy > 0 && (
@@ -797,7 +803,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
           <>
               <div className="card" style={{ marginTop: 16, textAlign: "left" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <AnimatedStrategyIcon name={strategyIconName(defindexStrategy)} color={defindexStrategy.color} size={44} />
+                  <CoinSphere kind={coinKind(defindexStrategy)} size={44} label={defindexStrategy.assetSymbol} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>{defindexStrategy.name}</p>
                     <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>
@@ -880,7 +886,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         )}
         <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("abonar a tu bóveda")) setAction("abonar"); }} disabled={!canFund || busy}><Icon name="plus" size={18} /> Abonar</button>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("retirar de tu bóveda")) setAction("retirar"); }} disabled={!canFund || busy || (onchain && (v.bal - advanceState.locked) <= 0)}>Retirar</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("retirar de tu bóveda")) setAction("retirar"); }} disabled={!canFund || busy || v.bal <= 0}>Retirar</button>
         </div>
         {!canFund && (
           <p style={{ margin: "12px 4px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
@@ -889,11 +895,10 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
               : "Abonar y retirar se activan al conectar el contrato on-chain."}
           </p>
         )}
-        {/* Adelanto — acción de liquidez sobre esta bóveda. Solicitar y repagar
-            viven en su propia pantalla (LiquidityAdvanceModal); aquí solo el acceso.
-            Solo en el riel EVM: en Stellar (DeFindex) el adelanto se hará con Blend. */}
-        {!STELLAR_RAIL && v.bal > 0 && (
-          advanceState.debt > 0 ? (
+        {/* Adelanto — acción de liquidez sobre el ahorro para el retiro. Cotizar,
+            pedir y repagar viven en LiquidityAdvanceModal; aquí solo el acceso. */}
+        {isAdvanceVault && (v.bal > 0 || advanceDebt > 0) && (
+          advanceDebt > 0 ? (
             <button
               className="btn btn-ghost"
               style={{ marginTop: 12, justifyContent: "space-between" }}
@@ -901,7 +906,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
               disabled={busy}
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <Icon name="bolt" size={18} color="var(--warning, #E8A838)" /> Adelanto activo · ${FMT(advanceState.debt, 2)} pendiente
+                <Icon name="bolt" size={18} color="var(--warning, #E8A838)" /> Adelanto activo · {FMT(advanceDebt, 2)} USDC · {FMT(advanceEscrow, 2)} en garantía
               </span>
               <Icon name="chevR" size={16} color="var(--txt-dim)" />
             </button>
@@ -911,7 +916,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             </button>
           )
         )}
-        <button disabled={busy || advanceState.locked > 0} title={advanceState.locked > 0 ? "Repaga tu adelanto para liberar el colateral antes de eliminar la bóveda" : undefined} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy || advanceState.locked > 0 ? "default" : "pointer", opacity: busy || advanceState.locked > 0 ? 0.5 : 1 }}>Eliminar bóveda</button>
+        <button disabled={busy || advanceDebt > 0} title={advanceDebt > 0 ? "Repaga tu adelanto para liberar la garantía antes de eliminar la bóveda" : undefined} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy || advanceDebt > 0 ? "default" : "pointer", opacity: busy || advanceDebt > 0 ? 0.5 : 1 }}>Eliminar bóveda</button>
       </div>
       <div className="scroll-bottom" />
       {action && (
@@ -920,7 +925,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             mode={action}
             vault={v}
             assetSymbol={vaultAsset}
-            locked={advanceState.locked}
+            locked={0}
             maxDeposit={limits?.available}
             cap={limits?.max}
             onClose={() => setAction(null)}
@@ -931,13 +936,31 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       {advance && (
         <Portal>
           <LiquidityAdvanceModal
-            saved={v.bal}
-            apy={v.apy}
-            vaultId={numVaultId}
-            onClose={() => { setAdvance(false); void advanceState.reload(); }}
+            onClose={() => { setAdvance(false); retiro?.ctx.data.refresh(); void reload(); }}
+            onGoSavings={() => go("bovedas")}
           />
         </Portal>
       )}
+    </div>
+  );
+}
+
+/* ---------------- CONVERTIR · próximamente (mainnet) ---------------- */
+export function ScreenConvertSoon({ go }: { go: Go }) {
+  return (
+    <div className="screen screen-enter">
+      <div className="safe-top" />
+      <SubHeader title="Convertir" go={go} back="home" />
+      <div className="screen-pad">
+        <div className="card" style={{ textAlign: "center", padding: "28px 20px" }}>
+          <Icon name="swap" size={30} color="var(--accent)" />
+          <p style={{ margin: "14px 0 6px", fontWeight: 800, fontSize: 17 }}>Próximamente</p>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            Cambiar entre pesos y dólares digitales llega con la rampa SPEI. Mientras tanto, tu ahorro rinde en tu bóveda.
+          </p>
+          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => go("bovedas")}>Ir a mis bóvedas</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1062,7 +1085,7 @@ export function ScreenConvert({ go }: { go: Go }) {
   return (
     <div className="screen screen-enter">
       <div className="safe-top" />
-      <SubHeader title="Convertir" go={go} back="card" />
+      <SubHeader title="Convertir" go={go} back="home" />
       <div className="screen-pad">
         <div style={{ position: "relative" }}>
           <div className="conv-field">
@@ -1277,9 +1300,7 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
   if (done) {
     const isAbono = mode === "abonar";
     const explorerUrl = txHash
-      ? STELLAR_RAIL
-        ? stellarTxExplorerUrl(txHash)
-        : `${explorerBase}/tx/${txHash}`
+      ? stellarTxExplorerUrl(txHash)
       : null;
     return (
       <div className="modal-overlay" onClick={onClose}>
@@ -1350,15 +1371,30 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
           </div>
         )}
 
-        <span className="field-label">
-          Monto ({STELLAR_RAIL ? assetSymbol : "MXN"})
-        </span>
-        <MoneyInput
-          className="input num-input"
-          placeholder="0.00"
-          value={amount}
-          onChange={setAmount}
-        />
+        {/* Monto grande y centrado; mismo MoneyInput y mismo estado que antes. */}
+        <div className="amount-xl">
+          <div className="ax-row">
+            <span className="ax-cur">$</span>
+            <MoneyInput
+              placeholder="0"
+              value={amount}
+              onChange={setAmount}
+              aria-label={`Monto en ${STELLAR_RAIL ? assetSymbol : "MXN"}`}
+              autoFocus
+              // el ancho sigue al número para que el "$" quede pegado
+              style={{ width: `${(formatWithCommas(amount) || "0").length + 0.6}ch` }}
+            />
+          </div>
+          <div className="ax-sym">{STELLAR_RAIL ? assetSymbol : "MXN"}</div>
+          {mode === "retirar" && max > 0 && Number.isFinite(max) && (
+            <div className="quick-amts">
+              {[0.25, 0.5].map((f) => (
+                <button key={f} type="button" className="chip" onClick={() => setAmount(String(Math.floor(max * f * 100) / 100))}>{f * 100}%</button>
+              ))}
+              <button type="button" className="chip" onClick={() => setAmount(String(Math.floor(max * 100) / 100))}>Todo</button>
+            </div>
+          )}
+        </div>
         {mode === "retirar" && (
           <p className="modal-sub" style={{ margin: "8px 0 0" }}>
             Disponible para retirar: ${FMT(max, 2)}

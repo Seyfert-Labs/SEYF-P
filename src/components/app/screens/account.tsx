@@ -16,6 +16,7 @@ import { useKycStatus } from "@/hooks/useKycStatus";
 import { RiskProfileSection } from "../RiskQuiz";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { WelcomeBonus } from "../WelcomeBonus";
+import { SPEI_ENABLED } from "@/lib/rails";
 
 /* Ondas de pago sin contacto */
 function Contactless({ size = 22, color = "var(--txt-muted)" }: { size?: number; color?: string }) {
@@ -221,10 +222,10 @@ export function ScreenProfile({ go }: { go: Go }) {
         {/* Perfil de ahorrador (movido aquí desde el Home). */}
         <RiskProfileSection go={go} />
 
-        {/* Bono de bienvenida – siempre visible (reclamado o no) */}
-        <WelcomeBonus />
+        {/* Bono de bienvenida y CLABE: viven en la rampa SPEI (aún no en mainnet). */}
+        {SPEI_ENABLED && <WelcomeBonus />}
 
-        {wallet.enabled && wallet.authenticated && (
+        {SPEI_ENABLED && wallet.enabled && wallet.authenticated && (
           <>
             <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Cuenta de depósito (SPEI)</p>
             <ClabeCard />
@@ -243,6 +244,17 @@ export function ScreenProfile({ go }: { go: Go }) {
         )}
 
         {/* ── Cuentas bancarias (CLABE de retiro/liquidez) ── */}
+        {!SPEI_ENABLED ? (
+          <>
+            <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Cuentas bancarias</p>
+            <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <Icon name="bank" size={22} color="var(--txt-muted)" />
+              <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.4 }}>
+                Depósitos y retiros por SPEI · <b style={{ color: "var(--txt)" }}>próximamente</b>
+              </p>
+            </div>
+          </>
+        ) : (<>
         <p className="eyebrow" style={{ margin: "26px 0 12px" }}>Cuentas bancarias</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {banks.length === 0 ? (
@@ -302,6 +314,7 @@ export function ScreenProfile({ go }: { go: Go }) {
             <Icon name="plus" size={18} /> Agregar cuenta bancaria
           </button>
         </div>
+        </>)}
 
         <div className="card glow" style={{ marginTop: 22, display: "flex", alignItems: "center", gap: 16 }}>
           <Ring pct={92} size={66} color="var(--accent)" />
@@ -325,8 +338,8 @@ export function ScreenProfile({ go }: { go: Go }) {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent-2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="shield" size={20} /></span>
             <div>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Saldo asegurado</p>
-              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>Hasta $3,000,000 MXN · cifrado AES‑256</p>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Verificable en Stellar</p>
+              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>Tú firmas cada movimiento y queda registrado en una red pública.</p>
             </div>
           </div>
         </div>

@@ -1,52 +1,51 @@
 # SEYF — Stellar Info File (SEP-1)
-# Se sirve en https://<dominio>/.well-known/stellar.toml (CORS abierto, ver next.config.ts).
+# Se sirve en https://www.seyf.app/.well-known/stellar.toml (CORS abierto, ver next.config.ts).
 # Guía: https://developers.stellar.org/docs/tokens/publishing-asset-info
-# WS2 · paso 1. Rellenar los valores marcados REEMPLAZAR antes de publicar en mainnet.
 
 VERSION="2.0.0"
 
 # Red pública (mainnet). En testnet usar: "Test SDF Network ; September 2015"
 NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 
-# Llave PÚBLICA del servidor SEP-10 (derivada de SEP10_SERVER_SECRET; no es secreta).
-SIGNING_KEY="REEMPLAZAR_G_PUBLICA_DEL_SERVIDOR_SEP10"
+# Llave PÚBLICA del servidor SEP-10 (`seyf-sep10-hot`, derivada de SEP10_SERVER_SECRET; no es secreta).
+SIGNING_KEY="GCICR4ID7D6MSU4N7ZST3U7YCSRO6YCDOUKWAYZHHR6JD4BWKC46LQ5E"
 
-# SEP-10 Web Auth — ya implementado en el repo (src/app/api/auth/sep10).
-WEB_AUTH_ENDPOINT="https://REEMPLAZAR.dominio/api/auth/sep10"
+# SEP-10 Web Auth — src/app/api/auth/sep10.
+WEB_AUTH_ENDPOINT="https://www.seyf.app/api/auth/sep10"
+
+# Cuentas que controla SEYF (ver soroban/DEPLOYMENTS.md). Hay direcciones
+# look-alike de estas haciendo address poisoning: esta lista es la referencia.
+ACCOUNTS=[
+  "GA7OITMN2PC55EPIMQL5SWX6ZGT55HEHJEIC7FDAHCZWCPLFZZ5N6V7U", # admin de seyf_advance
+  "GAYVVUKEUZQ76FYKORZNQL2S3HU56VSFSBE4KTPJXCLASB3XELHXTSC3", # keeper (settle)
+  "GDPVVG4AWVXDS6WBS4PEBGH7UVJKFJUKC26UVBCG7LYIYIM3S6EQHB72", # sponsor de reservas y comisiones
+]
 
 # Pendientes de WS2 (Anchor Platform). Descomentar cuando estén en vivo:
-# TRANSFER_SERVER_SEP0024="https://REEMPLAZAR.dominio/sep24"   # SEP-24
-# KYC_SERVER="https://REEMPLAZAR.dominio/sep12"                # SEP-12
-# ANCHOR_QUOTE_SERVER="https://REEMPLAZAR.dominio/sep38"       # SEP-38
+# TRANSFER_SERVER_SEP0024="https://www.seyf.app/sep24"   # SEP-24
+# KYC_SERVER="https://www.seyf.app/sep12"                # SEP-12
+# ANCHOR_QUOTE_SERVER="https://www.seyf.app/sep38"       # SEP-38
 
 [DOCUMENTATION]
 ORG_NAME="SEYF"
 ORG_DBA="Seyfert Labs"
-ORG_URL="https://REEMPLAZAR.dominio"
-ORG_DESCRIPTION="Neobank full Stellar para México: bóvedas CETES on-chain, FX con Soroswap y Reflector, y rampas SPEI."
-ORG_OFFICIAL_EMAIL="REEMPLAZAR@dominio"
-ORG_SUPPORT_EMAIL="REEMPLAZAR@dominio"
+ORG_URL="https://www.seyf.app"
+ORG_DESCRIPTION="App de ahorro e inversión full Stellar para México: ahorro para el retiro en un vault DeFindex de USDC con adelanto de rendimiento (contrato seyf_advance)."
+# Pendiente: correo oficial y de soporte del equipo.
+# ORG_OFFICIAL_EMAIL=""
+# ORG_SUPPORT_EMAIL=""
 
-[[PRINCIPALS]]
-name="REEMPLAZAR — responsable del proyecto"
-email="REEMPLAZAR@dominio"
+# Pendiente: responsable del proyecto.
+# [[PRINCIPALS]]
+# name=""
+# email=""
 
-# Activos que SEYF usa/ancla. El issuer de USDC en mainnet es el de Circle
-# (la misma dirección que va en STELLAR_USDC_ISSUER).
-[[CURRENCIES]]
-code="USDC"
-issuer="REEMPLAZAR_G_ISSUER_USDC_MAINNET"
-is_asset_anchored=true
-anchor_asset_type="fiat"
-status="live"
-display_decimals=7
-name="USD Coin"
-desc="USDC emitido por Circle."
-
-# Ejemplo para cuando se publiquen CETES/MEXe de Etherfuse en mainnet:
+# SEYF no emite ni ancla activos todavía: el USDC que usa es el de Circle
+# (GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN), que se describe en
+# el stellar.toml de centre.io. Ejemplo para cuando se publiquen activos propios:
 # [[CURRENCIES]]
 # code="MXNe"
-# issuer="REEMPLAZAR_G_ISSUER_MXNE"
+# issuer=""
 # is_asset_anchored=true
 # anchor_asset_type="fiat"
 # status="live"

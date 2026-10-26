@@ -13,7 +13,8 @@ import { clearSeyfAuthToken, seyfAuthAccount } from '@/lib/stellar/auth-token'
  * /api/db/*, que ahora exigen identidad probada.
  */
 export default function SeyfAuthBridge() {
-  const { isAuthenticated, walletAddress, getClient } = usePollar()
+  const { isAuthenticated, wallet, getClient } = usePollar()
+  const walletAddress = wallet?.address ?? null
   const mintedFor = useRef<string | null>(null)
 
   useEffect(() => {
@@ -40,11 +41,15 @@ export default function SeyfAuthBridge() {
     }
   }, [isAuthenticated, walletAddress, getClient])
 
+  // Solo al cerrar sesión (true → false). Al recargar, Pollar arranca en false
+  // mientras reanuda la sesión: borrar ahí obligaba a firmar de nuevo cada recarga.
+  const wasAuthenticated = useRef(false)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (wasAuthenticated.current && !isAuthenticated) {
       clearSeyfAuthToken()
       mintedFor.current = null
     }
+    wasAuthenticated.current = isAuthenticated
   }, [isAuthenticated])
 
   return null

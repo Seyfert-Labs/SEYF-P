@@ -13,11 +13,12 @@ import { FMT } from "../data";
 import { Portal } from "../Portal";
 import { AddBankModal } from "./AddBankModal";
 import type { UserBank } from "@/hooks/useUserBanks";
-import { MoneyInput } from "../MoneyInput";
+import { MoneyInput, formatWithCommas } from "../MoneyInput";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { useStellarConnect } from "../StellarConnectGate";
 import { sendStellarToSeyf, type SeyfPayAsset } from "@/lib/seyf/send-stellar";
 import { stellarTxExplorerUrl } from "@/lib/etherfuse/stellar-tx-url";
+import { SPEI_ENABLED } from "@/lib/rails";
 
 type SendMode = "bank" | "seyf";
 
@@ -38,7 +39,7 @@ export function SendModal({
   const redeem = useJunoAction((amount: number, id: string) => junoActions.redeem(amount, id));
 
   const stellarEnabled = stellar.enabled;
-  const [mode, setMode] = useState<SendMode>("bank");
+  const [mode, setMode] = useState<SendMode>(SPEI_ENABLED ? "bank" : "seyf");
 
   const [selected, setSelected] = useState<UserBank | null>(null);
   const [bankAmount, setBankAmount] = useState("");
@@ -136,7 +137,7 @@ export function SendModal({
         <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
           <div className="modal-grab" />
           <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-            <span style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-2-soft)", color: "var(--accent-2)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="check" size={32} />
             </span>
             <p className="modal-title" style={{ marginTop: 16, textAlign: "center" }}>Enviado por Stellar</p>
@@ -145,7 +146,7 @@ export function SendModal({
               <b className="num" style={{ color: "var(--txt)" }}>{stAddr.slice(0, 6)}…{stAddr.slice(-6)}</b>.
             </p>
             {stTx && stellarTxExplorerUrl(stTx) && (
-              <a href={stellarTxExplorerUrl(stTx)!} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 10, fontSize: 12.5, color: "var(--accent-2)", fontWeight: 700 }}>
+              <a href={stellarTxExplorerUrl(stTx)!} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 10, fontSize: 12.5, color: "var(--accent)", fontWeight: 700 }}>
                 Ver en el explorador ↗
               </a>
             )}
@@ -163,7 +164,8 @@ export function SendModal({
         <p className="modal-title">Enviar</p>
 
         {/* Selector de riel: banco (SPEI) o cuenta SEYF (Stellar) */}
-        {stellarEnabled && (
+        {/* Sin SPEI (mainnet) solo queda el envío a otra cuenta SEYF. */}
+        {stellarEnabled && SPEI_ENABLED && (
           <div style={{ display: "flex", gap: 6, padding: 4, background: "var(--surface-2)", borderRadius: 13, margin: "4px 0 16px" }}>
             {([["bank", "A banco", "bank"], ["seyf", "Cuenta SEYF", "globe"]] as const).map(([m, label, icon]) => (
               <button
@@ -186,10 +188,44 @@ export function SendModal({
 
         {mode === "seyf" ? (
           <>
-            <span className="field-label">Dirección de la cuenta SEYF (Stellar)</span>
+            {/* Monto grande al centro; activo y destino debajo. Mismos handlers. */}
+            <div className="amount-xl" style={{ paddingTop: 4 }}>
+              <div className="ax-row">
+                <MoneyInput
+                  placeholder="0"
+                  value={stAmount}
+                  onChange={(v) => { setStAmount(v); setStStatus("idle"); setStError(null); }}
+                  aria-label={`Monto en ${stAsset}`}
+                  style={{ width: `${(formatWithCommas(stAmount) || "0").length + 0.6}ch` }}
+                />
+              </div>
+              <p className="ax-sym">{stAsset}</p>
+            </div>
+            <div className="send-asset" role="radiogroup" aria-label="Activo">
+              {(["XLM", "USDC"] as const).map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  role="radio"
+                  aria-checked={stAsset === a}
+                  className={stAsset === a ? "on" : undefined}
+                  onClick={() => { setStAsset(a); setStStatus("idle"); setStError(null); }}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+            <p className="send-avail">
+              Disponible: <b className="num">{FMT(stAvailable, 7)} {stAsset}</b>
+              {stAvailable > 0 && (
+                <button type="button" className="chip" onClick={() => { setStAmount(String(stAvailable)); setStStatus("idle"); setStError(null); }}>Todo</button>
+              )}
+            </p>
+
+            <span className="field-label" style={{ marginTop: 16 }}>Para (cuenta SEYF)</span>
             <input
               className="input num"
-              placeholder="G…"
+              placeholder="Dirección que empieza con G…"
               value={stAddr}
               autoCapitalize="characters"
               spellCheck={false}
@@ -200,50 +236,19 @@ export function SendModal({
               <p style={{ margin: "6px 2px 0", fontSize: 11.5, color: "var(--neg)" }}>Dirección Stellar inválida (56 caracteres, empieza con G).</p>
             )}
 
-            <span className="field-label" style={{ marginTop: 14 }}>Activo</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              {(["XLM", "USDC"] as const).map((a) => (
-                <button
-                  key={a}
-                  onClick={() => { setStAsset(a); setStStatus("idle"); setStError(null); }}
-                  style={{
-                    flex: 1, padding: "10px 0", borderRadius: 11, fontWeight: 800, fontSize: 13, cursor: "pointer",
-                    border: `1px solid ${stAsset === a ? "var(--accent-2)" : "var(--line)"}`,
-                    background: stAsset === a ? "var(--accent-2-soft)" : "var(--surface-2)",
-                    color: stAsset === a ? "var(--accent-2)" : "var(--txt-muted)",
-                  }}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-
-            <span className="field-label" style={{ marginTop: 14 }}>Monto</span>
-            <MoneyInput
-              className="input num-input"
-              placeholder="0.00"
-              value={stAmount}
-              onChange={(v) => { setStAmount(v); setStStatus("idle"); setStError(null); }}
-            />
-            <p style={{ margin: "8px 2px 0", fontSize: "var(--t-xs)", color: "var(--txt-dim)" }}>
-              Disponible: <b className="num" style={{ color: "var(--txt-muted)" }}>{FMT(stAvailable, 7)} {stAsset}</b>
-            </p>
-
             {stError && <div className="alert alert-error" style={{ marginTop: 10 }}>{stError}</div>}
 
             <button
-              className="btn btn-violet"
-              style={{ marginTop: 16 }}
+              className="btn btn-primary"
+              style={{ marginTop: 18, height: 56 }}
               onClick={handleStellarSend}
               disabled={!stCanSend}
             >
               {stStatus === "sending" ? <span className="spin" /> : <><Icon name="send" size={18} /> Enviar {stAmt > 0 ? `${FMT(stAmt, 7)} ${stAsset}` : ""}</>}
             </button>
-            <p style={{ margin: "10px 4px 0", fontSize: 11, color: "var(--txt-dim)", lineHeight: 1.5 }}>
-              Transferencia instantánea entre cuentas SEYF por la red Stellar, firmada de forma segura con tu wallet.
+            <p style={{ margin: "10px 4px 0", fontSize: 11, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
+              Llega al instante por la red Stellar. Tú firmas el envío.
             </p>
-
-            <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onClose}>Cancelar</button>
           </>
         ) : banks.list.length === 0 ? (
           <div className="card" style={{ textAlign: "center", padding: 24 }}>

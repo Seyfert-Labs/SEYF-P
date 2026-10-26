@@ -3,17 +3,14 @@ import {
   Asset,
   BASE_FEE,
   Horizon,
-  Networks,
   NotFoundError,
   Operation,
   StrKey,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
-import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
+import { horizonUrl, stellarNetworkPassphrase } from '@/lib/stellar/network'
 import { toStroops } from '@/lib/sdex/assets'
-
-/** USDC de Circle en Stellar testnet (activo clásico, liquidez en SDEX). */
-export const USDC_ISSUER_TESTNET = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
+import { usdcAsset } from '@/lib/stellar/usdc'
 
 export type SdexSwapCode = 'XLM' | 'USDC'
 
@@ -30,28 +27,11 @@ export type SdexPathQuote = {
 }
 
 function networkConfig() {
-  if (isPublicStellarTestnet()) {
-    return {
-      passphrase: Networks.TESTNET,
-      horizonUrl: 'https://horizon-testnet.stellar.org',
-    }
-  }
-  return {
-    passphrase: Networks.PUBLIC,
-    horizonUrl: 'https://horizon.stellar.org',
-  }
+  return { passphrase: stellarNetworkPassphrase(), horizonUrl: horizonUrl() }
 }
 
 function horizonServer() {
   return new Horizon.Server(networkConfig().horizonUrl)
-}
-
-function usdcAsset(): Asset {
-  const issuer =
-    process.env.STELLAR_USDC_ISSUER?.trim() ||
-    (isPublicStellarTestnet() ? USDC_ISSUER_TESTNET : '')
-  if (!issuer) throw new Error('Falta STELLAR_USDC_ISSUER para mainnet')
-  return new Asset('USDC', issuer)
 }
 
 function assetFromHorizon(

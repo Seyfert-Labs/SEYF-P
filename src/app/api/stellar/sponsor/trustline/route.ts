@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { SponsorNotConfiguredError, buildSponsoredTrustline } from '@/lib/stellar/sponsor'
+import {
+  SponsorForbiddenError,
+  SponsorNotConfiguredError,
+  buildSponsoredTrustline,
+} from '@/lib/stellar/sponsor'
 import { requireSession } from '@/lib/stellar/db-auth'
 import { rateLimitResponse } from '@/lib/seyf/guards'
 
@@ -17,6 +21,7 @@ const bodySchema = z.object({
 /**
  * POST /api/stellar/sponsor/trustline
  * XDR de changeTrust con la reserva (0.5 XLM) pagada por el negocio.
+ * En la beta: solo USDC y solo cuentas de `SEYF_BETA_ALLOWLIST`.
  */
 export async function POST(request: Request) {
   const limited = await rateLimitResponse(request, 'sponsor/trustline', {
@@ -41,6 +46,9 @@ export async function POST(request: Request) {
     )
     return NextResponse.json({ xdr }, { headers: noStore })
   } catch (e) {
+    if (e instanceof SponsorForbiddenError) {
+      return NextResponse.json({ error: e.message }, { status: 403, headers: noStore })
+    }
     if (e instanceof SponsorNotConfiguredError) {
       console.error('[sponsor/trustline]', e.message)
       return NextResponse.json({ error: e.message }, { status: 503, headers: noStore })

@@ -2,6 +2,10 @@
 // https://github.com/paltalabs/defindex/blob/main/public/testnet.contracts.json
 
 import { isPublicStellarTestnet } from '@/lib/seyf/stellar-wallet-network'
+import { usdcIssuer } from '@/lib/stellar/usdc'
+
+/** USDC de los vaults DeFindex de testnet (Palta Labs); no es el de Circle en SDEX. */
+export const DEFINDEX_USDC_ISSUER_TESTNET = 'GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56'
 
 export const DEFINDEX_FACTORY_ADDRESS =
   'CDSCWE4GLNBYYTES2OCYDFQA2LLY4RBIAX6ZI32VSUXD7GO6HRPO4A32'
@@ -45,13 +49,15 @@ const VAULT_XLM =
 const VAULT_CETES =
   process.env.NEXT_PUBLIC_DEFINDEX_VAULT_CETES?.trim() ||
   (TESTNET_VAULT_FALLBACK ? 'CBIS5TEMTNNOTBE3WXPQUAGUEDYZZVIWAKTXEQCOUJ34OJJ3FJ5NLF2P' : '')
+// En mainnet es el vault Meru del adelanto (mismo env que `lib/advance/config.ts`).
 const VAULT_USDC =
   process.env.NEXT_PUBLIC_DEFINDEX_VAULT_USDC?.trim() ||
+  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_ADDRESS?.trim() ||
   (TESTNET_VAULT_FALLBACK ? 'CBMVK2JK6NTOT2O4HNQAIQFJY232BHKGLIMXDVQVHIIZKDACXDFZDWHN' : '')
 
 // XLM va primero: el usuario tiene XLM (fondeado por Friendbot), así que es la
 // bóveda con la que sí puede depositar de inmediato → preferencia en UI y default.
-export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
+const ALL_STRATEGIES: DefindexStrategyConfig[] = [
   {
     id: 'xlm',
     planId: 'balanceado',
@@ -101,7 +107,7 @@ export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
     vaultKey: 'usdc_paltalabs_vault',
     vaultAddress: VAULT_USDC,
     assetSymbol: 'USDC',
-    assetIssuer: 'GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56',
+    assetIssuer: usdcIssuer(DEFINDEX_USDC_ISSUER_TESTNET),
     decimals: 7,
     risk: 'Bajo',
     horizon: '3 a 7 años',
@@ -113,6 +119,10 @@ export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = [
     apyTarget: 4.5,
   },
 ]
+
+// Solo estrategias con vault configurado: en mainnet hoy es únicamente USDC
+// (Meru); sin dirección, la estrategia no se ofrece en vez de fallar al firmar.
+export const DEFINDEX_STRATEGIES: DefindexStrategyConfig[] = ALL_STRATEGIES.filter((s) => s.vaultAddress)
 
 export function strategyById(id: string): DefindexStrategyConfig | undefined {
   return DEFINDEX_STRATEGIES.find((s) => s.id === id)
@@ -130,7 +140,9 @@ export function strategyByVaultAddress(address?: string): DefindexStrategyConfig
 }
 
 export function resolveStrategy(planId?: string): DefindexStrategyConfig {
-  return strategyByPlanId(planId) ?? DEFINDEX_STRATEGIES[0]
+  // Sin ningún vault configurado (p. ej. build sin env) cae al catálogo completo
+  // para no romper al cargar el módulo; las acciones on-chain siguen apagadas.
+  return strategyByPlanId(planId) ?? DEFINDEX_STRATEGIES[0] ?? ALL_STRATEGIES[0]
 }
 
 /** Bóvedas creadas antes de `planId`: inferir por strategyId o por nombre (USDC, XLM, CETES). */

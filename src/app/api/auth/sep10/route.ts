@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import {
   Sep10NotConfiguredError,
+  buildAccountProofChallenge,
   buildSep10Challenge,
   issueSeyfSession,
+  verifyAccountProof,
   verifySep10Challenge,
 } from '@/lib/stellar/sep10'
 import { rateLimitResponse } from '@/lib/seyf/guards'
@@ -29,13 +31,18 @@ export async function GET(request: Request) {
   })
   if (limited) return limited
 
-  const account = new URL(request.url).searchParams.get('account')?.trim()
+  const params = new URL(request.url).searchParams
+  const account = params.get('account')?.trim()
+  // mode=account: prueba de cuenta para wallets que solo firman txs propias (Turnkey).
+  const accountProof = params.get('mode') === 'account'
   if (!account) {
     return NextResponse.json({ error: 'account requerido' }, { status: 400, headers: noStore })
   }
 
   try {
-    const { transaction, networkPassphrase } = buildSep10Challenge(account)
+    const { transaction, networkPassphrase } = accountProof
+      ? buildAccountProofChallenge(account)
+      : buildSep10Challenge(account)
     // Nombres de campo del propio SEP-10, para que cualquier wallet estándar lo entienda.
     return NextResponse.json(
       { transaction, network_passphrase: networkPassphrase },
@@ -54,14 +61,15 @@ export async function POST(request: Request) {
   const limited = await rateLimitResponse(request, 'auth/sep10-token', { limit: 30, windowSec: 300 })
   if (limited) return limited
 
-  const body = (await request.json().catch(() => null)) as { transaction?: unknown } | null
+  const body = (await request.json().catch(() => null)) as { transaction?: unknown; mode?: unknown } | null
   const signedXdr = typeof body?.transaction === 'string' ? body.transaction.trim() : ''
   if (!signedXdr) {
     return NextResponse.json({ error: 'transaction requerido' }, { status: 400, headers: noStore })
   }
 
   try {
-    const account = await verifySep10Challenge(signedXdr)
+    const account =
+      body?.mode === 'account' ? await verifyAccountProof(signedXdr) : await verifySep10Challenge(signedXdr)
     const { token, expiresIn } = issueSeyfSession(account)
     return NextResponse.json(
       { token, expires_in: expiresIn, account },

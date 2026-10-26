@@ -1,17 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const manrope = Manrope({
+// Fuentes servidas desde el repo (variables, subconjunto latin, licencia OFL):
+// next/font/google descarga en cada build y en Vercel falla de forma intermitente.
+const manrope = localFont({
   variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  src: "./fonts/Manrope-latin.woff2",
+  weight: "200 800",
+  display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  src: "./fonts/SpaceGrotesk-latin.woff2",
+  weight: "300 700",
+  display: "swap",
 });
 
 const siteUrl =

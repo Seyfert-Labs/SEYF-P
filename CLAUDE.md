@@ -1,4 +1,10 @@
 @AGENTS.md
+@SOUL.md
+@docs/seyf-context.md
+
+> ⚠️ **Plan vigente del hackathon: `docs/hackmeridian-12h.md`** (25–26 oct 2026). Sustituye a
+> `docs/hackmeridian-plan.md`: no se migra la app; solo la ruta `/retiro` (vault USDC de DeFindex +
+> adelanto con `seyf_advance`). Lo de abajo describe el riel EVM heredado y no se toca.
 
 # SEYF — super app fintech (MXNB + Privy + Supabase)
 

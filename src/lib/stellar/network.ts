@@ -24,6 +24,15 @@ export function horizonUrl(): string {
     : 'https://horizon-testnet.stellar.org'
 }
 
+/**
+ * Soroban RPC. SDF no corre RPC público de mainnet: el default
+ * `mainnet.sorobanrpc.com` (Protocol 29) y el respaldo
+ * `soroban-rpc.mainnet.stellar.gateway.fm` están en la lista oficial
+ * (developers.stellar.org/docs/data/apis/rpc/providers). Para cambiar de
+ * proveedor: `NEXT_PUBLIC_SOROBAN_RPC_URL`.
+ */
+export const SOROBAN_RPC_MAINNET_FALLBACK = 'https://soroban-rpc.mainnet.stellar.gateway.fm'
+
 export function sorobanRpcUrl(): string {
   const override = process.env.NEXT_PUBLIC_SOROBAN_RPC_URL?.trim()
   if (override) return override

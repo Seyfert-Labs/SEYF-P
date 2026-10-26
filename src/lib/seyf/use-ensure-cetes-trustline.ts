@@ -12,7 +12,8 @@ type TrustlineResult =
  * Builds unsigned XDR on the server, signs + submits via Pollar.
  */
 export function useEnsureCetesTrustline() {
-  const { walletAddress, signAndSubmitTx } = usePollar()
+  const { wallet, signAndSubmitTx } = usePollar()
+  const walletAddress = wallet?.address ?? null
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
 
