@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PollarClient } from '@pollar/core'
 import { useSeyfStellarWallet } from '@/lib/seyf/use-seyf-stellar-wallet'
-import { ensureSeyfSession } from '@/lib/stellar/sep10-client'
+import { ensureSeyfSession, sep10DeviceNotEnrolled } from '@/lib/stellar/sep10-client'
 import { peekSeyfAuthToken, seyfAuthAccount } from '@/lib/stellar/auth-token'
 import { stellarWalletNetworkFromEnv } from '@/lib/stellar/network'
 import { Icon } from '@/components/app/ui'
@@ -45,7 +45,8 @@ export function useSep10(publicKey: string | null, getClient: () => PollarClient
       if (peekSeyfAuthToken() && seyfAuthAccount() === publicKey) return setResult({ account: publicKey, state: 'ok' })
       // Tras 25 s se ofrece reintentar, pero se sigue esperando: confirmar la firma
       // en el diálogo de Pollar puede tardar más y el token llega después.
-      if (Date.now() - started > 25_000) setResult({ account: publicKey, state: 'error' })
+      // Si este navegador no es un dispositivo de la wallet, esperar no sirve: avisar ya.
+      if (Date.now() - started > 25_000 || sep10DeviceNotEnrolled()) setResult({ account: publicKey, state: 'error' })
       setTimeout(tick, Date.now() - started > 25_000 ? 1_000 : 400)
     }
     const first = setTimeout(tick, 0)

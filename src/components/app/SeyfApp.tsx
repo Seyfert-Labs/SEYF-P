@@ -17,6 +17,7 @@ import { ScreenAssetDetail } from "./screens/asset-detail";
 import { ScreenLogin } from "./screens/login";
 import { RetiroProvider, useAppRetiro } from "./RetiroContext";
 import { useWallet } from "@/components/wallet/WalletContext";
+import { sep10DeviceNotEnrolled } from "@/lib/stellar/sep10-client";
 
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
   { id: "inicio", ic: "home", lb: "Inicio", screen: "home", match: ["home", "wallet", "notifs", "txn"] },
@@ -63,8 +64,9 @@ function SessionBanner({ raised }: { raised: boolean }) {
   const app = useAppRetiro();
   // Wallets Turnkey de Pollar no firman nada (ni la sesión) hasta tener un método
   // de recuperación: passkey, otro dispositivo o correo con código.
-  const { recoveryLocked, openRecoveryModal } = usePollar();
+  const { recoveryLocked, openRecoveryModal, recovery } = usePollar();
   const wasLocked = useRef(recoveryLocked);
+  const lastRecovery = useRef(recovery);
   const retry = app?.sep10.retry;
   const sessionOk = app?.sep10.state === "ok";
   useEffect(() => {
@@ -72,8 +74,15 @@ function SessionBanner({ raised }: { raised: boolean }) {
     if (wasLocked.current && !recoveryLocked && !sessionOk) void retry?.();
     wasLocked.current = recoveryLocked;
   }, [recoveryLocked, sessionOk, retry]);
+  useEffect(() => {
+    // Tras dar de alta este navegador (passkey o correo), Pollar relee la
+    // recuperación: reintenta la sesión sola.
+    if (recovery !== lastRecovery.current && !sessionOk && sep10DeviceNotEnrolled()) void retry?.();
+    lastRecovery.current = recovery;
+  }, [recovery, sessionOk, retry]);
 
   if (!app || sessionOk) return null;
+  const notEnrolled = app.sep10.state === "error" && sep10DeviceNotEnrolled();
   // Tarjeta sólida que sube desde abajo (encima de la barra de pestañas), para
   // no tapar el encabezado. Mismos textos y mismos botones que antes.
   const state = recoveryLocked ? "locked" : app.sep10.state;
@@ -87,6 +96,15 @@ function SessionBanner({ raised }: { raised: boolean }) {
             <p className="sc-s">Agrega una passkey o tu correo para recuperarla.</p>
           </div>
           <button className="btn btn-primary sc-btn" onClick={openRecoveryModal}>Proteger mi cuenta</button>
+        </>
+      ) : notEnrolled ? (
+        <>
+          <span className="sc-ic"><Icon name="shield" size={18} /></span>
+          <div className="sc-copy">
+            <p className="sc-t">Autoriza este navegador</p>
+            <p className="sc-s">Tu cuenta se creó en otro navegador. Confírmalo con tu passkey o tu correo.</p>
+          </div>
+          <button className="btn btn-primary sc-btn" onClick={openRecoveryModal}>Autorizar</button>
         </>
       ) : app.sep10.state === "pending" ? (
         <>

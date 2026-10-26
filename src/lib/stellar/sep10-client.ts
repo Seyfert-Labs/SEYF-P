@@ -73,8 +73,16 @@ async function exchange(signedXdr: string, publicKey: string, mode?: 'account'):
   return token.token
 }
 
+let deviceNotEnrolled = false
+
+/** El último intento falló porque este navegador no está dado de alta en la wallet de Pollar. */
+export function sep10DeviceNotEnrolled(): boolean {
+  return deviceNotEnrolled
+}
+
 async function mintToken(client: PollarClient, publicKey: string): Promise<string | null> {
   const passphrase = stellarNetworkPassphrase()
+  deviceNotEnrolled = false
 
   // 1) Prueba de cuenta. La app de Pollar es cosignada (Turnkey) y ahí
   //    /stellar/sep10/sign siempre responde 502: intentarlo primero solo sumaba
@@ -84,7 +92,12 @@ async function mintToken(client: PollarClient, publicKey: string): Promise<strin
     const signedProof = await pollarSignAccountProof(client, proofXdr, publicKey, passphrase)
     return await exchange(signedProof, publicKey, 'account')
   } catch (e) {
-    console.info('[sep10] prueba de cuenta no disponible, uso SEP-10 estándar:', e instanceof Error ? e.message : e)
+    const msg = e instanceof Error ? e.message : String(e)
+    // Este navegador no es un dispositivo de la wallet: el SEP-10 estándar
+    // también falla (502). Hay que darlo de alta con la passkey o el correo.
+    deviceNotEnrolled = msg.includes('SDK_COSIGN_DEVICE_NOT_ENROLLED')
+    if (deviceNotEnrolled) throw e
+    console.info('[sep10] prueba de cuenta no disponible, uso SEP-10 estándar:', msg)
   }
 
   // 2) SEP-10 estándar (wallets que Pollar firma del lado del servidor).
