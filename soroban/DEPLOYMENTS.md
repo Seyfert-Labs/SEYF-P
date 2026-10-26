@@ -12,6 +12,72 @@ quedan bloqueadas **hasta que su rendimiento cubre el adelanto**
 del vault exactamente ese rendimiento hacia la tesorería y devuelve al usuario su
 principal completo. El usuario puede salir antes con `repay`, también en pausa.
 
+## Mainnet (26 de octubre de 2026): beta con topes bajos
+
+Contrato: **`CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH`**, con el
+mismo wasm que testnet (`64ae06cb3e50eb304b2eb8b7dc2be9f9271432b04d77b0f2a9eeded899e9bdfa`).
+Se comparó sección por sección con el que compiló CI (`contracts.yml`), y solo
+cambian metadatos de compilación. Se usó Stellar CLI 28.1.0.
+
+| Rol | Cuenta |
+| --- | --- |
+| Admin (`seyf-admin`) | `GA7OITMN2PC55EPIMQL5SWX6ZGT55HEHJEIC7FDAHCZWCPLFZZ5N6V7U` |
+| Keeper (`seyf-keeper`, solo paga `settle`) | `GCMD53GFMYHH5AY2WUM672EEBOA3PE5KQOWS3FATTEVZXDS7BHA7UTY4` |
+| Sponsor de reservas y comisiones (`seyf-sponsor`) | `GCEXGM4CSDNLV6P5WRRSXDY2F7UCQO5IETZGYGCCPL6NEXBY4P5T7IXE` |
+
+Las llaves están en el almacén seguro del sistema operativo (`stellar keys
+generate --secure-store`) y nunca en el repo. Hay cuentas *look-alike* que imitan
+estas direcciones (mismo inicio y mismo final) y que mandaron transacciones de
+polvo para envenenar el historial. **Nunca copies una dirección desde el historial
+de transacciones**: usa solo esta tabla.
+
+- **Vault:** Meru, DeFindex USDC, `CCA2ZJP5BVRXYTQH4FAGHCAUMRYCXVC4CRYC2NXHWMR7TIVX36U7F5HR`.
+  Su estrategia activa es "USDC Autocompound Blend Fixed" (`CDB2WMKQQNVZMEBY7Q7GZ5C7E7IAFSNMZ7GGVD6WKTCEWK7XOIAVZSAP`),
+  sobre el pool Blend Fixed `CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD`.
+- **Activo:** USDC de Circle (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`),
+  SAC `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75`.
+- **Parámetros:** `apy_bps` 50, `max_advance_bps` 500, plazo de 1 a 30 días,
+  tope de 1 USDC por usuario y 2 USDC en total, lista de usuarios activa.
+  - `apy_bps` queda muy por debajo del ~5 % neto medido en Meru. Así el
+    rendimiento real cubre el adelanto mucho antes de que termine el plazo.
+
+### Ciclo en mainnet
+
+| Paso | Resultado | Transacción | Comisión (XLM) |
+| --- | --- | --- | --- |
+| Trustline de USDC del admin | — | [0b29c9f6…](https://stellar.expert/explorer/public/tx/0b29c9f68a3b72c29f0a8aa52ca44e4c69ed550c1d8c24ad4eccf5179f781329) | 0.00001 |
+| Crear la cuenta del sponsor (3 XLM) | — | [dc2ef705…](https://stellar.expert/explorer/public/tx/dc2ef705f72cdc08d52d31caf36401e7ef1f78e7f8b9130a1b22f7573ceb9128) | 0.00001 |
+| Crear la cuenta del keeper (2 XLM) | — | [77a4eb59…](https://stellar.expert/explorer/public/tx/77a4eb598fb6daa7f4964b16ce37ba8289cba03d044a41a759e94bedb897c73a) | 0.00001 |
+| Subir el wasm | — | [0170a085…](https://stellar.expert/explorer/public/tx/0170a085269d803862140bfe99616ee09d49f2d4e653dc69d4e5b07711b59655) | 22.36 |
+| Desplegar con constructor | lectura verificada de admin, vault, activo y parámetros | [1fa79ed9…](https://stellar.expert/explorer/public/tx/1fa79ed90c90bf71063be5fbbdcc5fd30ea398d47d8dee7e3a12ff34cd6e540c) | 0.11 |
+| `fund_treasury` (2 USDC) | `treasury()` = 20 000 000 | [633b79df…](https://stellar.expert/explorer/public/tx/633b79df5073010cdc92a1a37766f92602f52169bda0ea2e69916bcf4ea40c8c) | 0.038 |
+| `set_allowed(admin, true)` | — | [776a7fbf…](https://stellar.expert/explorer/public/tx/776a7fbffd08298051c582ad87c484b9f7b7020b35ab9deb71af1a08ef1c1241) | 0.023 |
+| Depósito en Meru (5 USDC) | 46 064 942 acciones; el vault invierte en Blend (evento `supply` del pool) | [fa4cc2eb…](https://stellar.expert/explorer/public/tx/fa4cc2eb5d4f5c0c2198a2ee3d53e8ebc9dc7860381d4523b9bce307d06961bb) | 0.028 |
+| Retiro de Meru (9 213 000 acciones) | 1.0000014 USDC. Salió del pool de Blend porque el vault no tenía saldo ocioso | [082bee22…](https://stellar.expert/explorer/public/tx/082bee220cdde1d072b6d7d8792a6e4d1b53ae152433ac31bd7e225824ec45de) | 0.0027 |
+| `open_advance` a 1 día (36 851 942 acciones) | `V_open` = 39 999 998; adelanto de 547 desde la tesorería; `treasury()` = 19 999 453 | [de3d6629…](https://stellar.expert/explorer/public/tx/de3d6629638af6aea2e96784bfb135073c7b60022d3de47d2e990b0b8e7720dc) | 0.081 |
+| `settle` | pendiente: necesita `V` ≥ 40 000 545 con rendimiento real | — | — |
+
+Subir el wasm costó 22.36 XLM, que es casi todo el costo. Cada operación del
+contrato cuesta de 0.02 a 0.11 XLM. La CLI necesita `--inclusion-fee 10000`
+cuando la tarifa de inclusión de Soroban sube (estaba en 200 stroops).
+
+### Keeper
+
+Se ejecuta con `.github/workflows/keeper.yml` cada 10 minutos desde `meridian`.
+
+- Variables del repo:
+  - `NEXT_PUBLIC_STELLAR_NETWORK=mainnet`
+  - `NEXT_PUBLIC_STELLAR_ADVANCE_CONTRACT=CCZ77VBE…`
+  - `KEEPER_START_LEDGER=65138547`, el ledger del primer `open_advance`.
+- Secreto: `KEEPER_SECRET`.
+
+La primera corrida en dry-run encontró el adelanto y respondió `YieldNotCovered`,
+lo que es correcto mientras el rendimiento no lo cubra.
+
+### Riesgos del vault elegido
+
+Ver la sección **Riesgos de la beta en mainnet** del [README](../README.md#riesgos-de-la-beta-en-mainnet).
+
 ## Testnet (25 de octubre de 2026): tesorería dentro del contrato
 
 Vault: DeFindex USDC de testnet `CBMVK2JK6NTOT2O4HNQAIQFJY232BHKGLIMXDVQVHIIZKDACXDFZDWHN`
