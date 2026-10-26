@@ -2,7 +2,8 @@
 
 /* SEYF — shell de la app: router + tab bar (responsivo, sin marco de teléfono).
    Gating por sesión: onboarding → login (Pollar: correo + código) → app. */
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { usePollar } from "@pollar/react";
 import { Icon } from "./ui";
 import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens/core";
@@ -60,7 +61,29 @@ function Splash() {
 /** Aviso mientras se abre la sesión SEP-10 (sin ella no se lee ni se firma el ahorro). */
 function SessionBanner() {
   const app = useAppRetiro();
-  if (!app || app.sep10.state === "ok") return null;
+  // Wallets Turnkey de Pollar no firman nada (ni la sesión) hasta tener un método
+  // de recuperación: passkey, otro dispositivo o correo con código.
+  const { recoveryLocked, openRecoveryModal } = usePollar();
+  const wasLocked = useRef(recoveryLocked);
+  const retry = app?.sep10.retry;
+  const sessionOk = app?.sep10.state === "ok";
+  useEffect(() => {
+    // Al terminar de configurar la recuperación, reintenta la sesión sola.
+    if (wasLocked.current && !recoveryLocked && !sessionOk) void retry?.();
+    wasLocked.current = recoveryLocked;
+  }, [recoveryLocked, sessionOk, retry]);
+
+  if (!app || sessionOk) return null;
+  if (recoveryLocked) {
+    return (
+      <div style={{ position: "fixed", left: 0, right: 0, top: 0, zIndex: 50, padding: "10px 16px", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+        <div className="alert alert-info" style={{ margin: 0, maxWidth: 440, display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
+          <span style={{ flex: 1 }}>Protege tu cuenta para continuar: agrega una passkey o tu correo para recuperarla.</span>
+          <button className="chip" onClick={openRecoveryModal}>Proteger mi cuenta</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ position: "fixed", left: 0, right: 0, top: 0, zIndex: 50, padding: "10px 16px", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
       <div className={`alert ${app.sep10.state === "error" ? "alert-error" : "alert-info"}`} style={{ margin: 0, maxWidth: 440, display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
