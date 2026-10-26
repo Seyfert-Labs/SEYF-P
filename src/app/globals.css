@@ -415,6 +415,9 @@ html, body {
 /* ============================================================
    Juno integration UI — depósito / redención (modales + inputs)
    ============================================================ */
+/* Pollar pinta su diálogo de firma ("Confirm transaction") con z-index 50; sin
+   esto queda debajo de .modal-overlay (100) y la firma espera para siempre. */
+:root { --pollar-brand-overlay-z-index: 1000; }
 .modal-overlay {
   /* fixed = anclado al viewport, no al contenido scrolleable de .screen
      (si fuera absolute aparecería arriba del todo al estar scrolleado). */
