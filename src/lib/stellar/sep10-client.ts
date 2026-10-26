@@ -8,7 +8,7 @@
 
 import type { PollarClient } from '@pollar/core'
 import { TransactionBuilder, type Transaction } from '@stellar/stellar-sdk'
-import { pollarSignSep10Challenge } from '@/lib/pollar/client-api'
+import { pollarSignAccountProof, pollarSignSep10Challenge } from '@/lib/pollar/client-api'
 import { stellarNetworkPassphrase } from '@/lib/stellar/network'
 import {
   peekSeyfAuthToken,
@@ -43,42 +43,57 @@ function challengeDomains(
   return { homeDomains: homeDomain ? [homeDomain] : undefined, webAuthDomain }
 }
 
-async function mintToken(client: PollarClient, publicKey: string): Promise<string | null> {
-  const challengeRes = await fetch(`/api/auth/sep10?account=${encodeURIComponent(publicKey)}`, {
-    headers: { Accept: 'application/json' },
-  })
+async function fetchChallenge(publicKey: string, mode?: 'account'): Promise<string> {
+  const q = `account=${encodeURIComponent(publicKey)}${mode ? `&mode=${mode}` : ''}`
+  const challengeRes = await fetch(`/api/auth/sep10?${q}`, { headers: { Accept: 'application/json' } })
   const challenge = (await challengeRes.json().catch(() => ({}))) as ChallengeResponse
   if (!challengeRes.ok || !challenge.transaction) {
     throw new Error(challenge.error || 'No se pudo iniciar la sesión segura.')
   }
-
   // No firmar nunca un challenge de otra red: en mainnet, una passphrase que no
   // coincide con la configurada significa servidor mal apuntado o manipulado.
   // (Checklist de seguridad Soroban: validar network passphrase ANTES de firmar.)
-  const expectedPassphrase = stellarNetworkPassphrase()
-  if (challenge.network_passphrase !== expectedPassphrase) {
+  if (challenge.network_passphrase !== stellarNetworkPassphrase()) {
     throw new Error('La red del challenge no coincide con la configurada. No se firmó nada.')
   }
+  return challenge.transaction
+}
 
-  const signedXdr = await pollarSignSep10Challenge(client, {
-    address: publicKey,
-    challengeXdr: challenge.transaction,
-    networkPassphrase: expectedPassphrase,
-    ...challengeDomains(challenge.transaction, expectedPassphrase, publicKey),
-  })
-
+async function exchange(signedXdr: string, publicKey: string, mode?: 'account'): Promise<string> {
   const tokenRes = await fetch('/api/auth/sep10', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ transaction: signedXdr }),
+    body: JSON.stringify({ transaction: signedXdr, ...(mode ? { mode } : {}) }),
   })
   const token = (await tokenRes.json().catch(() => ({}))) as TokenResponse
   if (!tokenRes.ok || !token.token) {
     throw new Error(token.error || 'No se pudo validar tu firma.')
   }
-
   setSeyfAuthToken(token.token, token.account ?? publicKey, token.expires_in ?? 86_400)
   return token.token
+}
+
+async function mintToken(client: PollarClient, publicKey: string): Promise<string | null> {
+  const passphrase = stellarNetworkPassphrase()
+
+  // 1) SEP-10 estándar (wallets que Pollar firma del lado del servidor).
+  const challengeXdr = await fetchChallenge(publicKey)
+  let signedXdr: string | null = null
+  try {
+    signedXdr = await pollarSignSep10Challenge(client, {
+      address: publicKey,
+      challengeXdr,
+      ...challengeDomains(challengeXdr, passphrase, publicKey),
+    })
+  } catch (e) {
+    console.info('[sep10] SEP-10 estándar no disponible, uso prueba de cuenta:', e instanceof Error ? e.message : e)
+  }
+  if (signedXdr) return exchange(signedXdr, publicKey)
+
+  // 2) Prueba de cuenta (wallets Turnkey: Pollar solo firma txs cuyo origen es la cuenta).
+  const proofXdr = await fetchChallenge(publicKey, 'account')
+  const signedProof = await pollarSignAccountProof(client, proofXdr, publicKey, passphrase)
+  return exchange(signedProof, publicKey, 'account')
 }
 
 /**
