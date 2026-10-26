@@ -33,10 +33,7 @@
 .intro-word { font-family: var(--font-display), system-ui, sans-serif; font-weight: 700; font-size: 18px; color: #fff; padding-left: .32em; }
 
 .intro-content { position: relative; z-index: 4; padding: 0 24px calc(26px + env(safe-area-inset-bottom)); }
-.intro-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
-  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.intro-chip i { width: 6px; height: 6px; border-radius: 99px; background: #CDFC4A; box-shadow: 0 0 10px #CDFC4A; }
-.intro-title { font-family: var(--font-display), system-ui, sans-serif; font-size: 40px; line-height: 1.02; font-weight: 700; letter-spacing: -0.045em; margin: 16px 0 0; color: #fff; text-wrap: balance; }
+.intro-title { font-family: var(--font-display), system-ui, sans-serif; font-size: 40px; line-height: 1.02; font-weight: 700; letter-spacing: -0.045em; margin: 0; color: #fff; text-wrap: balance; }
 .intro-title span { display: inline-block; white-space: pre; }
 .intro-title .em { color: #CDFC4A; }
 .intro-sub { font-size: 15.5px; line-height: 1.5; color: rgba(255,255,255,.66); margin: 14px 0 0; max-width: 360px; }
@@ -51,6 +48,15 @@
 .intro-btn.ghost { color: #fff; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .intro-btn.ghost:hover { background: rgba(255,255,255,.12); }
 @keyframes onbShine { 0% { transform: translateX(-120%); } 45%, 100% { transform: translateX(120%); } }
+
+/* celulares bajos: todo cabe sin scroll */
+@media (max-height: 700px) {
+  .intro-title { font-size: 34px; }
+  .intro-sub { font-size: 14.5px; margin-top: 10px; }
+  .intro-ctas { margin-top: 20px; }
+  .intro-btn { height: 52px; }
+  .intro-logo svg { width: 124px; height: 142px; }
+}
 
 /* ---------- splash (mientras carga la sesión): los arcos del símbolo se dibujan en bucle ---------- */
 .splash-v2 { position: relative; display: grid; place-items: center; gap: 18px; }

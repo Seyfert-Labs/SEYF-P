@@ -164,9 +164,6 @@ export function IntroScreen({ onStart, onLogin }: { onStart: () => void; onLogin
 
       {/* contenido final */}
       <motion.div className="intro-content" animate={leaving ? { opacity: 0, y: 20, filter: "blur(6px)" } : { opacity: 1 }} transition={{ duration: 0.4 }}>
-        <motion.span className="intro-chip" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={at(2.85, 0.6)}>
-          <i /> 9% anual · pagado diario
-        </motion.span>
         <h1 className="intro-title">
           {TITLE.map((w, i) => (
             <motion.span
