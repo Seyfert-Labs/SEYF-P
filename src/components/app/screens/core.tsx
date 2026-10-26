@@ -30,7 +30,7 @@ import "../onboarding.css";
 import { SEYF_VAULTS_ADDRESS, SEYF_ADVANCE_ADDRESS } from "@/lib/chain";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { stellarTxExplorerUrl as stellarExplorerTxUrl } from "@/lib/etherfuse/stellar-tx-url";
-import { STELLAR_VAULTS_ENABLED } from "@/lib/defindex/vaults";
+import { STELLAR_VAULTS_ENABLED, assetSymbolForPlan } from "@/lib/defindex/vaults";
 
 /* ---------------- ONBOARDING ---------------- */
 // Fases: 0 = Hero, 1 = Quiz de perfil (5 preguntas full-screen)
@@ -130,21 +130,25 @@ export function ScreenHome({ go }: { go: Go }) {
   // Precios reales en MXN de TODOS los activos de la wallet Stellar: Bitso (ticker
   // público por book) para cripto/fiat y quote offramp de Etherfuse para CETES.
   // Sin hardcodeo; genérico para cualquier activo → listo para mainnet.
+  // Activo de cada bóveda (en mainnet, USDC): su saldo viene en esa unidad, no en MXN.
+  const vaultAssets = vaults.map((v) => ({ code: assetSymbolForPlan(v.planId).toUpperCase(), bal: v.bal }));
   const { valueOf: mxnValueOf } = useAssetPricesMxn(
-    stellarAssets.map((a) => a.code),
+    [...new Set([...stellarAssets.map((a) => a.code), ...vaultAssets.map((a) => a.code)])],
     stellar.publicKey,
   );
+  // "En bóveda" en MXN, igual que "Disponible", para poder sumarlos.
+  const savedMxn = vaultAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
   const stellarMxn = stellarAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
   // "Disponible" del hero = valor real en MXN de los activos Stellar (no MXNB de Arbitrum).
   const pesos = realData ? stellarMxn : 48250.4;
   // Patrimonio = un solo dinero en dos estados: Disponible (líquido, no rinde) +
   // En bóveda (invertido, rinde). Co-denominados en MXN, por eso se suman aquí;
   // las divisas/activos Stellar viven aparte en "Otros activos" (otras unidades).
-  const hasVault = totalSaved > 0;
-  const patrimonio = pesos + totalSaved;
+  const hasVault = savedMxn > 0;
+  const patrimonio = pesos + savedMxn;
   // Solo la porción invertida rinde → tasa efectiva sobre el patrimonio total,
   // para que el número crezca en vivo a la velocidad real (no a la de la bóveda).
-  const blendedApy = hasVault && patrimonio > 0 ? (weightedApy * totalSaved) / patrimonio : 0;
+  const blendedApy = hasVault && patrimonio > 0 ? (weightedApy * savedMxn) / patrimonio : 0;
   // El adelanto tiene su propia pestaña (vault USDC + `seyf_advance`).
   const onAdvance = () => go("adelanto");
 
@@ -190,7 +194,7 @@ export function ScreenHome({ go }: { go: Go }) {
                 <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--txt-muted)", fontWeight: 700 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 3, background: "var(--accent-2)" }} /> En bóveda
                 </span>
-                <GrowingAmount base={totalSaved} apy={weightedApy} size={16} align="left" color="#c4b5fd" id="home-boveda" />
+                <GrowingAmount base={savedMxn} apy={weightedApy} size={16} align="left" color="#c4b5fd" id="home-boveda" />
               </div>
             </div>
           )}
@@ -228,7 +232,7 @@ export function ScreenHome({ go }: { go: Go }) {
             {totalSaved > 0 ? (
               <>
                 <div style={{ marginTop: 6 }}>
-                  <GrowingAmount base={totalSaved} apy={weightedApy} size={26} align="left" color="#fff" id="home-alcancia" />
+                  <GrowingAmount base={savedMxn} apy={weightedApy} size={26} align="left" color="#fff" id="home-alcancia" />
                 </div>
                 <p className="st-s">Creciendo ahora mismo, segundo a segundo.</p>
               </>
@@ -303,7 +307,7 @@ export function ScreenHome({ go }: { go: Go }) {
         {/* ── 4. PROYECCIÓN — hasta el fondo, expandida e ilustrativa. Se coloca al
               final (y separada de "Mi ahorro") para no confundirse con un saldo de bóveda. ── */}
         <div className="sec-head" style={{ marginTop: 26 }}><h3>Proyección a futuro</h3></div>
-        <ProjectionCard current={totalSaved} apy={profileApy} />
+        <ProjectionCard current={savedMxn} apy={profileApy} />
 
       </div>
       <div className="scroll-bottom" />
