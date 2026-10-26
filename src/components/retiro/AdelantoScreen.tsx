@@ -13,6 +13,7 @@ import { BetaNote, ErrorBox, Row, TxList, useTxRunner } from './parts'
 import ScaleQuote from './ScaleQuote'
 import { DEFAULT_DECIMALS, formatDate, formatUnits, parseUnits, toBigInt, toDate } from './units'
 import type { RetiroCtx } from './types'
+import '@/components/app/app-v2.css'
 
 /** Plazo de la beta si el contrato no manda sus parámetros. */
 const MIN_DAYS = 1
@@ -140,14 +141,31 @@ function QuoteAndOpen({
     )
   }
 
+  // Atajos de plazo dentro del rango del contrato; usan el mismo `setDays` que la barra.
+  const presets = [7, 15, 30].filter((d) => d >= minDays && d <= maxDays)
+
   return (
-    <div className="card">
-      <p className="modal-sub" style={{ margin: 0 }}>
-        Recibe hoy parte del rendimiento futuro de tu ahorro. Tu capital no se toca, pero tus acciones quedan
-        bloqueadas hasta que repagues o hasta que el rendimiento cubra el adelanto.
-      </p>
+    <div className="card adv-quote">
+      {/* Monto grande al centro: lo que recibes hoy con el plazo elegido. */}
+      <div className="aq-amt">
+        <p className="aq-k">Recibes hoy</p>
+        <div className="aq-v num">
+          {quoting ? <span className="spin" /> : quote ? formatUnits(adv, decimals) : '—'}
+          <span className="aq-cur">USDC</span>
+        </div>
+        <p className="aq-s">Monto real de la beta, cotizado por el contrato</p>
+      </div>
 
       <span className="field-label">Plazo: {days} {days === 1 ? 'día' : 'días'}</span>
+      {presets.length > 0 && (
+        <div className="aq-presets" role="group" aria-label="Plazos rápidos">
+          {presets.map((d) => (
+            <button key={d} type="button" className={d === days ? 'on' : undefined} onClick={() => setDays(d)}>
+              {d} días
+            </button>
+          ))}
+        </div>
+      )}
       <input
         type="range"
         min={minDays}
@@ -155,7 +173,7 @@ function QuoteAndOpen({
         step={1}
         value={days}
         onChange={(e) => setDays(Number(e.target.value))}
-        style={{ width: '100%', accentColor: 'var(--accent)' }}
+        style={{ width: '100%', accentColor: 'var(--accent)', marginTop: 12 }}
         aria-label="Plazo del adelanto en días"
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xxs)', color: 'var(--txt-dim)' }}>
@@ -165,16 +183,12 @@ function QuoteAndOpen({
 
       <div style={{ marginTop: 12 }}>
         <Row label="Ahorro que se bloquea" value={quote ? `${formatUnits(toBigInt(quote.value), decimals)} USDC` : '—'} hint={`${formatUnits(shares, decimals, 0)} acciones del vault`} />
-        <Row
-          label="Adelanto que recibes"
-          value={quoting ? <span className="spin" /> : quote ? <span style={{ color: 'var(--accent)' }}>{formatUnits(adv, decimals)} USDC</span> : '—'}
-          hint="Monto real de la beta, cotizado por el contrato"
-        />
+        <Row label="Tu capital" value="No se toca" hint="Queda apartado hasta que repagues o el rendimiento cubra el adelanto" />
       </div>
       <ErrorBox error={quoteError} />
 
-      <button className="btn btn-primary" style={{ marginTop: 16 }} disabled={Boolean(busy) || quoting || !quote || adv <= BigInt(0)} onClick={() => void open()}>
-        {busy ? <span className="spin" /> : 'Pedir adelanto'}
+      <button className="btn btn-primary aq-cta" disabled={Boolean(busy) || quoting || !quote || adv <= BigInt(0)} onClick={() => void open()}>
+        {busy ? <span className="spin" /> : <><Icon name="bolt" size={18} /> Pedir adelanto</>}
       </button>
 
       <ScaleQuote days={days} />
@@ -228,7 +242,7 @@ function OpenPosition({
   return (
     <div className="card glow">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-2-soft)', color: '#c4b5fd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-3)', color: 'var(--txt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="lock" size={20} />
         </span>
         <div style={{ flex: 1 }}>

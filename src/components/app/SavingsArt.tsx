@@ -1,77 +1,33 @@
 "use client";
 
-/* Ilustraciones animadas del ahorro: la alcancía (monedas que entran y
-   rendimiento que "brota") y la caja fuerte con dial de cada bóveda.
+/* Ilustraciones animadas del ahorro: barras de crecimiento y la caja
+   fuerte con dial de cada bóveda.
    SVG + keyframes CSS (app-v2.css): sin JS por frame y respetan
    prefers-reduced-motion. Son decorativas: aria-hidden. */
 import React, { useId } from "react";
 
-/** Alcancía violeta: caen monedas por la ranura y salen moneditas de rendimiento.
-    `live` = hay ahorro rindiendo (muestra las monedas "+"). */
-export function PiggyBank({ size = 140, live = true }: { size?: number; live?: boolean }) {
-  const id = useId().replace(/:/g, "");
+/** Barras de crecimiento: columnas sólidas que suben una tras otra y una
+    línea que se dibuja encima. `live` = hay ahorro rindiendo (la última
+    barra va en lima y late el punto final). */
+export function GrowthBars({ size = 120, live = true }: { size?: number; live?: boolean }) {
+  const bars = [30, 44, 58, 76, 98];
   return (
-    <svg className="piggy" viewBox="0 0 200 170" width={size} height={size * 0.85} aria-hidden>
-      <defs>
-        <linearGradient id={`pb-${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#B79BFF" />
-          <stop offset="0.55" stopColor="#8B5CF6" />
-          <stop offset="1" stopColor="#5B32C9" />
-        </linearGradient>
-        <radialGradient id={`pc-${id}`} cx="0.35" cy="0.3" r="0.8">
-          <stop offset="0" stopColor="#F1FFC4" />
-          <stop offset="0.5" stopColor="#C8FF4D" />
-          <stop offset="1" stopColor="#8DBB1F" />
-        </radialGradient>
-      </defs>
-
-      {/* monedas que caen a la ranura */}
-      {[0, 1, 2].map((i) => (
-        <g key={i} className={`pig-drop d${i}`}>
-          <ellipse cx={99 + (i - 1) * 3} cy="20" rx="11" ry="11" fill={`url(#pc-${id})`} stroke="#6E9A12" strokeWidth="1.5" />
-          <text x={99 + (i - 1) * 3} y="24.5" textAnchor="middle" fontSize="12" fontWeight="900" fill="#3D5508">$</text>
-        </g>
+    <svg className={`growth${live ? " live" : ""}`} viewBox="0 0 132 120" width={size} height={size * (120 / 132)} aria-hidden>
+      <line x1="4" y1="114" x2="128" y2="114" stroke="#2a2638" strokeWidth="2" strokeLinecap="round" />
+      {bars.map((h, i) => (
+        <rect
+          key={i}
+          className={`gb b${i}`}
+          x={8 + i * 24}
+          y={110 - h}
+          width="16"
+          height={h}
+          rx="5"
+          fill={i === bars.length - 1 ? (live ? "#C8FF4D" : "#3a3550") : i >= 3 ? "#4a4560" : "#2f2b40"}
+        />
       ))}
-
-      <g className="pig-body">
-        {/* sombra */}
-        <ellipse cx="100" cy="158" rx="58" ry="6" fill="rgba(0,0,0,.35)" />
-        {/* patas */}
-        <rect x="58" y="128" width="16" height="24" rx="7" fill="#6A3FDB" />
-        <rect x="80" y="132" width="16" height="22" rx="7" fill="#5B32C9" />
-        <rect x="112" y="132" width="16" height="22" rx="7" fill="#5B32C9" />
-        <rect x="132" y="128" width="16" height="24" rx="7" fill="#6A3FDB" />
-        {/* cola */}
-        <path d="M40 98c-12-2-14-14-5-16 7-1 7 9 0 9" fill="none" stroke="#8B5CF6" strokeWidth="5" strokeLinecap="round" />
-        {/* cuerpo */}
-        <ellipse cx="100" cy="100" rx="64" ry="46" fill={`url(#pb-${id})`} />
-        {/* oreja */}
-        <path d="M128 60l14-18 6 26z" fill="#7A4DEB" />
-        <path d="M132 60l9-11 3 15z" fill="#C4B5FD" opacity=".6" />
-        {/* hocico */}
-        <ellipse cx="162" cy="104" rx="14" ry="12" fill="#A88BFA" />
-        <ellipse cx="157.5" cy="104" rx="2.4" ry="3.4" fill="#4C2AA8" />
-        <ellipse cx="166.5" cy="104" rx="2.4" ry="3.4" fill="#4C2AA8" />
-        {/* ojo + brillo */}
-        <circle className="pig-eye" cx="140" cy="86" r="4.2" fill="#1B0F3D" />
-        <circle cx="141.4" cy="84.6" r="1.3" fill="#fff" />
-        {/* ranura */}
-        <rect x="86" y="55" width="28" height="6" rx="3" fill="#2A1566" />
-        {/* brillo del cuerpo */}
-        <ellipse cx="78" cy="80" rx="22" ry="10" fill="#fff" opacity=".18" transform="rotate(-18 78 80)" />
-        {/* SEYF en la panza */}
-        <circle cx="96" cy="108" r="13" fill="#C8FF4D" opacity=".95" />
-        <text x="96" y="113" textAnchor="middle" fontSize="14" fontWeight="900" fill="#2A3D06">$</text>
-      </g>
-
-      {/* rendimiento: moneditas que brotan */}
-      {live &&
-        [0, 1, 2].map((i) => (
-          <g key={i} className={`pig-yield y${i}`}>
-            <circle cx={60 + i * 34} cy="64" r="7" fill={`url(#pc-${id})`} />
-            <text x={60 + i * 34} y="67.5" textAnchor="middle" fontSize="9" fontWeight="900" fill="#3D5508">+</text>
-          </g>
-        ))}
+      <path className="gb-line" d="M16 72 L40 58 L64 46 L88 28 L112 8" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" pathLength={1} />
+      <circle className="gb-dot" cx="112" cy="8" r="4.5" fill="#fff" />
     </svg>
   );
 }
