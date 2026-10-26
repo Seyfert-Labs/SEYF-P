@@ -256,7 +256,10 @@ export function useStellarVaults(address?: string) {
       if (!onchain) return;
 
       const vault = vaults.find((x) => x.id === id);
-      const planId = vault ? inferPlanIdForVault(vault) : "conservador";
+      // Si la bóveda no volvió del store (p. ej. Supabase no la guardó), no caer a
+      // "conservador" (DeFindex API, solo testnet): usar el vault USDC si existe.
+      const advPlanId = DEFINDEX_STRATEGIES_LIST.find((s) => isAdvanceVaultPlan(s.planId))?.planId;
+      const planId = vault ? inferPlanIdForVault(vault) : (advPlanId ?? "conservador");
 
       setBusy(true);
       try {
