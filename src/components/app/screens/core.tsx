@@ -88,13 +88,14 @@ export function ScreenHome({ go }: { go: Go }) {
   const [modal, setModal] = useState<null | "deposit" | "send" | "advance" | "more">(null);
   const wallet = useWallet();
   const stellar = useSeyfStellarWallet();
-  const homeTxns = useOnchainTxns(wallet.address);
+  // Movimientos EVM (MXNB en Arbitrum) ya no aplican: SEYF es full Stellar.
+  const homeTxns = useOnchainTxns(undefined);
   const stellarTxns = useStellarTxns(stellar.publicKey ?? undefined);
   const pend = usePendingTxns(wallet.address);
   const conv = useConversions(wallet.address);
   // Riel correcto (Stellar/DeFindex o EVM) para que "En bóveda" del home coincida
   // con el saldo real reconciliado de la pantalla de Ahorro (mismo hook, misma fuente).
-  const { vaults, totalSaved, onchain } = useVaultsRail(wallet.address);
+  const { vaults, totalSaved, reload: reloadVaults } = useVaultsRail(wallet.address);
   const kyc = useKycStatus();
   const refreshBal = wallet.refreshBalance;
 
@@ -144,19 +145,9 @@ export function ScreenHome({ go }: { go: Go }) {
   // Solo la porción invertida rinde → tasa efectiva sobre el patrimonio total,
   // para que el número crezca en vivo a la velocidad real (no a la de la bóveda).
   const blendedApy = hasVault && patrimonio > 0 ? (weightedApy * totalSaved) / patrimonio : 0;
-  // vaultId numérico para el adelanto (solo válido en modo on-chain).
-  // Adelanto: es POR bóveda. Desde Home el usuario no está posicionado en ninguna,
-  // así que solo adelantamos directo si hay UNA sola bóveda (no ambiguo). Con varias,
-  // lo mandamos a Ahorro a elegir/posicionarse en una y adelantar desde su detalle.
-  const advanceVault = onchain && vaults.length === 1 ? vaults[0] : undefined;
-  const advanceVaultId = advanceVault ? parseInt(advanceVault.id) : undefined;
-  const onAdvance = () => {
-    if (onchain && vaults.length > 1) {
-      go("bovedas"); // varias bóvedas → elige en cuál posicionarte
-    } else {
-      setModal("advance"); // 0 o 1 bóveda → modal directo (maneja el caso sin ahorro)
-    }
-  };
+  // El adelanto es sobre el ahorro para el retiro (vault USDC + `seyf_advance`):
+  // una sola posición por cuenta, así que el modal abre directo desde el Inicio.
+  const onAdvance = () => setModal("advance");
 
   return (
     <div className="screen screen-enter">
@@ -301,16 +292,11 @@ export function ScreenHome({ go }: { go: Go }) {
       </div>
       <div className="scroll-bottom" />
 
-      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} /></Portal>}
+      {modal === "deposit" && <Portal><DepositModal onClose={() => setModal(null)} onGoSavings={() => go("bovedas")} onSuccess={() => { refreshBal(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} /></Portal>}
       {modal === "send" && <Portal><SendModal onClose={() => setModal(null)} onSuccess={() => { refreshBal(); homeTxns.refresh(); void stellarTxns.refresh(); if (stellar.authenticated) void stellar.refreshBalanceAfterTx(); }} maxAmount={realData ? wallet.balance : undefined} /></Portal>}
       {modal === "advance" && (
         <Portal>
-          <LiquidityAdvanceModal
-            saved={advanceVault?.bal ?? 0}
-            apy={advanceVault?.apy ?? weightedApy}
-            vaultId={advanceVaultId}
-            onClose={() => setModal(null)}
-          />
+          <LiquidityAdvanceModal onClose={() => { setModal(null); void reloadVaults(); }} onGoSavings={() => go("bovedas")} />
         </Portal>
       )}
       {modal === "more" && <Portal><MoreSheet onClose={() => setModal(null)} /></Portal>}

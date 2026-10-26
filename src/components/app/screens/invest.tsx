@@ -19,8 +19,8 @@ import { useDefindexStrategies, type DefindexStrategyLive } from "@/hooks/useDef
 import { useStellarConnect } from "../StellarConnectGate";
 import { LiquidityAdvanceModal } from "../LiquidityAdvanceModal";
 import { Portal } from "../Portal";
-import { useAdvance } from "@/hooks/useAdvance";
-import { explorerBase } from "@/lib/chain";
+import { useAppRetiro } from "../RetiroContext";
+import { toBigInt, unitsToNumber } from "@/components/retiro/units";
 import { stellarTxExplorerUrl } from "@/lib/etherfuse/stellar-tx-url";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { tradableSdexAssets, sdexAssetByCode, type SdexAsset } from "@/lib/sdex/assets";
@@ -707,7 +707,7 @@ function CreateVaultModalEvm({
 /* ---------------- VAULT DETAIL ---------------- */
 export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
   const wallet = useWallet();
-  const { vaults, updateBalance, removeVault, busy, onchain, limits } = useVaultsRail(wallet.address);
+  const { vaults, updateBalance, removeVault, reload, busy, onchain, limits } = useVaultsRail(wallet.address);
   const { byPlanId } = useDefindexStrategies();
   const ctxV = ctx as UserVault | undefined;
   const v = vaults.find((x) => x.id === ctxV?.id) ?? ctxV;
@@ -724,10 +724,14 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         : defindexStrategy?.apyTarget ?? 0;
   const vaultAsset = defindexStrategy?.assetSymbol ?? "MXN";
 
-  // vaultId numérico solo cuando estamos on-chain (ids son índices del contrato).
-  // Se calcula antes del early return para no violar reglas de hooks.
-  const numVaultId = onchain && v ? parseInt(v.id) : undefined;
-  const advanceState = useAdvance(wallet.address, numVaultId);
+  // Adelanto (`seyf_advance`): al abrirlo, las acciones del vault pasan al
+  // contrato en garantía, así que el saldo de la bóveda ya es solo lo libre.
+  const retiro = useAppRetiro();
+  const advPos = retiro?.ctx.data.advance.data?.position ?? null;
+  const advStatus = retiro?.ctx.data.advance.data?.unlockStatus ?? null;
+  const isAdvanceVault = Boolean(STELLAR_RAIL && defindexStrategy?.assetSymbol === "USDC");
+  const advanceDebt = isAdvanceVault && advPos ? unitsToNumber(toBigInt(advPos.advance)) : 0;
+  const advanceEscrow = isAdvanceVault && advPos ? unitsToNumber(toBigInt(advStatus?.valueNow ?? advPos.valueAtOpen)) : 0;
   const { ensureConnected } = useStellarConnect();
   // En el riel Stellar se puede abonar/retirar si la vault está configurada,
   // aunque Pollar aún no esté conectada: la conexión se pide al hacer la acción.
@@ -880,7 +884,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         )}
         <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("abonar a tu bóveda")) setAction("abonar"); }} disabled={!canFund || busy}><Icon name="plus" size={18} /> Abonar</button>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("retirar de tu bóveda")) setAction("retirar"); }} disabled={!canFund || busy || (onchain && (v.bal - advanceState.locked) <= 0)}>Retirar</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={async () => { if (await ensureConnected("retirar de tu bóveda")) setAction("retirar"); }} disabled={!canFund || busy || v.bal <= 0}>Retirar</button>
         </div>
         {!canFund && (
           <p style={{ margin: "12px 4px 0", fontSize: 12, color: "var(--txt-dim)", lineHeight: 1.5, textAlign: "center" }}>
@@ -889,11 +893,10 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
               : "Abonar y retirar se activan al conectar el contrato on-chain."}
           </p>
         )}
-        {/* Adelanto — acción de liquidez sobre esta bóveda. Solicitar y repagar
-            viven en su propia pantalla (LiquidityAdvanceModal); aquí solo el acceso.
-            Solo en el riel EVM: en Stellar (DeFindex) el adelanto se hará con Blend. */}
-        {!STELLAR_RAIL && v.bal > 0 && (
-          advanceState.debt > 0 ? (
+        {/* Adelanto — acción de liquidez sobre el ahorro para el retiro. Cotizar,
+            pedir y repagar viven en LiquidityAdvanceModal; aquí solo el acceso. */}
+        {isAdvanceVault && (v.bal > 0 || advanceDebt > 0) && (
+          advanceDebt > 0 ? (
             <button
               className="btn btn-ghost"
               style={{ marginTop: 12, justifyContent: "space-between" }}
@@ -901,7 +904,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
               disabled={busy}
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <Icon name="bolt" size={18} color="var(--warning, #E8A838)" /> Adelanto activo · ${FMT(advanceState.debt, 2)} pendiente
+                <Icon name="bolt" size={18} color="var(--warning, #E8A838)" /> Adelanto activo · {FMT(advanceDebt, 2)} USDC · {FMT(advanceEscrow, 2)} en garantía
               </span>
               <Icon name="chevR" size={16} color="var(--txt-dim)" />
             </button>
@@ -911,7 +914,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             </button>
           )
         )}
-        <button disabled={busy || advanceState.locked > 0} title={advanceState.locked > 0 ? "Repaga tu adelanto para liberar el colateral antes de eliminar la bóveda" : undefined} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy || advanceState.locked > 0 ? "default" : "pointer", opacity: busy || advanceState.locked > 0 ? 0.5 : 1 }}>Eliminar bóveda</button>
+        <button disabled={busy || advanceDebt > 0} title={advanceDebt > 0 ? "Repaga tu adelanto para liberar la garantía antes de eliminar la bóveda" : undefined} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy || advanceDebt > 0 ? "default" : "pointer", opacity: busy || advanceDebt > 0 ? 0.5 : 1 }}>Eliminar bóveda</button>
       </div>
       <div className="scroll-bottom" />
       {action && (
@@ -920,7 +923,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             mode={action}
             vault={v}
             assetSymbol={vaultAsset}
-            locked={advanceState.locked}
+            locked={0}
             maxDeposit={limits?.available}
             cap={limits?.max}
             onClose={() => setAction(null)}
@@ -931,13 +934,31 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
       {advance && (
         <Portal>
           <LiquidityAdvanceModal
-            saved={v.bal}
-            apy={v.apy}
-            vaultId={numVaultId}
-            onClose={() => { setAdvance(false); void advanceState.reload(); }}
+            onClose={() => { setAdvance(false); retiro?.ctx.data.refresh(); void reload(); }}
+            onGoSavings={() => go("bovedas")}
           />
         </Portal>
       )}
+    </div>
+  );
+}
+
+/* ---------------- CONVERTIR · próximamente (mainnet) ---------------- */
+export function ScreenConvertSoon({ go }: { go: Go }) {
+  return (
+    <div className="screen screen-enter">
+      <div className="safe-top" />
+      <SubHeader title="Convertir" go={go} back="card" />
+      <div className="screen-pad">
+        <div className="card" style={{ textAlign: "center", padding: "28px 20px" }}>
+          <Icon name="swap" size={30} color="var(--accent)" />
+          <p style={{ margin: "14px 0 6px", fontWeight: 800, fontSize: 17 }}>Próximamente</p>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            Cambiar entre pesos y dólares digitales llega con la rampa SPEI. Mientras tanto, tu ahorro rinde en tu bóveda.
+          </p>
+          <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => go("bovedas")}>Ir a mis bóvedas</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1277,9 +1298,7 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
   if (done) {
     const isAbono = mode === "abonar";
     const explorerUrl = txHash
-      ? STELLAR_RAIL
-        ? stellarTxExplorerUrl(txHash)
-        : `${explorerBase}/tx/${txHash}`
+      ? stellarTxExplorerUrl(txHash)
       : null;
     return (
       <div className="modal-overlay" onClick={onClose}>

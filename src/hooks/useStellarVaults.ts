@@ -5,6 +5,7 @@ import { usePollar } from "@pollar/react";
 import { store, type StoreVault } from "@/lib/store";
 import { planById } from "@/components/app/data";
 import {
+  DEFINDEX_STRATEGIES as DEFINDEX_STRATEGIES_LIST,
   inferPlanIdForVault,
   inferStrategyForVault,
   strategyByPlanId,
@@ -19,6 +20,33 @@ import { signAndSubmitDefindexXdr } from "@/lib/defindex/sign-and-submit";
 import { pollStellarBalance } from "@/lib/seyf/stellar-balance-refresh";
 import { fundStellarWallet } from "@/lib/seyf/use-ensure-stellar-funding";
 import type { VaultLimits } from "@/lib/chain";
+import { buildSignSubmit, getVaultPosition } from "@/components/retiro/api";
+import { useAppRetiro } from "@/components/app/RetiroContext";
+
+/**
+ * Vault USDC de mainnet (Meru): el mismo que usa `seyf_advance`. Se lee y se
+ * mueve por /api/vault/* (XDR del servidor → firma Pollar → fee-bump del
+ * sponsor), el camino verificado en mainnet. Las demás estrategias (solo
+ * testnet) siguen por la API de DeFindex.
+ */
+const ADVANCE_VAULT = (
+  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_USDC?.trim() ||
+  process.env.NEXT_PUBLIC_DEFINDEX_VAULT_ADDRESS?.trim() ||
+  ""
+).toUpperCase();
+
+const USDC_UNITS = 10 ** 7;
+
+function isAdvanceVaultPlan(planId?: string): boolean {
+  const addr = strategyByPlanId(planId)?.vaultAddress?.toUpperCase();
+  return Boolean(ADVANCE_VAULT && addr && addr === ADVANCE_VAULT);
+}
+
+/** Monto decimal → unidades mínimas (7 decimales), sin pasar por float al firmar. */
+function toUnitsStr(amount: number): string {
+  const [i, f = ""] = Math.abs(amount).toFixed(7).split(".");
+  return (BigInt(i) * BigInt(USDC_UNITS) + BigInt(f.padEnd(7, "0"))).toString();
+}
 
 export type UserVault = StoreVault;
 
@@ -58,11 +86,13 @@ export function useStellarVaults(address?: string) {
   const metaKey = address;
   const publicKey = isAuthenticated ? walletAddress : undefined;
   const onchain = STELLAR_VAULTS_ONCHAIN && Boolean(publicKey);
+  // Sin sesión SEP-10 no se puede leer ni la metadata (/api/db) ni el vault.
+  const sessionOk = useAppRetiro()?.sep10.state === "ok";
 
   const [vaults, setVaults] = useState<UserVault[]>([]);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
-  const limits: VaultLimits | null = null;
+  const limits = null as VaultLimits | null;
 
   const reload = useCallback(async () => {
     if (!metaKey) {
@@ -70,8 +100,36 @@ export function useStellarVaults(address?: string) {
       setReady(true);
       return;
     }
+    if (!sessionOk) return;
     const raw = (await store.listVaults(metaKey)).sort((a, b) => a.createdAt - b.createdAt);
-    const meta = raw.map(normalizeVaultMeta);
+    let meta = raw.map(normalizeVaultMeta);
+
+    // Ahorro en el vault USDC sin bóveda guardada (otro dispositivo, o depositado
+    // desde /retiro): se muestra como "Ahorro para el retiro" en vez de ocultarlo.
+    const advStrategy = DEFINDEX_STRATEGIES_LIST.find((s) => isAdvanceVaultPlan(s.planId));
+    if (onchain && publicKey && advStrategy && !meta.some((v) => v.planId === advStrategy.planId)) {
+      try {
+        const pos = await getVaultPosition(publicKey);
+        if (Number(pos.value) > 0) {
+          const synth = normalizeVaultMeta({
+            id: `v_${Date.now()}`,
+            nm: "Ahorro para el retiro",
+            goal: 0,
+            bal: Number(pos.value) / USDC_UNITS,
+            apy: 0,
+            color: advStrategy.color,
+            planId: advStrategy.planId,
+            strategyId: advStrategy.id,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+          meta = [...meta, synth];
+          void store.upsertVault(metaKey, synth);
+        }
+      } catch {
+        /* sin posición legible no inventamos bóveda */
+      }
+    }
 
     // Persistir planId/strategyId inferidos en bóvedas antiguas.
     await Promise.all(
@@ -101,6 +159,21 @@ export function useStellarVaults(address?: string) {
         }
         // Punto de partida: último saldo conocido (cache) o el persistido en store.
         const lastKnown = cached?.bal ?? (v.bal || 0);
+        if (isAdvanceVaultPlan(planId)) {
+          try {
+            const pos = await getVaultPosition(publicKey!);
+            const bal = Number(pos.value) / USDC_UNITS;
+            onchainBalCache.set(cacheKey, { bal, ts: Date.now() });
+            let updatedAt = v.updatedAt ?? Date.now();
+            if (metaKey && bal !== v.bal) {
+              updatedAt = Date.now();
+              void store.upsertVault(metaKey, { ...v, bal, updatedAt });
+            }
+            return { ...v, bal, updatedAt };
+          } catch {
+            return { ...v, bal: lastKnown };
+          }
+        }
         try {
           const [balRes, infoRes] = await Promise.all([
             fetch(`/api/defindex/balance?publicKey=${publicKey}&planId=${planId}`).then((r) => r.json()),
@@ -129,7 +202,7 @@ export function useStellarVaults(address?: string) {
 
     setVaults(enriched);
     setReady(true);
-  }, [metaKey, publicKey, onchain]);
+  }, [metaKey, publicKey, onchain, sessionOk]);
 
   useEffect(() => {
     // reload() es async: el setState ocurre tras los awaits, no de forma síncrona.
@@ -152,6 +225,9 @@ export function useStellarVaults(address?: string) {
       strategyId?: string;
     }): Promise<UserVault | undefined> => {
       if (!metaKey) return;
+      // Un plan = una posición on-chain: dos bóvedas del mismo plan mostrarían el saldo doble.
+      const same = vaults.find((x) => inferPlanIdForVault(x) === v.planId);
+      if (same) return same;
       if (vaults.length >= MAX_VAULTS) return undefined;
       const base = normalizeVaultMeta({
         id: `v_${Date.now()}`,
@@ -183,6 +259,36 @@ export function useStellarVaults(address?: string) {
 
       setBusy(true);
       try {
+        if (isAdvanceVaultPlan(planId)) {
+          let body:
+            | { action: "deposit"; address: string; amount: string }
+            | { action: "withdraw"; address: string; shares: string };
+          if (delta > 0) {
+            body = { action: "deposit", address: publicKey, amount: toUnitsStr(delta) };
+          } else {
+            // Retiro por monto → acciones, hacia abajo; si pide todo, todas las acciones.
+            const pos = await getVaultPosition(publicKey);
+            const shares = BigInt(pos.shares || "0");
+            const value = BigInt(pos.value || "0");
+            const want = BigInt(toUnitsStr(delta));
+            if (value <= BigInt(0) || shares <= BigInt(0)) throw new Error("No tienes saldo en esta bóveda.");
+            const s = want >= value ? shares : (want * shares) / value;
+            body = { action: "withdraw", address: publicKey, shares: s.toString() };
+          }
+          const hash = await buildSignSubmit(getClient(), publicKey, "/api/vault/build", body);
+          onchainBalCache.delete(`${publicKey}:${planId}`);
+          if (metaKey && vault) {
+            const nextBal = Math.max(0, vault.bal + delta);
+            const patched = { ...vault, bal: nextBal, updatedAt: Date.now() };
+            setVaults((prev) => prev.map((x) => (x.id === id ? patched : x)));
+            await store.upsertVault(metaKey, patched);
+          }
+          // El ledger tarda unos segundos: releer después, sin bloquear el modal.
+          setTimeout(() => void reload(), 5_000);
+          void refreshBalance();
+          return hash;
+        }
+
         // En testnet la wallet Pollar necesita XLM para pagar las fees de la firma.
         // Idempotente: si ya tiene saldo, no vuelve a fondear. Si el fondeo falla
         // (p. ej. friendbot rate-limited con muchas cuentas nuevas), abortamos con
@@ -234,7 +340,7 @@ export function useStellarVaults(address?: string) {
         setBusy(false);
       }
     },
-    [publicKey, onchain, vaults, signAndSubmit, refreshBalance, reload, metaKey],
+    [publicKey, onchain, vaults, signAndSubmit, refreshBalance, reload, metaKey, getClient],
   );
 
   const removeVault = useCallback(
@@ -277,6 +383,7 @@ export function useStellarVaults(address?: string) {
     ensureVault,
     updateBalance,
     removeVault,
+    reload,
     totalSaved,
   };
 }
