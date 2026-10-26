@@ -65,7 +65,7 @@ de transacciones**: usa solo esta tabla.
 | Depósito en Meru (5 USDC) | 46 064 942 acciones; el vault invierte en Blend (evento `supply` del pool) | [fa4cc2eb…](https://stellar.expert/explorer/public/tx/fa4cc2eb5d4f5c0c2198a2ee3d53e8ebc9dc7860381d4523b9bce307d06961bb) | 0.028 |
 | Retiro de Meru (9 213 000 acciones) | 1.0000014 USDC. Salió del pool de Blend porque el vault no tenía saldo ocioso | [082bee22…](https://stellar.expert/explorer/public/tx/082bee220cdde1d072b6d7d8792a6e4d1b53ae152433ac31bd7e225824ec45de) | 0.0027 |
 | `open_advance` a 1 día (36 851 942 acciones) | `V_open` = 39 999 998; adelanto de 547 desde la tesorería; `treasury()` = 19 999 453 | [de3d6629…](https://stellar.expert/explorer/public/tx/de3d6629638af6aea2e96784bfb135073c7b60022d3de47d2e990b0b8e7720dc) | 0.081 |
-| `settle` | pendiente: necesita `V` ≥ 40 000 545 con rendimiento real | — | — |
+| `settle` por el keeper (GitHub Actions, `seyf-keeper-hot`), 2026-10-26 04:22 UTC | el rendimiento real de Blend llevó `V` a 40 000 626 (≥ 40 000 545); posición cerrada y `treasury()` = 20 000 000 (19 999 453 + 547) | [be77ba1e…](https://stellar.expert/explorer/public/tx/be77ba1e080e77d337c45b351226d535982bafb24be2fb9ef022ff58ec5e0e19) | 0.0033 |
 
 Subir el wasm costó 22.36 XLM, que es casi todo el costo. Cada operación del
 contrato cuesta de 0.02 a 0.11 XLM. La CLI necesita `--inclusion-fee 10000`
@@ -83,6 +83,10 @@ Se ejecuta con `.github/workflows/keeper.yml` cada 10 minutos desde `meridian`.
 
 La primera corrida en dry-run encontró el adelanto y respondió `YieldNotCovered`,
 lo que es correcto mientras el rendimiento no lo cubra.
+Cuando el rendimiento cubrió el adelanto, una corrida manual (`dry_run=false`,
+[run 40268641108](https://github.com/Seyfert-Labs/SEYF-P/actions/runs/40268641108))
+liquidó la posición con `settle` (hash arriba). El cron programado no se había
+disparado solo; el despacho manual es el respaldo.
 
 ### Riesgos del vault elegido
 
