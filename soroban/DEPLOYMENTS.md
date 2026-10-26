@@ -113,7 +113,7 @@ disparado solo; el despacho manual es el respaldo.
 
 ### Riesgos del vault elegido
 
-Ver la sección **Riesgos de la beta en mainnet** del [README](../README.md#riesgos-de-la-beta-en-mainnet).
+Ver la sección **Riesgos de la beta en mainnet** del [README en español](../README.es.md#riesgos-de-la-beta-en-mainnet) y [docs/contracts.md](../docs/contracts.md#known-limits-of-the-beta).
 
 ## Testnet (25 de octubre de 2026): tesorería dentro del contrato
 
