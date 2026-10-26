@@ -46,7 +46,9 @@ de transacciones**: usa solo esta tabla.
 - **Activo:** USDC de Circle (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`),
   SAC `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75`.
 - **Parámetros:** `apy_bps` 50, `max_advance_bps` 500, plazo de 1 a 30 días,
-  tope de 1 USDC por usuario y 2 USDC en total, lista de usuarios activa.
+  tope de 1 USDC por usuario y 2 USDC en total. La lista de usuarios se
+  desactivó el 26 de octubre a las 05:23 UTC para que los mentores prueben con
+  sus propias cuentas; los topes siguen.
   - `apy_bps` queda muy por debajo del ~5 % neto medido en Meru. Así el
     rendimiento real cubre el adelanto mucho antes de que termine el plazo.
 
@@ -66,6 +68,27 @@ de transacciones**: usa solo esta tabla.
 | Retiro de Meru (9 213 000 acciones) | 1.0000014 USDC. Salió del pool de Blend porque el vault no tenía saldo ocioso | [082bee22…](https://stellar.expert/explorer/public/tx/082bee220cdde1d072b6d7d8792a6e4d1b53ae152433ac31bd7e225824ec45de) | 0.0027 |
 | `open_advance` a 1 día (36 851 942 acciones) | `V_open` = 39 999 998; adelanto de 547 desde la tesorería; `treasury()` = 19 999 453 | [de3d6629…](https://stellar.expert/explorer/public/tx/de3d6629638af6aea2e96784bfb135073c7b60022d3de47d2e990b0b8e7720dc) | 0.081 |
 | `settle` por el keeper (GitHub Actions, `seyf-keeper-hot`), 2026-10-26 04:22 UTC | el rendimiento real de Blend llevó `V` a 40 000 626 (≥ 40 000 545); posición cerrada y `treasury()` = 20 000 000 (19 999 453 + 547) | [be77ba1e…](https://stellar.expert/explorer/public/tx/be77ba1e080e77d337c45b351226d535982bafb24be2fb9ef022ff58ec5e0e19) | 0.0033 |
+
+| `set_allowed(GAG2HATH…, true)` | — | [d8ee1073…](https://stellar.expert/explorer/public/tx/d8ee10735237f11e50e63c52cb45c96ba385b27782c2f619f1d37d31d749d8ea) | 0.023 |
+| `set_params` con `allowlist_on` = `false` | mismos topes; cualquier cuenta puede pedir adelanto | [aea3eec0…](https://stellar.expert/explorer/public/tx/aea3eec00d6f6ea8346db6908f22df108882f745786250083e22c84eb12a7c8a) | 0.0005 |
+
+### Ciclo desde la app (www.seyf.app/app, wallet Pollar)
+
+Usuario: `GAG2HATHWNXEQEOHUNBDHPBI5P2E6QF2XTCV6ECKIWBJLYJIDGQSGRK2`, wallet de
+Pollar cosignada (Turnkey 2 de 2) y creada al iniciar sesión con correo. El
+usuario firmó cada paso en el diálogo de Pollar. El sponsor pagó la comisión con
+fee-bump, así que la cuenta del usuario sigue con 0 XLM.
+
+| Paso | Resultado | Transacción | Comisión (XLM) |
+| --- | --- | --- | --- |
+| Habilitar USDC | trustline patrocinada por `seyf-sponsor-hot` | [d8d98a95…](https://stellar.expert/explorer/public/tx/d8d98a958538a4183878f65eaf0863650eec9b232db714870cceb466aca9a840) | 0.00004 |
+| Admin envía 5 USDC al usuario (CLI) | — | [04b40786…](https://stellar.expert/explorer/public/tx/04b40786818702730c9282cd8779e087009af6c2f4a1d279d7127f00d2511520) | 0.0007 |
+| Abonar 5 USDC a Meru | 46 063 753 acciones; el vault invierte en el pool de Blend | [23572a98…](https://stellar.expert/explorer/public/tx/23572a98345f5973a144cd40422c22f815ac8d76b89e68e188cbcd8767a858d1) | 0.028 |
+| Pedir adelanto (`open_advance`) | 20 547 (0.0020547 USDC) de la tesorería al usuario | [ab42eac9…](https://stellar.expert/explorer/public/tx/ab42eac9fbd19885cbe6f7fa47a035531ff794f387fd3f5a171ce0fb4586606c) | 0.057 |
+| Repagar (`repay`) | 20 547 de vuelta a la tesorería; posición cerrada, acciones liberadas y `treasury()` = 20 000 000 | [5cfd5592…](https://stellar.expert/explorer/public/tx/5cfd5592482eac2cdb08a077df8b7e40696e1b2c24d284e1aaef98445bf4da80) | 0.0015 |
+
+Al cerrar (06:24 UTC) la posición en Meru valía 50 000 093, ya por encima de los
+50 000 004 del abono: rendimiento real de Blend.
 
 Subir el wasm costó 22.36 XLM, que es casi todo el costo. Cada operación del
 contrato cuesta de 0.02 a 0.11 XLM. La CLI necesita `--inclusion-fee 10000`
