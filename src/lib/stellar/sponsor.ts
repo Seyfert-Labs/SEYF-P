@@ -89,11 +89,13 @@ function betaAllowlist(): Set<string> | null {
 }
 
 /**
- * Solo las cuentas de `SEYF_BETA_ALLOWLIST` reciben patrocinio. Sin la
- * variable, el patrocinio queda abierto únicamente en testnet.
+ * Solo las cuentas de `SEYF_BETA_ALLOWLIST` reciben patrocinio. Con `*` queda
+ * abierto a cualquier cuenta (demo abierta: el gasto lo acota el saldo del
+ * sponsor y el rate limit). Sin la variable, abierto únicamente en testnet.
  */
 export function assertSponsorAllowed(account: string): void {
   const allow = betaAllowlist()
+  if (allow?.has('*')) return
   if (allow ? allow.has(account) : stellarWalletNetworkFromEnv() === 'testnet') return
   throw new SponsorForbiddenError('Tu cuenta no está en la beta. Pide acceso al equipo de SEYF.')
 }

@@ -10,7 +10,19 @@
  */
 
 import 'server-only'
-import { Horizon, Keypair, NotFoundError, StrKey, WebAuth } from '@stellar/stellar-sdk'
+import {
+  Account,
+  BASE_FEE,
+  Horizon,
+  Keypair,
+  NotFoundError,
+  Operation,
+  StrKey,
+  TransactionBuilder,
+  WebAuth,
+  type Transaction,
+} from '@stellar/stellar-sdk'
+import { randomBytes } from 'node:crypto'
 import { horizonUrl, stellarNetworkPassphrase } from '@/lib/stellar/network'
 import { signSeyfJwt, verifySeyfJwt, type SeyfJwtPayload } from '@/lib/stellar/jwt'
 
@@ -154,6 +166,102 @@ export async function verifySep10Challenge(signedXdr: string): Promise<string> {
     cfg.webAuthDomain,
   )
   return clientAccountID
+}
+
+/*
+ * Prueba de cuenta para wallets que solo firman transacciones de su propia cuenta
+ * (Pollar con Turnkey rechaza un challenge SEP-10 estándar con SOURCE_MISMATCH,
+ * porque ahí el origen es la cuenta del servidor). Misma idea que SEP-10 con el
+ * origen invertido: la tx es de la cuenta del usuario, con secuencia 0 (ninguna
+ * cuenta real la acepta, así que no se puede enviar a la red), el nonce y los
+ * dominios en `manageData`, y la firma del servidor para verificarla sin estado.
+ */
+
+/** Challenge de prueba de cuenta: origen = la cuenta del usuario, secuencia 0. */
+export function buildAccountProofChallenge(account: string): { transaction: string; networkPassphrase: string } {
+  if (!StrKey.isValidEd25519PublicKey(account)) {
+    throw new Error('Cuenta Stellar inválida.')
+  }
+  const cfg = sep10Config()
+  const networkPassphrase = stellarNetworkPassphrase()
+  const now = Math.floor(Date.now() / 1000)
+  // "-1" → el builder la sube a secuencia 0, igual que el challenge SEP-10 estándar.
+  const tx = new TransactionBuilder(new Account(account, '-1'), {
+    fee: BASE_FEE,
+    networkPassphrase,
+    timebounds: { minTime: now, maxTime: now + CHALLENGE_TIMEOUT_SEC },
+  })
+    .addOperation(
+      Operation.manageData({
+        name: `${cfg.homeDomain} auth`,
+        value: randomBytes(48).toString('base64'),
+        source: account,
+      }),
+    )
+    .addOperation(Operation.manageData({ name: 'web_auth_domain', value: cfg.webAuthDomain, source: account }))
+    .build()
+  tx.sign(cfg.serverKeypair)
+  return { transaction: tx.toXDR(), networkPassphrase }
+}
+
+function hasSignature(tx: Transaction, publicKey: string): boolean {
+  const kp = Keypair.fromPublicKey(publicKey)
+  const hash = tx.hash()
+  return tx.signatures.some((s) => s.hint().equals(kp.signatureHint()) && kp.verify(hash, s.signature()))
+}
+
+/** Verifica la prueba de cuenta firmada y devuelve la cuenta. */
+export async function verifyAccountProof(signedXdr: string): Promise<string> {
+  const cfg = sep10Config()
+  const networkPassphrase = stellarNetworkPassphrase()
+  const parsed = TransactionBuilder.fromXDR(signedXdr, networkPassphrase)
+  if (!('sequence' in parsed)) throw new Error('No es una transacción simple.')
+  const tx = parsed as Transaction
+  const account = tx.source
+
+  if (!StrKey.isValidEd25519PublicKey(account)) throw new Error('Origen inválido.')
+  if (tx.sequence !== '0') throw new Error('La secuencia debe ser 0.')
+
+  const now = Math.floor(Date.now() / 1000)
+  const min = Number(tx.timeBounds?.minTime ?? 0)
+  const max = Number(tx.timeBounds?.maxTime ?? 0)
+  if (!max || max - min > CHALLENGE_TIMEOUT_SEC || now < min - 60 || now > max) {
+    throw new Error('Challenge vencido o con tiempos inválidos.')
+  }
+
+  const [authOp, domainOp, ...rest] = tx.operations
+  if (
+    rest.length > 0 ||
+    authOp?.type !== 'manageData' ||
+    authOp.name !== `${cfg.homeDomain} auth` ||
+    authOp.source !== account ||
+    !authOp.value ||
+    authOp.value.length !== 64 ||
+    domainOp?.type !== 'manageData' ||
+    domainOp.name !== 'web_auth_domain' ||
+    domainOp.source !== account ||
+    domainOp.value?.toString('utf8') !== cfg.webAuthDomain
+  ) {
+    throw new Error('Operaciones del challenge inválidas.')
+  }
+
+  // Lo emitió este servidor (nonce auténtico) y lo firmó la llave de la cuenta.
+  if (!hasSignature(tx, cfg.serverKeypair.publicKey())) throw new Error('Falta la firma del servidor.')
+  if (!hasSignature(tx, account)) throw new Error('Falta la firma de la cuenta.')
+
+  // Cuenta multisig: una firma suelta de la master key no basta.
+  const server = new Horizon.Server(horizonUrl())
+  try {
+    const acc = await server.loadAccount(account)
+    const master = acc.signers.find((sg) => sg.key === account)
+    if (!master || master.weight < Math.max(1, acc.thresholds.med_threshold)) {
+      throw new Error('La llave de la cuenta no alcanza el umbral para autenticarse.')
+    }
+  } catch (e) {
+    const status = (e as { response?: { status?: number } })?.response?.status
+    if (!(e instanceof NotFoundError) && status !== 404) throw e
+  }
+  return account
 }
 
 /** Emite la sesión SEYF para una cuenta ya verificada. */
