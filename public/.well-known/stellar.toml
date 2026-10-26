@@ -7,8 +7,8 @@ VERSION="2.0.0"
 # Red pública (mainnet). En testnet usar: "Test SDF Network ; September 2015"
 NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 
-# Llave PÚBLICA del servidor SEP-10 (`seyf-sep10`, derivada de SEP10_SERVER_SECRET; no es secreta).
-SIGNING_KEY="GAOG5JOMKZTTVQWBJIFDMOGCEVAGP435LSRQDXXSD3QGB4MGFFRCMFIS"
+# Llave PÚBLICA del servidor SEP-10 (`seyf-sep10-hot`, derivada de SEP10_SERVER_SECRET; no es secreta).
+SIGNING_KEY="GCICR4ID7D6MSU4N7ZST3U7YCSRO6YCDOUKWAYZHHR6JD4BWKC46LQ5E"
 
 # SEP-10 Web Auth — src/app/api/auth/sep10.
 WEB_AUTH_ENDPOINT="https://seyf-p.vercel.app/api/auth/sep10"
