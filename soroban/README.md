@@ -43,9 +43,10 @@ CI: `.github/workflows/contracts.yml` corre las pruebas, compila el wasm y lo su
 
 ### Despliegues
 
-Testnet y ciclo completo con hashes: [`DEPLOYMENTS.md`](DEPLOYMENTS.md).
+Mainnet: `CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH` sobre el vault Meru de
+DeFindex. Testnet, mainnet y el ciclo con hashes: [`DEPLOYMENTS.md`](DEPLOYMENTS.md).
 
-### Antes de mainnet
+### Beta en mainnet
 
 - Sin auditoría: topes bajos (beta: 1 USDC por usuario, 2 USDC en total), lista de permitidos
   encendida y pausa disponible.

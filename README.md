@@ -33,6 +33,7 @@ Construida sobre **Stellar/Soroban**, **DeFindex**, **Etherfuse** y **Pollar**.
 - [Arranque](#arranque)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Seguridad](#seguridad)
+- [Riesgos de la beta en mainnet](#riesgos-de-la-beta-en-mainnet)
 - [Roadmap](#roadmap)
 
 ---
@@ -378,11 +379,35 @@ src/
 
 ---
 
+## Riesgos de la beta en mainnet
+
+El adelanto de rendimiento (`/retiro`) corre en mainnet con el contrato
+`seyf_advance` (`CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH`) sobre
+el vault USDC **Meru** de DeFindex (`CCA2ZJP5BVRXYTQH4FAGHCAUMRYCXVC4CRYC2NXHWMR7TIVX36U7F5HR`).
+Por tiempo se usa un vault de terceros en lugar de uno propio, y eso trae
+riesgos que no controlamos. Los siguientes datos se leyeron de la cadena el
+26-oct-2026; los detalles y los hashes están en [`soroban/DEPLOYMENTS.md`](soroban/DEPLOYMENTS.md).
+
+| Riesgo | Qué vimos | Mitigación en la beta |
+| --- | --- | --- |
+| **Meru es actualizable por una sola llave** | El vault tiene `Upgradable = true`. Su `Manager` es el contrato `CBXBQ7SI5UOCDFGUKBAQS4HIZOUSVTSJYY4L2ZJRBHIYCKDDC3PQ3QTB`, que tiene `upgrade_vault`, `lock_fees` y `rescue_vault`. El admin de ese contrato es `GD6MNC3WFIZ6HSSUTYWEHJCFFNHR4Z6XX3NF6V2254NLQAJFZXEIBZF5`, una cuenta con un solo firmante. | Topes de 1 USDC por usuario y 2 USDC en total, más lista de usuarios permitidos. |
+| **Segunda estrategia en Meru** | Además de "USDC Autocompound Blend Fixed", Meru tiene registrada "USDC Autocompound Blend YieldBlox" (`CCSRX5E4337QMCMC3KO3RDFYI57T5NZV5XB3W3TWE4USCASKGL5URKJL`). Hoy no tiene fondos asignados, pero el rebalance manager (`GAYBFYMAQU7GSHSHNX7RBUE2KSSRQBME7XHP5BONAVKXI5BSUOQXTWPL`) puede mover fondos a otro pool con un riesgo distinto. | Revisar `fetch_total_managed_funds` antes de cada demo. Pausar `seyf_advance` si cambia la asignación. |
+| **Pool Blend Fixed en On-Ice** | El pool `CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD` está en estado 3 (On-Ice): no acepta préstamos nuevos, pero sí depósitos y retiros. Utilización de ~74 %. El backstop casi no tiene cobertura de primera pérdida. | Se probó en mainnet un retiro de Meru que salió del pool ([082bee22…](https://stellar.expert/explorer/public/tx/082bee220cdde1d072b6d7d8792a6e4d1b53ae152433ac31bd7e225824ec45de)). |
+| **El APY puede bajar** | Meru rindió ~5.05 % neto en 7 días (comisión del vault de 12.14 %). Si no hay préstamos nuevos, el rendimiento cae a medida que se pagan los actuales. | `apy_bps` = 50 (0.5 %), muy por debajo de lo medido. El admin lo ajusta con `set_params`. |
+| **`seyf_advance` sin auditoría** | Contrato propio, sin `upgrade`. | Pausa disponible. `repay` funciona también en pausa. Cualquiera puede llamar `settle`. |
+
+**Siguiente paso:** un vault propio de DeFindex no actualizable (`upgradable = false`),
+con roles bajo multisig de SEYF y estrategias elegidas por nosotros.
+
+---
+
 ## Roadmap
 
 | Prioridad | Feature | Detalle |
 |:---------:|---------|---------|
-| 🔴 | **Mainnet** | Migrar vaults DeFindex a pubnet, Pollar mainnet, Etherfuse producción |
+| 🟢 | **Mainnet (beta)** | `seyf_advance` en mainnet sobre el vault Meru, con topes bajos ([riesgos](#riesgos-de-la-beta-en-mainnet)) |
+| 🔴 | **Vault propio** | Vault DeFindex no actualizable con roles bajo multisig de SEYF, en lugar de Meru |
+| 🔴 | **Mainnet completo** | Pollar mainnet abierto, Etherfuse producción |
 | 🟢 | **SDEX** | XLM↔USDC vía Stellar DEX (path payments) — activo |
 | 🟡 | **Revenue** | Spread en FX + performance fee en vaults (fee_receiver DeFindex) |
 | 🟡 | **On-ramp directo** | SPEI → vault en un paso (Dynerox → Stellar → DeFindex deposit) |
