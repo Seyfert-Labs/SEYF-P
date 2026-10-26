@@ -4,7 +4,6 @@
    Gating por sesión: onboarding → login (Privy) → app. */
 import React, { useCallback, useState } from "react";
 import { Icon } from "./ui";
-import { SeyfMark } from "@/components/brand/SeyfLogo";
 import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens/core";
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert } from "./screens/invest";
@@ -39,9 +38,14 @@ function Splash() {
   return (
     <div className="app-shell">
       <div className="uto-root style-expresivo" style={{ alignItems: "center", justifyContent: "center" }}>
-        <div className="splash-v2">
-          <span className="ring" /><span className="ring" /><span className="ring" />
-          <SeyfMark size={64} style={{ borderRadius: 19 }} />
+        <div className="splash-v2" role="status" aria-label="Cargando">
+          <svg viewBox="0 0 344.5 396" width="64" height="74" aria-hidden>
+            <g transform="translate(-132.1,-103.5)" fill="none" strokeWidth="43.5" strokeLinecap="round">
+              <path className="v" stroke="#8357F5" d="M 274.71 288.69 A 75.4 75.4 0 1 1 221.50 364.67" />
+              <path className="l" stroke="#CDFC4A" d="M 275.29 331.32 A 75.4 75.4 0 1 1 328.51 255.34" />
+            </g>
+          </svg>
+          <span className="sp-bar"><i /></span>
         </div>
       </div>
     </div>
