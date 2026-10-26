@@ -135,8 +135,9 @@ export function useStellarVaults(address?: string) {
     // Persistir planId/strategyId inferidos en bóvedas antiguas.
     await Promise.all(
       meta.map(async (v, i) => {
+        // La bóveda sintetizada arriba no tiene par en `raw` (ya se guardó aparte).
         const prev = raw[i];
-        if (prev.planId !== v.planId || prev.strategyId !== v.strategyId) {
+        if (prev && (prev.planId !== v.planId || prev.strategyId !== v.strategyId)) {
           await store.upsertVault(metaKey, v);
         }
       }),
