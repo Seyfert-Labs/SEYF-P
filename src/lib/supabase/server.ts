@@ -12,6 +12,15 @@ export function getSupabase(): SupabaseClient | null {
   if (!cached) {
     cached = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
+      // Si Supabase no responde, fallar rápido: el rate-limit de /api/auth/sep10 y
+      // todo /api/db/* esperaban ~7 s por consulta y la sesión tardaba en abrir.
+      global: {
+        fetch: (input, init) => {
+          const timeout = AbortSignal.timeout(2_000);
+          const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+          return fetch(input, { ...init, signal });
+        },
+      },
     });
   }
   return cached;
