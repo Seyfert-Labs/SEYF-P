@@ -1,0 +1,62 @@
+# Seyf
+
+> Seyf is a savings app for Mexico built fully on Stellar mainnet. Users sign in with an email (Pollar co-signed wallet: no seed phrase, no extension, no XLM needed), save USDC in a DeFindex vault that earns real Blend yield, and get tomorrow's yield advanced today by our own Soroban contract, `seyf_advance`, without touching their principal. Built for HackMeridian 2026 (Category: Scale · Track: Stellar Composed).
+
+Key facts for reviewers:
+
+- Network: Stellar mainnet (Protocol 29). Every step of the user journey has a mainnet transaction, listed below.
+- Our Soroban contract `seyf_advance`: `CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH` (wasm hash `64ae06cb3e50eb304b2eb8b7dc2be9f9271432b04d77b0f2a9eeded899e9bdfa`, same as testnet and the CI build).
+- Savings vault: DeFindex "Meru" USDC vault `CCA2ZJP5BVRXYTQH4FAGHCAUMRYCXVC4CRYC2NXHWMR7TIVX36U7F5HR`, strategy "USDC Autocompound Blend Fixed" `CDB2WMKQQNVZMEBY7Q7GZ5C7E7IAFSNMZ7GGVD6WKTCEWK7XOIAVZSAP`.
+- Asset: Circle USDC `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN` (SAC `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75`).
+- Try it: the allowlist is off, so any account can open an advance at https://www.seyf.app/app. Beta caps are 1 USDC per user and 2 USDC in total, because the contract is not audited yet.
+- Composed from: Pollar (wallet), DeFindex (vault), Blend (yield), Circle USDC, plus our own contract, sponsor and keeper.
+
+## How the yield advance works
+
+- Advance: `A = floor(V × apy_bps × term_days / (10000 × 365))`, capped by LTV (`max_advance_bps`), per user and globally. `min_advance` protects the user from slippage.
+- `open_advance(user, shares, term_days, min_advance)` locks the user's vault shares in the contract (they keep earning in Blend) and pays `A` in USDC from the contract's own treasury, never from the vault or the user's principal.
+- `repay(user)`: the user returns `A` and every share unlocks at once, even while the contract is paused.
+- `settle(user)` is permissionless: once `V_now ≥ V_open + A`, the contract withdraws only `ceil(A × shares / V_now)` shares back to the treasury and returns the rest (the full principal). Our keeper (GitHub Actions) calls it every 10 minutes.
+- `pause` only blocks new advances. There is no upgrade entry point; admin handover is two-step (`propose_admin` / `accept_admin`).
+- 17 contract tests (`cd soroban && cargo test`), `soroban-sdk` 29.0.1.
+
+## Mainnet proof (stellar.expert)
+
+- [USDC trustline from the app, sponsored (user keeps 0 XLM)](https://stellar.expert/explorer/public/tx/d8d98a958538a4183878f65eaf0863650eec9b232db714870cceb466aca9a840)
+- [Save 5 USDC in the DeFindex vault from the app, supplied to Blend](https://stellar.expert/explorer/public/tx/23572a98345f5973a144cd40422c22f815ac8d76b89e68e188cbcd8767a858d1)
+- [`open_advance` from the app: yield paid today from the contract treasury](https://stellar.expert/explorer/public/tx/ab42eac9fbd19885cbe6f7fa47a035531ff794f387fd3f5a171ce0fb4586606c)
+- [`repay` from the app: early repayment, every share unlocked](https://stellar.expert/explorer/public/tx/5cfd5592482eac2cdb08a077df8b7e40696e1b2c24d284e1aaef98445bf4da80)
+- [`settle` by the keeper after real Blend yield covered the advance](https://stellar.expert/explorer/public/tx/be77ba1e080e77d337c45b351226d535982bafb24be2fb9ef022ff58ec5e0e19)
+- [Vault withdrawal pulled out of the Blend pool](https://stellar.expert/explorer/public/tx/082bee220cdde1d072b6d7d8792a6e4d1b53ae152433ac31bd7e225824ec45de)
+- [Contract deploy](https://stellar.expert/explorer/public/tx/1fa79ed90c90bf71063be5fbbdcc5fd30ea398d47d8dee7e3a12ff34cd6e540c) · [Treasury funded](https://stellar.expert/explorer/public/tx/633b79df5073010cdc92a1a37766f92602f52169bda0ea2e69916bcf4ea40c8c)
+- [Contract on stellar.expert](https://stellar.expert/explorer/public/contract/CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH)
+
+## Docs
+
+- [README (English)](https://github.com/Seyfert-Labs/SEYF-P/blob/meridian/README.md): problem, product, mainnet proof, architecture, security, roadmap, AI disclosure
+- [How it works](https://github.com/Seyfert-Labs/SEYF-P/blob/meridian/docs/how-it-works.md): every app screen and what happens on-chain behind each button
+- [Contract spec](https://github.com/Seyfert-Labs/SEYF-P/blob/meridian/docs/contracts.md): interface, rules, formulas, sequence diagram
+- [HackMeridian scorecard](https://github.com/Seyfert-Labs/SEYF-P/blob/meridian/docs/hackmeridian-2026.md)
+- [Contract source](https://github.com/Seyfert-Labs/SEYF-P/tree/meridian/soroban/seyf_advance)
+- [Deployments and every hash (Spanish)](https://github.com/Seyfert-Labs/SEYF-P/blob/meridian/soroban/DEPLOYMENTS.md)
+
+## Architecture
+
+- Frontend: Next.js 16 (App Router), React 19, TypeScript, Tailwind v4. UI in Mexican Spanish, amounts shown in MXN.
+- Wallet: Pollar co-signed Stellar account (Turnkey 2-of-2); a passkey or email recovers it. Session via SEP-10 Web Auth at `https://www.seyf.app/api/auth/sep10`.
+- Fees: our sponsor pays reserves and wraps every transaction in a fee-bump with a capped resource fee. The server builds XDR but never holds user funds; the user signs every transaction.
+- RPC: `https://mainnet.sorobanrpc.com` (gateway.fm as fallback).
+- SEP-1 info file: https://www.seyf.app/.well-known/stellar.toml (SEP-10 signing key, web-auth endpoint and the accounts we control).
+
+## Pages
+
+- [App](https://www.seyf.app/app): home, savings vault, yield advance, send
+- [Landing](https://www.seyf.app/): product overview for Mexican users (Spanish)
+- [Retirement savings + advance](https://www.seyf.app/retiro): focused MVP flow
+- [Lean canvas](https://www.seyf.app/seyf-pitch.html)
+
+## Optional
+
+- Problem: even after Mexico's 2020 pension reform, a middle-income worker is projected to retire on about 45% of their salary (experts recommend 70%+), and fewer than 3 in 100 savers save voluntarily for retirement. Target users: Mexican millennials aged 30–45, the first generation fully dependent on their Afore.
+- Team history: testnet prototype built at Hack+Alebrije (Mexico City, March 2026, 2nd place); core shipped to Stellar mainnet during HackMeridian (Oct 25–26, 2026).
+- Roadmap: incorporate in Mexico to integrate regulated anchors (SPEI peso on/off-ramps), Etherfuse Stablebonds (CETES, Tesouro, US Treasuries, Gilts, EU bonds) as savings options, audit via SCF Audit Bank before raising caps.
