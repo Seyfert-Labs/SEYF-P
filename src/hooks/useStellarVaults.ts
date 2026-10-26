@@ -82,7 +82,8 @@ function normalizeVaultMeta(v: StoreVault): StoreVault {
 }
 
 export function useStellarVaults(address?: string) {
-  const { isAuthenticated, walletAddress, refreshBalance, getClient } = usePollar();
+  const { isAuthenticated, wallet, refreshWalletBalance: refreshBalance, getClient } = usePollar();
+  const walletAddress = wallet?.address;
   const metaKey = address;
   const publicKey = isAuthenticated ? walletAddress : undefined;
   const onchain = STELLAR_VAULTS_ONCHAIN && Boolean(publicKey);

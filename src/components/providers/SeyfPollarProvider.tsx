@@ -22,7 +22,7 @@ export default function SeyfPollarProvider({ children }: { children: ReactNode }
   }
 
   return (
-    <PollarProvider config={config}>
+    <PollarProvider client={config}>
       <SeyfAuthBridge />
       {children}
     </PollarProvider>
