@@ -101,8 +101,9 @@ export function useStellarVaults(address?: string) {
       setReady(true);
       return;
     }
-    if (!sessionOk) return;
-    const raw = (await store.listVaults(metaKey)).sort((a, b) => a.createdAt - b.createdAt);
+    // Sin sesión SEP-10 no hay metadata (/api/db responde 401), pero el saldo del
+    // vault USDC es público on-chain: se muestra igual, sin guardar nada.
+    const raw = sessionOk ? (await store.listVaults(metaKey)).sort((a, b) => a.createdAt - b.createdAt) : [];
     let meta = raw.map(normalizeVaultMeta);
 
     // Ahorro en el vault USDC sin bóveda guardada (otro dispositivo, o depositado
@@ -125,7 +126,7 @@ export function useStellarVaults(address?: string) {
             updatedAt: Date.now(),
           });
           meta = [...meta, synth];
-          void store.upsertVault(metaKey, synth);
+          if (sessionOk) void store.upsertVault(metaKey, synth);
         }
       } catch {
         /* sin posición legible no inventamos bóveda */
@@ -137,7 +138,7 @@ export function useStellarVaults(address?: string) {
       meta.map(async (v, i) => {
         // La bóveda sintetizada arriba no tiene par en `raw` (ya se guardó aparte).
         const prev = raw[i];
-        if (prev && (prev.planId !== v.planId || prev.strategyId !== v.strategyId)) {
+        if (sessionOk && prev && (prev.planId !== v.planId || prev.strategyId !== v.strategyId)) {
           await store.upsertVault(metaKey, v);
         }
       }),
@@ -167,7 +168,7 @@ export function useStellarVaults(address?: string) {
             const bal = Number(pos.value) / USDC_UNITS;
             onchainBalCache.set(cacheKey, { bal, ts: Date.now() });
             let updatedAt = v.updatedAt ?? Date.now();
-            if (metaKey && bal !== v.bal) {
+            if (sessionOk && metaKey && bal !== v.bal) {
               updatedAt = Date.now();
               void store.upsertVault(metaKey, { ...v, bal, updatedAt });
             }
@@ -190,7 +191,7 @@ export function useStellarVaults(address?: string) {
           let updatedAt = v.updatedAt ?? Date.now();
           if (hasBal) {
             onchainBalCache.set(cacheKey, { bal, ts: Date.now() });
-            if (metaKey && (bal !== v.bal || apy !== v.apy)) {
+            if (sessionOk && metaKey && (bal !== v.bal || apy !== v.apy)) {
               updatedAt = Date.now();
               void store.upsertVault(metaKey, { ...v, bal, apy, updatedAt });
             }
@@ -390,5 +391,7 @@ export function useStellarVaults(address?: string) {
     removeVault,
     reload,
     totalSaved,
+    /** Hay sesión SEP-10: se puede leer y guardar la metadata de las bóvedas. */
+    sessionOk,
   };
 }
