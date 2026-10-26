@@ -24,6 +24,7 @@ import { SeyfSymbol } from "@/components/brand/SeyfLogo";
 import { GrowingAmount } from "@/components/app/GrowingAmount";
 import AppMock from "./AppMock";
 import { CountryRelief, type CountryCode } from "./CountryRelief";
+import { LangProvider, LangSwitch, useI18n } from "./i18n";
 
 // three.js solo en el navegador y fuera del bundle inicial
 const Symbol3D = dynamic(() => import("@/components/brand/Symbol3D"), { ssr: false });
@@ -126,46 +127,33 @@ const FlagEU = ({ s = 26 }: { s?: number }) => (
   <svg viewBox="0 0 36 36" width={s} height={s}><rect width="36" height="36" fill="#003399" />{EU_STARS.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="1.5" fill="#FFCC00" />)}</svg>
 );
 
-const AppStoreBtn = () => (
+const AppStoreBtn = ({ sub }: { sub: string }) => (
   <a className="store-btn" href="#descargar">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 1.8c.1 1-.3 2-.9 2.8-.7.8-1.7 1.4-2.7 1.3-.1-1 .4-2 1-2.7.7-.8 1.8-1.4 2.6-1.4zM19 17c-.5 1.1-.7 1.6-1.3 2.6-.9 1.4-2.1 3.1-3.6 3.1-1.3 0-1.7-.9-3.5-.9s-2.2.8-3.5.9c-1.5.1-2.6-1.5-3.5-2.9C1 16.7.8 12.3 2.4 9.9c1-1.6 2.6-2.5 4.1-2.5 1.6 0 2.5.9 3.8.9 1.2 0 2-.9 3.8-.9 1.4 0 2.8.7 3.8 2-3.3 1.8-2.8 6.5.8 7.6z" /></svg>
-    <span><span className="sub">Descarga en</span><br /><span className="big">App Store</span></span>
+    <span><span className="sub">{sub}</span><br /><span className="big">App Store</span></span>
   </a>
 );
-const GooglePlayBtn = () => (
+const GooglePlayBtn = ({ sub }: { sub: string }) => (
   <a className="store-btn" href="#descargar">
     <svg width="20" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.6 2.3 13.3 12 3.6 21.7c-.3-.2-.5-.6-.5-1V3.3c0-.4.2-.8.5-1z" fill="#C8FF4D" /><path d="m16.8 8.5 2.9 1.7c1 .6 1 2 0 2.6l-2.9 1.7L13.8 12l3-3.5z" fill="#8B5CF6" /><path d="M3.6 2.3c.3-.2.7-.2 1.1 0l11 6.2-1.9 1.9L3.6 2.3z" fill="#fff" /><path d="m13.8 13.6 1.9 1.9-11 6.2c-.4.2-.8.2-1.1 0l10.2-8.1z" fill="#9C96B4" /></svg>
-    <span><span className="sub">Disponible en</span><br /><span className="big">Google Play</span></span>
+    <span><span className="sub">{sub}</span><br /><span className="big">Google Play</span></span>
   </a>
 );
 
-const FAQ_ITEMS = [
-  { q: "¿Cómo gana rendimiento mi saldo en pesos?", a: "Tu saldo disponible genera 9% anual, calculado y pagado todos los días. No hay plazos forzosos: puedes usar o retirar tu dinero cuando quieras." },
-  { q: "¿Los bonos de gobierno tienen riesgo?", a: "La deuda soberana es de los instrumentos más seguros que existen. Cada bono muestra su calificación, riesgo y plazo antes de invertir, para que decidas con total transparencia." },
-  { q: "¿De verdad el tipo de cambio es igual al de Google?", a: "Sí. Usamos el tipo de cambio interbancario real, el mismo que aparece en Google, sin agregar márgenes ni comisiones ocultas por la conversión." },
-  { q: "¿Está protegido mi dinero?", a: "Tu saldo está asegurado hasta $3,000,000 MXN, cifrado con AES‑256 y protegido con acceso biométrico y verificación en dos pasos." },
-];
-
 // accent = color del país (glow, pin y medidor); wall = color base del relieve
-const BONDS: { cc: CountryCode; Flag: React.FC<{ s?: number }>; country: string; inst: string; cur: string; capital: string; y: number; accent: string; wall: string }[] = [
-  { cc: "mx", Flag: FlagMX, country: "México", inst: "CETES · Bonos M", cur: "MXN", capital: "CDMX", y: 10.25, accent: "#2ecc71", wall: "#0b5a33" },
-  { cc: "us", Flag: FlagUS, country: "Estados Unidos", inst: "US Treasury", cur: "USD", capital: "Washington", y: 4.45, accent: "#6c8cff", wall: "#2c2e6e" },
-  { cc: "br", Flag: FlagBR, country: "Brasil", inst: "Tesouro Selic", cur: "BRL", capital: "Brasilia", y: 11.75, accent: "#ffd400", wall: "#0f6b34" },
-  { cc: "ar", Flag: FlagAR, country: "Argentina", inst: "Lecap", cur: "ARS", capital: "Buenos Aires", y: 14.5, accent: "#74acdf", wall: "#3b6f9c" },
-  { cc: "co", Flag: FlagCO, country: "Colombia", inst: "TES", cur: "COP", capital: "Bogotá", y: 9.6, accent: "#fcd116", wall: "#00307d" },
-  { cc: "eu", Flag: FlagEU, country: "Europa", inst: "Bonos UE", cur: "EUR", capital: "Bruselas", y: 3.4, accent: "#ffcc00", wall: "#0d2f80" },
-  { cc: "kr", Flag: FlagKR, country: "Corea del Sur", inst: "Korea Treasury", cur: "KRW", capital: "Seúl", y: 3.35, accent: "#ff5a6a", wall: "#3a3f55" },
+// nombres de país y capital: en i18n (t.bonds.countries / capitals)
+const BONDS: { cc: CountryCode; Flag: React.FC<{ s?: number }>; inst: string; cur: string; y: number; accent: string; wall: string }[] = [
+  { cc: "mx", Flag: FlagMX, inst: "CETES · Bonos M", cur: "MXN", y: 10.25, accent: "#2ecc71", wall: "#0b5a33" },
+  { cc: "us", Flag: FlagUS, inst: "US Treasury", cur: "USD", y: 4.45, accent: "#6c8cff", wall: "#2c2e6e" },
+  { cc: "br", Flag: FlagBR, inst: "Tesouro Selic", cur: "BRL", y: 11.75, accent: "#ffd400", wall: "#0f6b34" },
+  { cc: "ar", Flag: FlagAR, inst: "Lecap", cur: "ARS", y: 14.5, accent: "#74acdf", wall: "#3b6f9c" },
+  { cc: "co", Flag: FlagCO, inst: "TES", cur: "COP", y: 9.6, accent: "#fcd116", wall: "#00307d" },
+  { cc: "eu", Flag: FlagEU, inst: "Bonos UE", cur: "EUR", y: 3.4, accent: "#ffcc00", wall: "#0d2f80" },
+  { cc: "kr", Flag: FlagKR, inst: "Korea Treasury", cur: "KRW", y: 3.35, accent: "#ff5a6a", wall: "#3a3f55" },
 ];
 const MAX_YIELD = Math.max(...BONDS.map((b) => b.y));
 
-const STEPS = [
-  { n: "01", ti: "Deposita por SPEI", de: "Recibe tu CLABE al instante. Cada peso que entra empieza a rendir desde el primer día." },
-  { n: "02", ti: "Convierte sin margen", de: "Pasa a dólar digital al tipo de cambio real, en segundos y sin comisión oculta." },
-  { n: "03", ti: "Ahorra con metas", de: "Crea bóvedas con rendimiento de hasta 11.2% y retira al banco cuando quieras." },
-];
-
-const MANIFESTO =
-  "Tu dinero parado pierde contra la inflación todos los días. SEYF hace que cada peso trabaje: rinde diario, se mueve en segundos y sale cuando tú decides. Sin letras chiquitas. Sin jerga.";
+const STEPS = ["01", "02", "03"]; // textos en t.story.steps
 
 /* ---------- piezas de scroll ---------- */
 
@@ -223,12 +211,13 @@ function Word({ children, progress, range }: { children: string; progress: Motio
 
 function Manifesto() {
   const ref = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.85", "end 0.45"] });
-  const words = MANIFESTO.split(" ");
+  const words = t.manifesto.split(" ");
   return (
     <section className="manifesto sec-pad">
       <div className="wrap">
-        <span className="sec-tag">Por qué SEYF</span>
+        <span className="sec-tag">{t.manifestoTag}</span>
         <div ref={ref} className="manifesto-text display">
           {words.map((w, i) => (
             <Word key={i} progress={scrollYProgress} range={[i / words.length, (i + 1) / words.length]}>
@@ -243,6 +232,7 @@ function Manifesto() {
 
 /** Hero pinneado: el símbolo 3D gira con el scroll mientras cambian 3 mensajes. */
 function HeroCinema() {
+  const { t } = useI18n();
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const p = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.4 });
@@ -255,10 +245,10 @@ function HeroCinema() {
   const b3y = useTransform(p, [0.66, 0.78], [60, 0]);
   // --k: 1 = símbolo a la derecha (junto al texto), 0 = centrado; vuelve a la derecha en el beat 3
   const k = useTransform(p, [0, 0.26, 0.4, 0.6, 0.74], [1, 1, 0, 0, 1]);
-  // en el beat 2 el símbolo se encoge para caber entre "Rinde" y "9% anual"
+  // en el beat 2 el símbolo se encoge para caber entre "Rinde" y "diario"
   const symScale = useTransform(p, [0.26, 0.38, 0.6, 0.74], [1, 0.58, 0.58, 0.8]);
   const hint = useTransform(p, [0, 0.06], [1, 0]);
-  // una parada por mensaje: propuesta, "Rinde 9%", "Sin jerga"
+  // una parada por mensaje: propuesta, "Rinde diario", "Sin letras chiquitas"
   useSnapSection(ref, [0, 0.48, 0.88]);
 
   return (
@@ -276,7 +266,7 @@ function HeroCinema() {
         <motion.div className="wrap beat beat-1" style={{ opacity: b1o, y: b1y }}>
           <div className="hero-copy">
             <h1 className="display">
-              {["Tu", "dinero,", "protegido", "y", "creciendo", "en", "automático."].map((w, i) => (
+              {t.hero.words.map((w, i) => (
                 <span className="hero-word-mask" key={i}>
                   <motion.span
                     className={`hero-word${i === 2 ? " em" : ""}${i === 4 ? " em2" : ""}`}
@@ -290,14 +280,14 @@ function HeroCinema() {
               ))}
             </h1>
             <motion.p className="lede" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.75, ease: EASE }}>
-              Tus pesos rinden 9% anual, todos los días. Sin comisiones.
+              {t.hero.lede}
             </motion.p>
             <motion.div className="hero-cta" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.9, ease: EASE }}>
               <Link className="btn btn-primary btn-lg magnetic" href="/app">
-                Iniciar ahora
+                {t.hero.cta}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </Link>
-              <a className="hero-link" href="#producto">Ver cómo funciona</a>
+              <a className="hero-link" href="#producto">{t.hero.how}</a>
             </motion.div>
           </div>
         </motion.div>
@@ -305,20 +295,21 @@ function HeroCinema() {
         {/* Beat 2 — rendimiento */}
         <motion.div className="beat beat-2" style={{ opacity: b2o, scale: b2s }}>
           <div className="beat-2-row display">
-            <span className="big-l">Rinde</span>
+            <span className="big-l">{t.hero.yieldL}</span>
             <span className="big-gap" />
-            <span className="big-r"><span className="em">9%</span> anual</span>
+            <span className="big-r"><span className="em">{t.hero.yieldR}</span></span>
           </div>
           <div className="beat-2-foot">
-          <p className="beat-sub">Pagado todos los días, sobre tus pesos. Sin plazos forzosos.</p>
+          <p className="beat-sub">{t.hero.yieldSub}</p>
           <div className="beat-cards">
             <div className="float-card">
-              <div className="k"><span className="live-dot" /> Ganado hoy</div>
-              <div className="v"><GrowingAmount base={12.4} apy={9} size={20} align="left" color="var(--accent)" prefix="+$" tail={4} id="lp-ganado" /></div>
+              <div className="k"><span className="live-dot" /> {t.hero.earnedToday}</div>
+              {/* ilustrativo: solo anima el contador, no promete una tasa */}
+              <div className="v"><GrowingAmount base={12.4} apy={9} size={30} align="left" color="var(--accent)" prefix="+$" tail={2} id="lp-ganado" /></div>
             </div>
             <div className="float-card">
-              <div className="k">Bóvedas hasta</div>
-              <div className="v num" style={{ color: "#c4b5fd" }}>11.2%</div>
+              <div className="k">{t.hero.withdrawK}</div>
+              <div className="v num" style={{ color: "#c4b5fd" }}>{t.hero.withdrawV}</div>
             </div>
           </div>
           </div>
@@ -328,14 +319,14 @@ function HeroCinema() {
         <motion.div className="beat beat-3" style={{ opacity: b3o, y: b3y }}>
           <div className="wrap beat-3-inner">
             <h2 className="display">
-              Sin seed phrase.<br />Sin comisiones.<br /><span className="em">Sin jerga.</span>
+              {t.hero.simple[0]}<br />{t.hero.simple[1]}<br /><span className="em">{t.hero.simple[2]}</span>
             </h2>
-            <p className="beat-sub">Construido sobre Stellar: tu dinero se mueve en segundos y siempre es tuyo.</p>
+            <p className="beat-sub">{t.hero.simpleSub}</p>
           </div>
         </motion.div>
 
         <motion.div className="scroll-hint" style={{ opacity: hint }}>
-          <span>Desliza</span>
+          <span>{t.hero.scroll}</span>
           <i />
         </motion.div>
       </div>
@@ -395,25 +386,27 @@ function useSnapSection(ref: React.RefObject<HTMLElement | null>, points: number
   return goTo;
 }
 
-/* Por paso: ángulo del celular, color del brillo y tarjetas que "salen" del teléfono. */
+/* Por paso: ángulo del celular, color del brillo y tarjetas que "salen" del teléfono
+   (los textos de cada tarjeta están en t.story.chips). */
 const STORY_FX = [
   { ry: -18, rx: 6, glow: "rgba(200,255,77,.30)", chips: [
-    { k: "SPEI recibido", v: "+$5,000.00", tone: "lime", pos: "c-tl" },
-    { k: "Tu CLABE", v: "646 180 1234 5678 90", tone: "plain", pos: "c-br" },
+    { tone: "lime", pos: "c-tl" },
+    { tone: "plain", pos: "c-br" },
   ] },
   { ry: 16, rx: 4, glow: "rgba(91,140,255,.30)", chips: [
-    { k: "Tipo de cambio", v: "1 USD = 17.40", tone: "plain", pos: "c-tr" },
-    { k: "Comisión", v: "$0.00", tone: "lime", pos: "c-bl" },
+    { tone: "plain", pos: "c-tr" },
+    { tone: "lime", pos: "c-bl" },
   ] },
   { ry: -10, rx: 10, glow: "rgba(139,92,246,.38)", chips: [
-    { k: "Viaje a Japón", v: "64% de la meta", tone: "violet", pos: "c-tl" },
-    { k: "Rinde", v: "11.2% anual", tone: "lime", pos: "c-bl" },
+    { tone: "violet", pos: "c-tl" },
+    { tone: "lime", pos: "c-bl" },
   ] },
 ];
 
 /** Celular en 3D: cambia de ángulo por paso, tarjetas flotantes con parallax
     (más cerca = se mueven más) y tilt siguiendo el mouse. */
 function Phone({ screen }: { screen: number }) {
+  const { t } = useI18n();
   const stageRef = useRef<HTMLDivElement>(null);
   const phoneRef = useRef<HTMLDivElement>(null);
   const fx = STORY_FX[screen];
@@ -440,7 +433,7 @@ function Phone({ screen }: { screen: number }) {
           transition={{ duration: 0.6, ease: EASE }}
           aria-hidden
         >
-          {STEPS[screen].n}
+          {STEPS[screen]}
         </motion.span>
       </AnimatePresence>
       <motion.div
@@ -468,8 +461,8 @@ function Phone({ screen }: { screen: number }) {
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.6, delay: 0.35 + i * 0.12, ease: EASE }}
           >
-            <span className="k">{c.k}</span>
-            <span className="v num">{c.v}</span>
+            <span className="k">{t.story.chips[screen][i].k}</span>
+            <span className="v num">{t.story.chips[screen][i].v}</span>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -480,6 +473,7 @@ function Phone({ screen }: { screen: number }) {
 /** Historia del producto: el celular queda fijo y cada paso "se detiene" (snap
     por gesto) para que no se pase de largo. Los pasos también se pueden tocar. */
 function PhoneStory() {
+  const { t } = useI18n();
   const ref = useRef<HTMLElement>(null);
   const [screen, setScreen] = useState(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
@@ -491,13 +485,13 @@ function PhoneStory() {
       <div className="story-sticky">
         <div className="wrap story-grid">
           <div className="story-copy">
-            <span className="sec-tag">Así funciona</span>
-            <h2 className="sec-title display">Tres pasos. Cero complicaciones.</h2>
+            <span className="sec-tag">{t.story.tag}</span>
+            <h2 className="sec-title display">{t.story.title}</h2>
             <div className="steps">
-              {STEPS.map((s, i) => (
-                <button key={s.n} className={`step${screen === i ? " on" : ""}`} onClick={() => goTo(i)}>
+              {t.story.steps.map((s, i) => (
+                <button key={STEPS[i]} className={`step${screen === i ? " on" : ""}`} onClick={() => goTo(i)}>
                   <StepBar progress={scrollYProgress} i={i} />
-                  <span className="step-n num">{s.n}</span>
+                  <span className="step-n num">{STEPS[i]}</span>
                   <span className="step-body">
                     <span className="step-ti">{s.ti}</span>
                     <span className="step-de">{s.de}</span>
@@ -522,6 +516,7 @@ function StepBar({ progress, i }: { progress: MotionValue<number>; i: number }) 
 /** Tarjeta de bono: relieve 3D del país + rendimiento. Gira en Y según su
     distancia al centro de la pantalla (coverflow) y el mapa se inclina con el mouse. */
 function BondCard({ b, x }: { b: (typeof BONDS)[number]; x: MotionValue<number> }) {
+  const { t } = useI18n();
   const outerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   // centro de la tarjeta dentro del carril (sin el desplazamiento x) y ancho de la ventana
@@ -561,19 +556,19 @@ function BondCard({ b, x }: { b: (typeof BONDS)[number]; x: MotionValue<number> 
         <div className="bond-stage">
           <div className="bond-glow" />
           <CountryRelief code={b.cc} wall={b.wall} accent={b.accent} />
-          <span className="bond-cap"><i />{b.capital}</span>
+          <span className="bond-cap"><i />{t.bonds.capitals[b.cc]}</span>
         </div>
         <div className="bond-head">
           <span className="bond-flag"><b.Flag s={34} /></span>
           <div style={{ minWidth: 0 }}>
-            <div className="country">{b.country}</div>
+            <div className="country">{t.bonds.countries[b.cc]}</div>
             <div className="code">{b.inst}</div>
           </div>
           <span className="bond-cur">{b.cur}</span>
         </div>
-        <div className="yld num"><Counter target={b.y} decimals={2} />%<small>anual</small></div>
+        <div className="yld num"><Counter target={b.y} decimals={2} />%<small>{t.bonds.annual}</small></div>
         <div className="bond-meter"><i style={{ width: `${(b.y / MAX_YIELD) * 100}%` }} /></div>
-        <div className="bond-foot"><span>Desde $50</span><span>Liquidez T+1</span></div>
+        <div className="bond-foot"><span>{t.bonds.from}</span><span>{t.bonds.liquidity}</span></div>
       </div>
     </motion.div>
   );
@@ -581,6 +576,7 @@ function BondCard({ b, x }: { b: (typeof BONDS)[number]; x: MotionValue<number> 
 
 /** Bonos en carril horizontal que avanza con el scroll vertical. */
 function BondsRail() {
+  const { t } = useI18n();
   const ref = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [dist, setDist] = useState(0);
@@ -600,9 +596,9 @@ function BondsRail() {
     <section className="rail" id="bonos" ref={ref} style={{ height: `calc(100vh + ${dist}px)` }}>
       <div className="rail-sticky">
         <div className="wrap rail-head">
-          <span className="sec-tag">Bonos de gobierno</span>
-          <h2 className="sec-title display">Rendimientos soberanos, en un toque.</h2>
-          <p className="sec-sub">Invierte en deuda respaldada por gobiernos desde $50. Liquidación T+1 y custodia regulada.</p>
+          <span className="sec-tag">{t.bonds.tag}</span>
+          <h2 className="sec-title display">{t.bonds.title}</h2>
+          <p className="sec-sub">{t.bonds.sub}</p>
         </div>
         <motion.div className="rail-track" ref={trackRef} style={{ x }}>
           {BONDS.map((b) => (
@@ -642,26 +638,28 @@ function SecHead({ tag, title, sub, center = false }: { tag: string; title: stri
   );
 }
 
+// el rol de cada aliado está en t.partners.roles (mismo orden)
 const PARTNERS = [
-  { name: "Stellar", role: "Red de pagos · liquidación en ~5 s", logo: "/partners/stellar.svg", h: 30, url: "https://stellar.org", color: "#ffffff" },
-  { name: "DeFindex", role: "Bóvedas de rendimiento on-chain", logo: "/partners/defindex.svg", h: 30, url: "https://defindex.io", color: "#DEC9F4" },
-  { name: "Pollar", role: "Wallet sin seed phrase", logo: "/partners/pollar.png", h: 22, url: "https://pollar.xyz", color: "#6c8cff" },
-  { name: "Etherfuse", role: "CETES tokenizados · SPEI", logo: "/partners/etherfuse.svg", h: 24, url: "https://www.etherfuse.com", color: "#C8FF4D" },
+  { name: "Stellar", logo: "/partners/stellar.svg", h: 30, url: "https://stellar.org", color: "#ffffff" },
+  { name: "DeFindex", logo: "/partners/defindex.svg", h: 30, url: "https://defindex.io", color: "#DEC9F4" },
+  { name: "Pollar", logo: "/partners/pollar.png", h: 22, url: "https://pollar.xyz", color: "#6c8cff" },
+  { name: "Etherfuse", logo: "/partners/etherfuse.svg", h: 24, url: "https://www.etherfuse.com", color: "#C8FF4D" },
 ];
 
+// títulos y descripciones en t.security.layers (mismo orden)
 const LAYERS = [
-  { ti: "Saldo asegurado", de: "Protección de hasta $3,000,000 MXN por usuario en cuentas reguladas.", ic: <><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></> },
-  { ti: "Cifrado AES‑256", de: "Cada dato y movimiento viaja cifrado de extremo a extremo.", ic: <><rect x="5" y="10" width="14" height="10" rx="2.5" /><path d="M8 10V7a4 4 0 018 0v3" /></> },
-  { ti: "Acceso biométrico", de: "Face ID, PIN y verificación en 2 pasos para que solo tú entres a tu dinero.", ic: <><path d="M12 11v3a5 5 0 01-1.5 3.5" /><path d="M8.5 7.5a5 5 0 017 1.5" /><path d="M6.5 12a6.5 6.5 0 0111-4.7" /></> },
+  { ic: <><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></> },
+  { ic: <><rect x="5" y="10" width="14" height="10" rx="2.5" /><path d="M8 10V7a4 4 0 018 0v3" /></> },
+  { ic: <><path d="M12 11v3a5 5 0 01-1.5 3.5" /><path d="M8.5 7.5a5 5 0 017 1.5" /><path d="M6.5 12a6.5 6.5 0 0111-4.7" /></> },
 ];
 
 /** Placa de vidrio de la pila: la capa 0 es la base; las de arriba se separan más. */
-function Plate({ layer, i, gap, on }: { layer: (typeof LAYERS)[number]; i: number; gap: MotionValue<number>; on: boolean }) {
+function Plate({ layer, label, i, gap, on }: { layer: (typeof LAYERS)[number]; label: string; i: number; gap: MotionValue<number>; on: boolean }) {
   const z = useTransform(gap, (g) => i * g); // la elevación de la activa va en CSS (.plate.on)
   return (
     <motion.div className={`plate p${i}${on ? " on" : ""}`} style={{ translateZ: z }}>
       <span className="plate-ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{layer.ic}</svg></span>
-      <span className="plate-lb">{layer.ti}</span>
+      <span className="plate-lb">{label}</span>
     </motion.div>
   );
 }
@@ -670,6 +668,7 @@ function Plate({ layer, i, gap, on }: { layer: (typeof LAYERS)[number]; i: numbe
     separan con el scroll; la capa activa se eleva y brilla. Cambia sola cada 3 s
     o al pasar el mouse por la lista. */
 function SecurityStack() {
+  const { t } = useI18n();
   const ref = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
   const [hover, setHover] = useState(false);
@@ -686,16 +685,16 @@ function SecurityStack() {
     <section className="sec-pad" id="seguridad" ref={ref}>
       <div className="wrap split sec-stack-grid">
         <div>
-          <Reveal><span className="sec-tag">Seguridad primero</span></Reveal>
-          <Reveal delay={0.05}><h2 className="sec-title display">Tu dinero, blindado en cada capa.</h2></Reveal>
-          <Reveal delay={0.1}><p className="sec-sub">Construido con estándares institucionales — y la transparencia on-chain que nadie más te da.</p></Reveal>
+          <Reveal><span className="sec-tag">{t.security.tag}</span></Reveal>
+          <Reveal delay={0.05}><h2 className="sec-title display">{t.security.title}</h2></Reveal>
+          <Reveal delay={0.1}><p className="sec-sub">{t.security.sub}</p></Reveal>
           <div className="layer-list" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
             {LAYERS.map((l, i) => (
-              <button key={l.ti} className={`layer-item${active === i ? " on" : ""}`} onMouseEnter={() => setActive(i)} onFocus={() => setActive(i)} onClick={() => setActive(i)}>
+              <button key={i} className={`layer-item${active === i ? " on" : ""}`} onMouseEnter={() => setActive(i)} onFocus={() => setActive(i)} onClick={() => setActive(i)}>
                 <span className="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{l.ic}</svg></span>
                 <span className="tx">
-                  <span className="ti">{l.ti}</span>
-                  <span className="de">{l.de}</span>
+                  <span className="ti">{t.security.layers[i].ti}</span>
+                  <span className="de">{t.security.layers[i].de}</span>
                 </span>
               </button>
             ))}
@@ -705,7 +704,7 @@ function SecurityStack() {
           <div className="stack-glow" />
           <motion.div className="stack" style={{ rotateZ: spin }}>
             {LAYERS.map((l, i) => (
-              <Plate key={l.ti} layer={l} i={i} gap={gap} on={active === i} />
+              <Plate key={i} layer={l} label={t.security.layers[i].ti} i={i} gap={gap} on={active === i} />
             ))}
             <motion.div className="plate-core" style={{ translateZ: coreZ }}>
               <SeyfSymbol size={56} />
@@ -719,6 +718,15 @@ function SecurityStack() {
 
 /* ---------- landing ---------- */
 export default function Landing() {
+  return (
+    <LangProvider>
+      <LandingInner />
+    </LangProvider>
+  );
+}
+
+function LandingInner() {
+  const { t } = useI18n();
   const [navHidden, setNavHidden] = useState(false);
   const [navScrolled, setNavScrolled] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -784,13 +792,14 @@ export default function Landing() {
       <div className={`nav-inner${navHidden ? " nav-hidden" : ""}${navScrolled ? " nav-scrolled" : ""}`}>
         <a href="#" className="brand-logo"><span className="mk"><SeyfSymbol size={20} /></span> SEYF</a>
         <div className="nav-links">
-          <a href="#producto">Producto</a>
-          <a href="#bonos">Bonos</a>
-          <a href="#seguridad">Seguridad</a>
+          <a href="#producto">{t.nav.product}</a>
+          <a href="#bonos">{t.nav.bonds}</a>
+          <a href="#seguridad">{t.nav.security}</a>
         </div>
         <div className="nav-cta">
-          <Link className="btn btn-ghost btn-sm" href="/app">Iniciar sesión</Link>
-          <Link className="btn btn-primary btn-sm" href="/app">Iniciar</Link>
+          <LangSwitch />
+          <Link className="btn btn-ghost btn-sm" href="/app">{t.nav.login}</Link>
+          <Link className="btn btn-primary btn-sm" href="/app">{t.nav.start}</Link>
         </div>
       </div>
 
@@ -802,14 +811,14 @@ export default function Landing() {
           <div className="marquee-track">
             {[0, 1].map((dup) => (
               <React.Fragment key={dup}>
-                <span className="it"><span className="flag"><FlagMX /></span> México · Bonos M 10.25%</span>
-                <span className="it"><span className="flag"><FlagUS /></span> EE. UU. · Treasury 4.45%</span>
-                <span className="it"><span className="flag"><FlagBR /></span> Brasil · Tesouro Selic 11.75%</span>
-                <span className="it"><span className="flag"><FlagAR /></span> Argentina · Lecap 14.50%</span>
-                <span className="it"><span className="flag"><FlagCO /></span> Colombia · TES 9.60%</span>
-                <span className="it"><span className="flag"><FlagEU /></span> Europa · Bonos UE 3.40%</span>
-                <span className="it"><span className="flag"><FlagKR /></span> Corea · KTB 3.35%</span>
-                <span className="it" style={{ color: "var(--accent)" }}>Tipo de cambio real · 0% comisión</span>
+                <span className="it"><span className="flag"><FlagMX /></span> {t.bonds.countries.mx} · Bonos M 10.25%</span>
+                <span className="it"><span className="flag"><FlagUS /></span> {t.bonds.short.us} · Treasury 4.45%</span>
+                <span className="it"><span className="flag"><FlagBR /></span> {t.bonds.countries.br} · Tesouro Selic 11.75%</span>
+                <span className="it"><span className="flag"><FlagAR /></span> {t.bonds.countries.ar} · Lecap 14.50%</span>
+                <span className="it"><span className="flag"><FlagCO /></span> {t.bonds.countries.co} · TES 9.60%</span>
+                <span className="it"><span className="flag"><FlagEU /></span> {t.bonds.countries.eu} · Bonos UE 3.40%</span>
+                <span className="it"><span className="flag"><FlagKR /></span> {t.bonds.short.kr} · KTB 3.35%</span>
+                <span className="it" style={{ color: "var(--accent)" }}>{t.marqueeFx}</span>
               </React.Fragment>
             ))}
           </div>
@@ -824,10 +833,10 @@ export default function Landing() {
           <div className="wrap">
             <div className="stats">
               {[
-                { n: <><Counter target={9} /><span className="suf">%</span></>, l: "anual sobre tu saldo, pagado diario" },
-                { n: <><Counter target={24} /><span className="suf">/7</span></>, l: "depósitos y retiros por SPEI" },
-                { n: <><Counter target={5} /><span className="suf">s</span></>, l: "para mover tu dinero en Stellar" },
-                { n: <><Counter target={0} /><span className="suf">%</span></>, l: "comisión por cambio de divisa" },
+                { n: <><span className="suf">$</span><Counter target={50} /></>, l: t.stats[0] },
+                { n: <><Counter target={24} /><span className="suf">/7</span></>, l: t.stats[1] },
+                { n: <><Counter target={5} /><span className="suf">s</span></>, l: t.stats[2] },
+                { n: <><Counter target={0} /><span className="suf">%</span></>, l: t.stats[3] },
               ].map((s, i) => (
                 <Reveal key={i} delay={i * 0.08} className="stat">
                   <div className="n num">{s.n}</div>
@@ -843,7 +852,7 @@ export default function Landing() {
         {/* ALIADOS */}
         <section className="sec-pad" id="aliados">
           <div className="wrap">
-            <SecHead center tag="Construido con" title="La mejor infraestructura de Stellar." sub="Cada pieza de SEYF corre sobre protocolos abiertos y auditables del ecosistema." />
+            <SecHead center tag={t.partners.tag} title={t.partners.title} sub={t.partners.sub} />
             <div className="ally-grid">
               {PARTNERS.map((p, i) => (
                 <Reveal key={p.name} delay={i * 0.07}>
@@ -852,7 +861,7 @@ export default function Landing() {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={p.logo} alt={p.name} style={{ height: p.h }} />
                     </span>
-                    <span className="ally-role">{p.role}</span>
+                    <span className="ally-role">{t.partners.roles[i]}</span>
                     <span className="ally-arrow" aria-hidden>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 17L17 7M9 7h8v8" /></svg>
                     </span>
@@ -868,9 +877,9 @@ export default function Landing() {
         {/* FAQ */}
         <section className="sec-pad">
           <div className="wrap">
-            <SecHead center tag="Preguntas" title="Lo que quieres saber." />
+            <SecHead center tag={t.faq.tag} title={t.faq.title} />
             <div className="faq-list">
-              {FAQ_ITEMS.map((item, i) => (
+              {t.faq.items.map((item, i) => (
                 <Reveal key={i} delay={i * 0.05}>
                   <div className={`faq${openFaq === i ? " open" : ""}`}>
                     <button className="faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
@@ -891,12 +900,12 @@ export default function Landing() {
             <Reveal className="final">
               <Symbol3D className="final-canvas" scale={0.8} />
               <div className="final-inner">
-                <h2 className="display">Empieza a hacer crecer tu dinero hoy.</h2>
-                <p>Abre tu cuenta en minutos. Sin comisiones de apertura, sin saldo mínimo.</p>
+                <h2 className="display">{t.final.title}</h2>
+                <p>{t.final.sub}</p>
                 <div className="hero-cta">
-                  <Link className="btn btn-primary btn-lg" href="/app">Iniciar ahora</Link>
-                  <AppStoreBtn />
-                  <GooglePlayBtn />
+                  <Link className="btn btn-primary btn-lg" href="/app">{t.hero.cta}</Link>
+                  <AppStoreBtn sub={t.store.appSub} />
+                  <GooglePlayBtn sub={t.store.playSub} />
                 </div>
               </div>
             </Reveal>
@@ -909,20 +918,20 @@ export default function Landing() {
             <div className="foot-grid">
               <div className="foot-col">
                 <a href="#" className="brand-logo" style={{ marginBottom: 16 }}><span className="mk"><SeyfSymbol size={20} /></span> SEYF</a>
-                <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 280, margin: 0 }}>La super app de finanzas para ahorrar, invertir y gastar sin fronteras.</p>
+                <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 280, margin: 0 }}>{t.footer.tagline}</p>
               </div>
-              <div className="foot-col"><h5>Producto</h5><a href="#producto">Pesos digitales</a><a href="#bonos">Bonos</a><a href="#producto">Bóvedas</a></div>
-              <div className="foot-col"><h5>Compañía</h5><a href="#">Sobre nosotros</a><a href="#seguridad">Seguridad</a><a href="#">Carreras</a><a href="#">Prensa</a></div>
-              <div className="foot-col"><h5>Legal</h5><a href="#">Términos</a><a href="#">Privacidad</a><a href="#">Comisiones</a><a href="#">Soporte</a></div>
+              <div className="foot-col"><h5>{t.footer.product}</h5><a href="#producto">{t.footer.digitalPesos}</a><a href="#bonos">{t.footer.bonds}</a><a href="#producto">{t.footer.vaults}</a></div>
+              <div className="foot-col"><h5>{t.footer.company}</h5><a href="#">{t.footer.about}</a><a href="#seguridad">{t.footer.security}</a><a href="#">{t.footer.jobs}</a><a href="#">{t.footer.press}</a></div>
+              <div className="foot-col"><h5>{t.footer.legal}</h5><a href="#">{t.footer.terms}</a><a href="#">{t.footer.privacy}</a><a href="#">{t.footer.fees}</a><a href="#">{t.footer.support}</a></div>
               <div className="foot-col">
-                <h5>Inversionistas</h5>
-                <a href="mailto:inversionistas@seyf.app">Contacto inversión</a>
+                <h5>{t.footer.investors}</h5>
+                <a href="mailto:inversionistas@seyf.app">{t.footer.investorContact}</a>
               </div>
             </div>
             <div className="foot-giant display" aria-hidden>SEYF</div>
             <div className="foot-bottom">
-              <span>© 2026 SEYF. Todos los derechos reservados.</span>
-              <span>Construido sobre Stellar · Hecho en México</span>
+              <span>{t.footer.rights}</span>
+              <span>{t.footer.made}</span>
             </div>
           </div>
         </footer>

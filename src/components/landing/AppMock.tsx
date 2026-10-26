@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Flag, Icon } from "@/components/app/ui";
 import { GrowingAmount } from "@/components/app/GrowingAmount";
+import { useI18n } from "./i18n";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const W = 390;
@@ -29,17 +30,18 @@ function StatusBar() {
 }
 
 function TabBar({ active }: { active: "inicio" | "ahorro" | "tarjeta" }) {
+  const { t } = useI18n();
   const tabs = [
-    { id: "inicio", ic: "home", lb: "Inicio" },
-    { id: "ahorro", ic: "vault", lb: "Ahorro" },
-    { id: "tarjeta", ic: "card", lb: "Tarjeta" },
+    { id: "inicio", ic: "home" },
+    { id: "ahorro", ic: "vault" },
+    { id: "tarjeta", ic: "card" },
   ] as const;
   return (
     <div className="tabbar am-tabbar">
-      {tabs.map((t) => (
-        <span key={t.id} className={`tab${t.id === active ? " active" : ""}`}>
-          <Icon name={t.ic} size={24} stroke={t.id === active ? 2.4 : 2} />
-          <span className="lb">{t.lb}</span>
+      {tabs.map((tab) => (
+        <span key={tab.id} className={`tab${tab.id === active ? " active" : ""}`}>
+          <Icon name={tab.ic} size={24} stroke={tab.id === active ? 2.4 : 2} />
+          <span className="lb">{t.mock.tabs[tab.id]}</span>
         </span>
       ))}
     </div>
@@ -47,13 +49,14 @@ function TabBar({ active }: { active: "inicio" | "ahorro" | "tarjeta" }) {
 }
 
 function Head({ title }: { title?: string }) {
+  const { t } = useI18n();
   return (
     <div className="app-head">
       {title ? (
         <p className="name">{title}</p>
       ) : (
         <div>
-          <p className="greet">Buenas tardes</p>
+          <p className="greet">{t.mock.greet}</p>
           <p className="name">Diego Robles</p>
         </div>
       )}
@@ -67,6 +70,7 @@ function Head({ title }: { title?: string }) {
 
 /* ---------- 1. Inicio: llega un depósito SPEI ---------- */
 function ScreenDeposit() {
+  const { t } = useI18n();
   return (
     <>
       <Head />
@@ -79,50 +83,50 @@ function ScreenDeposit() {
       >
         <span className="am-toast-ic"><Icon name="recv" size={18} /></span>
         <div style={{ flex: 1 }}>
-          <p className="am-toast-ti">Depósito SPEI recibido</p>
-          <p className="am-toast-su">Ya está rindiendo 9% anual</p>
+          <p className="am-toast-ti">{t.mock.toastTi}</p>
+          <p className="am-toast-su">{t.mock.toastSu}</p>
         </div>
         <span className="num am-pos">+$5,000</span>
       </motion.div>
       <div className="am-pad">
         <div className="card glow" style={{ padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <p className="eyebrow">Patrimonio total</p>
+            <p className="eyebrow">{t.mock.total}</p>
             <Icon name="eye" size={16} color="var(--txt-dim)" />
           </div>
           <div style={{ marginTop: 14 }}>
             <GrowingAmount base={590050.4} apy={9} size={50} align="left" id="am-home" />
           </div>
           <div style={{ display: "flex", gap: 24, marginTop: 14 }}>
-            <div className="am-split"><span><i style={{ background: "var(--accent)" }} /> Disponible</span><b className="num">$125,400</b></div>
-            <div className="am-split"><span><i style={{ background: "var(--accent-2)" }} /> En bóveda</span><b className="num" style={{ color: "#c4b5fd" }}>$464,650</b></div>
+            <div className="am-split"><span><i style={{ background: "var(--accent)" }} /> {t.mock.available}</span><b className="num">$125,400</b></div>
+            <div className="am-split"><span><i style={{ background: "var(--accent-2)" }} /> {t.mock.inVault}</span><b className="num" style={{ color: "#c4b5fd" }}>$464,650</b></div>
           </div>
           <div className="quick-row" style={{ marginTop: 18, gap: 6 }}>
             {[
-              { ic: "plus", tx: "Agregar" },
-              { ic: "send", tx: "Enviar" },
-              { ic: "bolt", tx: "Adelanto" },
+              { ic: "plus", tx: t.mock.quick[0] },
+              { ic: "send", tx: t.mock.quick[1] },
+              { ic: "bolt", tx: t.mock.quick[2] },
             ].map((q, i) => (
               <span className={`quick${i === 0 ? " am-pulse" : ""}`} key={q.tx}><span className="ic"><Icon name={q.ic} /></span><span className="tx">{q.tx}</span></span>
             ))}
-            <span className="quick"><span className="ic" style={{ fontSize: 20, letterSpacing: 2, fontWeight: 800 }}>···</span><span className="tx">Más</span></span>
+            <span className="quick"><span className="ic" style={{ fontSize: 20, letterSpacing: 2, fontWeight: 800 }}>···</span><span className="tx">{t.mock.quick[3]}</span></span>
           </div>
         </div>
-        <div className="am-sec">Movimientos recientes</div>
+        <div className="am-sec">{t.mock.recent}</div>
         <div className="card" style={{ padding: "4px 18px" }}>
           <motion.div className="lrow am-new" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1, duration: 0.5, ease: EASE }}>
             <div className="ava" style={{ color: "var(--accent)" }}><Icon name="bank" size={20} /></div>
-            <div className="mid"><p className="ti">Depósito SPEI</p><p className="su">Hoy · 9:41</p></div>
+            <div className="mid"><p className="ti">{t.mock.deposit}</p><p className="su">{t.mock.today} · 9:41</p></div>
             <div className="amt"><div className="a num am-pos">+$5,000.00</div></div>
           </motion.div>
           <div className="lrow">
             <div className="ava" style={{ color: "#c4b5fd" }}><Icon name="leaf" size={20} /></div>
-            <div className="mid"><p className="ti">Rendimiento diario</p><p className="su">Ayer</p></div>
+            <div className="mid"><p className="ti">{t.mock.dailyYield}</p><p className="su">{t.mock.yesterday}</p></div>
             <div className="amt"><div className="a num am-pos">+$143.26</div></div>
           </div>
           <div className="lrow">
             <div className="ava"><Icon name="cup" size={20} /></div>
-            <div className="mid"><p className="ti">Café Avellaneda</p><p className="su">Ayer · Tarjeta</p></div>
+            <div className="mid"><p className="ti">{t.mock.coffee}</p><p className="su">{t.mock.yesterday} · {t.mock.card}</p></div>
             <div className="amt"><div className="a num">−$68.00</div></div>
           </div>
         </div>
@@ -134,6 +138,7 @@ function ScreenDeposit() {
 
 /* ---------- 2. Convertir a dólar digital ---------- */
 function ScreenConvert() {
+  const { t } = useI18n();
   const [done, setDone] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setDone(true), 1900);
@@ -143,34 +148,34 @@ function ScreenConvert() {
     <>
       <div className="app-head" style={{ paddingTop: 4 }}>
         <span className="icon-btn"><Icon name="chevL" size={20} /></span>
-        <p className="name" style={{ fontSize: 17 }}>Convertir</p>
+        <p className="name" style={{ fontSize: 17 }}>{t.mock.convert}</p>
         <span style={{ width: 42 }} />
       </div>
       <div className="am-pad">
         <div className="card am-fx">
-          <p className="eyebrow">Pagas</p>
+          <p className="eyebrow">{t.mock.pay}</p>
           <div className="am-fx-row">
             <span className="num am-fx-amt">1,000.00</span>
             <span className="am-cur"><Flag code="mx" cls="sm" /> MXN</span>
           </div>
-          <p className="am-fx-hint">Disponible: $125,400.00</p>
+          <p className="am-fx-hint">{t.mock.availableAmt}</p>
         </div>
         <div className="am-swap"><Icon name="swap" size={18} /></div>
         <div className="card am-fx">
-          <p className="eyebrow">Recibes</p>
+          <p className="eyebrow">{t.mock.receive}</p>
           <div className="am-fx-row">
             <span className="num am-fx-amt" style={{ color: "var(--accent)" }}>57.48</span>
             <span className="am-cur"><span className="am-usdc">$</span> USDC</span>
           </div>
-          <p className="am-fx-hint">Dólar digital · 1:1 con USD</p>
+          <p className="am-fx-hint">{t.mock.usdcHint}</p>
         </div>
         <div className="card" style={{ padding: "6px 18px", marginTop: 14 }}>
-          <div className="am-kv"><span>Tipo de cambio</span><b className="num">1 USD = 17.40 MXN</b></div>
-          <div className="am-kv"><span>Comisión</span><b className="num am-pos">$0.00</b></div>
-          <div className="am-kv"><span>Llega en</span><b>~5 segundos</b></div>
+          <div className="am-kv"><span>{t.mock.rate}</span><b className="num">1 USD = 17.40 MXN</b></div>
+          <div className="am-kv"><span>{t.mock.fee}</span><b className="num am-pos">$0.00</b></div>
+          <div className="am-kv"><span>{t.mock.arrives}</span><b>{t.mock.seconds}</b></div>
         </div>
         <div className={`am-cta${done ? " ok" : ""}`}>
-          {done ? <><Icon name="check" size={18} stroke={2.6} /> Listo · 57.48 USDC</> : "Convertir 1,000 MXN"}
+          {done ? <><Icon name="check" size={18} stroke={2.6} /> {t.mock.done} · 57.48 USDC</> : t.mock.convertCta}
         </div>
       </div>
       <AnimatePresence>
@@ -204,30 +209,32 @@ function Ring({ pct, color }: { pct: number; color: string }) {
 }
 
 function ScreenVaults() {
+  const { t } = useI18n();
+  // a la derecha, lo ganado en el mes (no una tasa fija)
   const vaults = [
-    { name: "Viaje a Japón", amt: "$32,000", goal: "$50,000", pct: 64, apy: "11.2%", color: "var(--accent-2)" },
-    { name: "Fondo de emergencia", amt: "$18,500", goal: "$20,000", pct: 92, apy: "9.0%", color: "var(--accent)" },
-    { name: "Enganche casa", amt: "$84,000", goal: "$300,000", pct: 28, apy: "10.8%", color: "#5BD6C0" },
+    { name: t.mock.vaults[0], amt: "$32,000", goal: "$50,000", pct: 64, gain: "+$281", color: "var(--accent-2)" },
+    { name: t.mock.vaults[1], amt: "$18,500", goal: "$20,000", pct: 92, gain: "+$139", color: "var(--accent)" },
+    { name: t.mock.vaults[2], amt: "$84,000", goal: "$300,000", pct: 28, gain: "+$756", color: "#5BD6C0" },
   ];
   return (
     <>
-      <Head title="Ahorro" />
+      <Head title={t.mock.savings} />
       <div className="am-pad">
         <div className="card glow" style={{ padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <p className="eyebrow">En tus bóvedas</p>
-            <span className="am-chip"><Icon name="leaf" size={12} /> hasta 11.2% anual</span>
+            <p className="eyebrow">{t.mock.inVaults}</p>
+            <span className="am-chip"><Icon name="leaf" size={12} /> {t.mock.dailyChip}</span>
           </div>
           <div style={{ marginTop: 14 }}>
             <GrowingAmount base={464650} apy={10.4} size={46} align="left" color="#c4b5fd" id="am-vaults" />
           </div>
-          <p className="am-fx-hint" style={{ marginTop: 8 }}>+$4,028 ganados este mes</p>
+          <p className="am-fx-hint" style={{ marginTop: 8 }}>{t.mock.earnedMonth}</p>
         </div>
-        <div className="am-sec">Mis metas</div>
+        <div className="am-sec">{t.mock.goals}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {vaults.map((v, i) => (
             <motion.div
-              key={v.name}
+              key={i}
               className="card am-vault"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -236,9 +243,9 @@ function ScreenVaults() {
               <Ring pct={v.pct} color={v.color} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p className="am-v-ti">{v.name}</p>
-                <p className="am-v-su"><span className="num">{v.amt}</span> de {v.goal}</p>
+                <p className="am-v-su"><span className="num">{v.amt}</span> {t.mock.of} {v.goal}</p>
               </div>
-              <span className="num am-pos" style={{ fontSize: 14, fontWeight: 800 }}>{v.apy}</span>
+              <span className="num am-pos" style={{ fontSize: 14, fontWeight: 800 }}>{v.gain}<small style={{ fontWeight: 600, opacity: 0.7 }}>{t.mock.perMonth}</small></span>
             </motion.div>
           ))}
         </div>
