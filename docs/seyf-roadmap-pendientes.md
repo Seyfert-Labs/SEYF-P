@@ -313,7 +313,7 @@ flowchart TD
 | [seyf-app-prd.md](./seyf-app-prd.md) | PRD completo, user stories, roadmap original |
 | [etherfuse-kyc-stablebonds.md](./etherfuse-kyc-stablebonds.md) | Estado integración Etherfuse, APIs, env vars |
 | [etherfuse-pollar-boveda.md](./etherfuse-pollar-boveda.md) | Arquitectura dual Privy/Pollar, decisión de riel |
-| [buidl-es.md](./buidl-es.md) | Narrativa producto, invariante de solvencia |
+| [buidl-es.md](./buidl-es.md) | Respuestas del envío a HackMeridian 2026 (versión en inglés: [buidl-en.md](./buidl-en.md)) |
 | [README.md](../README.md) | Funcionalidades implementadas, endpoints |
 | [../src/hooks/useKycStatus.ts](../src/hooks/useKycStatus.ts) | Hook estado KYC (banners Inicio/Perfil) |
 | [../src/components/app/data.ts](../src/components/app/data.ts) | Planes de bóveda, APYs, datos mock |
