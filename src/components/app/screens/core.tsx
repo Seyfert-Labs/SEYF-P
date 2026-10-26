@@ -154,11 +154,11 @@ export function ScreenHome({ go }: { go: Go }) {
       <TopBar go={go} />
       <div className="screen-pad">
 
-        {/* ── 1. HERO: balance + quick row (con color propio, distinto a las tarjetas) ── */}
-        <div className="hero-v2">
+        {/* ── 1. SALDO: grande y sin caja; acciones en píldoras ── */}
+        <div className="home-bal">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <p className="eyebrow">{hasVault ? "Patrimonio total" : "Saldo disponible · MXN"}</p>
-            <button className="icon-btn" style={{ width: 24, height: 24, background: "none", border: "none" }} onClick={() => setHide(!hide)}>
+            <button className="icon-btn" style={{ width: 32, height: 32 }} onClick={() => setHide(!hide)} aria-label={hide ? "Mostrar saldo" : "Ocultar saldo"}>
               <Icon name="eye" size={16} color="var(--txt-dim)" />
             </button>
           </div>
@@ -173,7 +173,7 @@ export function ScreenHome({ go }: { go: Go }) {
             <div style={{ marginTop: 14 }}>
               {/* Número grande = patrimonio (crece a la tasa efectiva). Sin bóveda,
                   es el disponible puro y no crece. Mismo tamaño (56) que Ahorro. */}
-              <GrowingAmount base={hasVault ? patrimonio : pesos} apy={blendedApy} size={56} align="left" id="home-patrimonio" />
+              <GrowingAmount base={hasVault ? patrimonio : pesos} apy={blendedApy} size={62} align="left" id="home-patrimonio" />
             </div>
           )}
           {hasVault && !hide && (
@@ -195,11 +195,12 @@ export function ScreenHome({ go }: { go: Go }) {
             </div>
           )}
 
-          <div className="quick-row" style={{ marginTop: 18, gap: 6 }}>
-            <button className="quick q-main" onClick={() => setModal("deposit")}><span className="ic"><Icon name="plus" /></span><span className="tx">Agregar</span></button>
-            <button className="quick" onClick={() => setModal("send")}><span className="ic"><Icon name="send" /></span><span className="tx">Enviar</span></button>
-            <button className="quick q-violet" onClick={onAdvance}><span className="ic"><Icon name="bolt" /></span><span className="tx">Adelanto</span></button>
-            <button className="quick" onClick={() => setModal("more")}><span className="ic" style={{ fontSize: 20, letterSpacing: 2, fontWeight: 800, lineHeight: 1 }}>···</span><span className="tx">Más</span></button>
+          {/* Mismas acciones que antes (mismos handlers), ahora como píldoras. */}
+          <div className="pill-row">
+            <button className="pill-btn main" onClick={() => setModal("deposit")}><Icon name="plus" size={17} /> Agregar</button>
+            <button className="pill-btn" onClick={() => setModal("send")}><Icon name="send" size={16} /> Enviar</button>
+            <button className="pill-btn violet" onClick={onAdvance}><Icon name="bolt" size={16} /> Adelanto</button>
+            <button className="pill-btn icon" onClick={() => setModal("more")} aria-label="Más opciones"><span style={{ fontSize: 18, letterSpacing: 1, lineHeight: 1 }}>···</span></button>
           </div>
         </div>
 
@@ -265,11 +266,14 @@ export function ScreenHome({ go }: { go: Go }) {
 
 
         {/* ── 2. MOVIMIENTOS ── */}
-        <div className="sec-head" style={{ marginTop: 22 }}>
-          <h3>Movimientos recientes</h3>
-          <span className="link" onClick={() => go("wallet")}>Ver todo</span>
-        </div>
-        <div className="card" style={{ padding: "4px 18px" }}>
+        {/* Hoja de vidrio que "sube" sobre el fondo, como en las referencias */}
+        <div className="sheet-panel">
+          <div className="sp-grab" />
+          <div className="sp-head">
+            <h3>Movimientos</h3>
+            <button type="button" className="chip" onClick={() => go("wallet")}>Ver todo <Icon name="chevR" size={13} /></button>
+          </div>
+          <div style={{ marginTop: 6 }}>
           {realData ? (
             pend.pending.length === 0 && conv.conversions.length === 0 && homeTxns.txns.length === 0 && stellarTxns.ops.length === 0 ? (
               (homeTxns.loading || stellarTxns.loading) ? (
@@ -293,6 +297,7 @@ export function ScreenHome({ go }: { go: Go }) {
           ) : (
             <div className="list">{TXNS.slice(0, 3).map((t) => <TxnRow key={t.id} t={t} go={go} />)}</div>
           )}
+          </div>
         </div>
 
         {/* ── 4. PROYECCIÓN — hasta el fondo, expandida e ilustrativa. Se coloca al
