@@ -8,7 +8,9 @@ import type { Go, Screen } from "./nav";
 import { Onboarding, ScreenHome, ScreenWallet, ScreenTxnDetail } from "./screens/core";
 import { ScreenVaults, ScreenVaultDetail, ScreenConvert, ScreenConvertSoon } from "./screens/invest";
 import { SPEI_ENABLED } from "@/lib/rails";
-import { ScreenCard, ScreenProfile, ScreenNotifs } from "./screens/account";
+import { ScreenProfile, ScreenNotifs } from "./screens/account";
+import { ScreenAdvance } from "./screens/advance";
+import "./app-v2.css";
 import { ScreenKyc } from "./screens/kyc";
 import { ScreenAssetDetail } from "./screens/asset-detail";
 import { ScreenLogin } from "./screens/login";
@@ -18,7 +20,7 @@ import { useWallet } from "@/components/wallet/WalletContext";
 const TABS: { id: string; ic: string; lb: string; screen: Screen; match: Screen[] }[] = [
   { id: "inicio", ic: "home", lb: "Inicio", screen: "home", match: ["home", "wallet", "notifs", "txn"] },
   { id: "ahorro", ic: "vault", lb: "Ahorro", screen: "bovedas", match: ["bovedas", "boveda"] },
-  { id: "tarjeta", ic: "card", lb: "Tarjeta", screen: "card", match: ["card"] },
+  { id: "adelanto", ic: "bolt", lb: "Adelanto", screen: "adelanto", match: ["adelanto"] },
 ];
 
 function TabBar({ screen, go }: { screen: Screen; go: Go }) {
@@ -101,7 +103,7 @@ export default function SeyfApp() {
     wallet: <ScreenWallet go={go} />,
     bovedas: <ScreenVaults go={go} />,
     boveda: <ScreenVaultDetail go={go} ctx={route.ctx} />,
-    card: <ScreenCard go={go} />,
+    adelanto: <ScreenAdvance go={go} />,
     // La conversión depende de la rampa SPEI: en mainnet aún es "próximamente".
     convertir: SPEI_ENABLED ? <ScreenConvert go={go} /> : <ScreenConvertSoon go={go} />,
     cambio: SPEI_ENABLED ? <ScreenConvert go={go} /> : <ScreenConvertSoon go={go} />,
