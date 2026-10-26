@@ -8,6 +8,7 @@ import { Celebration } from "../Celebration";
 import { PiggyBank, VaultDial } from "../SavingsArt";
 import { BondPicker, COIN_GRADIENT, CoinSphere, coinKind } from "../BondCoins";
 import { SubHeader, AvatarButton } from "../shared";
+import { IS_MAINNET } from "@/lib/rails";
 import { FMT, RISK_PROFILES, planByApy, planById, projectSavings, loadRiskProfile, type VaultPlan, type RiskLevel, type AllocationSlice } from "../data";
 import { GrowingAmount, YieldRate } from "../GrowingAmount";
 import { MoneyInput, formatWithCommas } from "../MoneyInput";
@@ -192,8 +193,14 @@ export function ScreenVaults({ go }: { go: Go }) {
 
   // Preferencia XLM: es la bóveda con la que el usuario sí puede depositar
   // (tiene XLM por Friendbot). Se preselecciona aunque el quiz recomiende otra.
-  const defaultStrategy =
-    byPlanId("balanceado") ?? (recPlan && byPlanId(recPlan.id)) ?? strategies[0];
+  // En mainnet solo opera el vault USDC (el del adelanto); CETES y XLM son de testnet.
+  // Si el catálogo no trae USDC, no se oculta nada (mejor ver opciones que una pantalla vacía).
+  const usdcOnly = strategies.filter((s) => s.assetSymbol === "USDC");
+  const offered = IS_MAINNET && usdcOnly.length > 0 ? usdcOnly : strategies;
+  const offeredByPlanId = (id?: string | null) => offered.find((s) => s.planId === id);
+  const defaultStrategy = IS_MAINNET
+    ? offered[0]
+    : byPlanId("balanceado") ?? (recPlan && byPlanId(recPlan.id)) ?? strategies[0];
 
   // APY efectivo de una bóveda: el guardado si existe, si no el vivo de DeFindex
   // y, en su defecto, el de referencia del catálogo. Evita que el APY salga 0/—.
@@ -214,7 +221,7 @@ export function ScreenVaults({ go }: { go: Go }) {
   const totalAnchorMs = vaults.reduce((m, v) => Math.max(m, v.updatedAt ?? 0), 0) || undefined;
   const atCap = vaults.length >= MAX_VAULTS;
   const pickedStrategy =
-    strategies.find((s) => s.planId === picked) ?? (recPlan && byPlanId(recPlan.id)) ?? defaultStrategy;
+    offeredByPlanId(picked) ?? offeredByPlanId(recPlan?.id) ?? defaultStrategy;
   const { isAuthenticated: pollarOk, wallet: pollarWallet } = usePollar();
   const pollarPk = pollarWallet?.address;
   const [orphanOnchain, setOrphanOnchain] = useState<
@@ -421,7 +428,7 @@ export function ScreenVaults({ go }: { go: Go }) {
           {STELLAR_RAIL
             ? pickedStrategy && (
                 <div className="card" style={{ padding: "18px 18px 20px" }}>
-                  <BondPicker options={strategies} value={pickedStrategy.planId} onChange={setPicked} />
+                  <BondPicker options={offered} value={pickedStrategy.planId} onChange={setPicked} />
                   {/* Mismo efecto que tocar la tarjeta de estrategia: abre "Nueva bóveda" con ese activo. */}
                   <button
                     className="btn btn-primary"
@@ -454,7 +461,7 @@ export function ScreenVaults({ go }: { go: Go }) {
           <CreateVaultModalStellar
             preset={creating.stellar ?? defaultStrategy}
             recId={recId}
-            strategies={strategies}
+            strategies={offered}
             busy={opening}
             onClose={() => setCreating(null)}
             onCreate={handleCreate}

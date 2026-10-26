@@ -160,7 +160,7 @@ export function BondPicker({
           <div className="v">{sel.assetSymbol ?? "—"}</div>
         </div>
       </div>
-      <p className="bond-hint">{apy.est ? "Tasa anual estimada; cambia con el mercado." : "Tasa anual actual; cambia con el mercado."} Toca una moneda para cambiar.</p>
+      <p className="bond-hint">{apy.est ? "Tasa anual estimada; cambia con el mercado." : "Tasa anual actual; cambia con el mercado."}{options.length > 1 && " Toca una moneda para cambiar."}</p>
     </div>
   );
 }
