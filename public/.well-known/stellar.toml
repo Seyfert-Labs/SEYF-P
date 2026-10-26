@@ -1,5 +1,5 @@
 # SEYF — Stellar Info File (SEP-1)
-# Se sirve en https://seyf-p.vercel.app/.well-known/stellar.toml (CORS abierto, ver next.config.ts).
+# Se sirve en https://www.seyf.app/.well-known/stellar.toml (CORS abierto, ver next.config.ts).
 # Guía: https://developers.stellar.org/docs/tokens/publishing-asset-info
 
 VERSION="2.0.0"
@@ -7,11 +7,11 @@ VERSION="2.0.0"
 # Red pública (mainnet). En testnet usar: "Test SDF Network ; September 2015"
 NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 
-# Llave PÚBLICA del servidor SEP-10 (`seyf-sep10`, derivada de SEP10_SERVER_SECRET; no es secreta).
-SIGNING_KEY="GAOG5JOMKZTTVQWBJIFDMOGCEVAGP435LSRQDXXSD3QGB4MGFFRCMFIS"
+# Llave PÚBLICA del servidor SEP-10 (`seyf-sep10-hot`, derivada de SEP10_SERVER_SECRET; no es secreta).
+SIGNING_KEY="GCICR4ID7D6MSU4N7ZST3U7YCSRO6YCDOUKWAYZHHR6JD4BWKC46LQ5E"
 
 # SEP-10 Web Auth — src/app/api/auth/sep10.
-WEB_AUTH_ENDPOINT="https://seyf-p.vercel.app/api/auth/sep10"
+WEB_AUTH_ENDPOINT="https://www.seyf.app/api/auth/sep10"
 
 # Cuentas que controla SEYF (ver soroban/DEPLOYMENTS.md). Hay direcciones
 # look-alike de estas haciendo address poisoning: esta lista es la referencia.
@@ -22,14 +22,14 @@ ACCOUNTS=[
 ]
 
 # Pendientes de WS2 (Anchor Platform). Descomentar cuando estén en vivo:
-# TRANSFER_SERVER_SEP0024="https://seyf-p.vercel.app/sep24"   # SEP-24
-# KYC_SERVER="https://seyf-p.vercel.app/sep12"                # SEP-12
-# ANCHOR_QUOTE_SERVER="https://seyf-p.vercel.app/sep38"       # SEP-38
+# TRANSFER_SERVER_SEP0024="https://www.seyf.app/sep24"   # SEP-24
+# KYC_SERVER="https://www.seyf.app/sep12"                # SEP-12
+# ANCHOR_QUOTE_SERVER="https://www.seyf.app/sep38"       # SEP-38
 
 [DOCUMENTATION]
 ORG_NAME="SEYF"
 ORG_DBA="Seyfert Labs"
-ORG_URL="https://seyf-p.vercel.app"
+ORG_URL="https://www.seyf.app"
 ORG_DESCRIPTION="App de ahorro e inversión full Stellar para México: ahorro para el retiro en un vault DeFindex de USDC con adelanto de rendimiento (contrato seyf_advance)."
 # Pendiente: correo oficial y de soporte del equipo.
 # ORG_OFFICIAL_EMAIL=""
