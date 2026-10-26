@@ -207,6 +207,11 @@ export async function buildSponsoredAccountCreation(
 /**
  * XDR (firmado por el sponsor) que abre una trustline con reserva patrocinada.
  * Sin esto cada asset nuevo le cuesta 0.5 XLM al usuario. En la beta solo USDC.
+ *
+ * El origen es la cuenta del usuario: Pollar `/tx/sign` solo firma si
+ * `tx.source` es su wallet. El sponsor entra como origen del
+ * `beginSponsoringFutureReserves` y la comisión la paga el fee-bump de
+ * `submitFeeBumped` (CAP-15: la cuenta interna no paga fee, sirve con 0 XLM).
  */
 export async function buildSponsoredTrustline(
   account: string,
@@ -224,13 +229,16 @@ export async function buildSponsoredTrustline(
   const sponsor = sponsorKeypair()
   const networkPassphrase = stellarNetworkPassphrase()
 
-  const source = await server().loadAccount(sponsor.publicKey())
+  const source = await server().loadAccount(account)
   const tx = new TransactionBuilder(source, { fee: BASE_FEE, networkPassphrase })
-    .addOperation(Operation.beginSponsoringFutureReserves({ sponsoredId: account }))
     .addOperation(
-      Operation.changeTrust({ asset: new Asset(assetCode, assetIssuer), source: account }),
+      Operation.beginSponsoringFutureReserves({
+        sponsoredId: account,
+        source: sponsor.publicKey(),
+      }),
     )
-    .addOperation(Operation.endSponsoringFutureReserves({ source: account }))
+    .addOperation(Operation.changeTrust({ asset: new Asset(assetCode, assetIssuer) }))
+    .addOperation(Operation.endSponsoringFutureReserves({}))
     .setTimeout(TX_TIMEOUT_SEC)
     .build()
 
@@ -245,9 +253,40 @@ function contractOf(fn: xdr.HostFunction): string | null {
   return Address.fromScAddress(fn.invokeContract().contractAddress()).toString()
 }
 
+function hasSignature(tx: Transaction, kp: Keypair): boolean {
+  const hash = tx.hash()
+  const hint = kp.signatureHint()
+  return tx.signatures.some(
+    (sig) => sig.hint().equals(hint) && kp.verify(hash, sig.signature()),
+  )
+}
+
 function sorobanResourceFee(tx: Transaction): bigint {
   const ext = tx.toEnvelope().v1().tx().ext()
   return ext.switch() === 1 ? BigInt(ext.sorobanData().resourceFee().toString()) : BigInt(0)
+}
+
+/**
+ * Trustline USDC con reserva patrocinada tal como la arma `buildSponsoredTrustline`:
+ * origen = usuario, begin del sponsor, changeTrust y end del usuario.
+ */
+function isSponsoredTrustline(tx: Transaction, account: string, sponsor: string): boolean {
+  const ops = tx.operations
+  const [begin, middle, end] = ops
+  const own = (src?: string) => !src || src === account
+  return (
+    tx.source === account &&
+    ops.length === 3 &&
+    begin.type === 'beginSponsoringFutureReserves' &&
+    begin.source === sponsor &&
+    begin.sponsoredId === account &&
+    middle.type === 'changeTrust' &&
+    own(middle.source) &&
+    middle.line instanceof Asset &&
+    isUsdc(middle.line) &&
+    end.type === 'endSponsoringFutureReserves' &&
+    own(end.source)
+  )
 }
 
 /** Las únicas formas de transacción que paga el sponsor en la beta. */
@@ -255,23 +294,22 @@ function assertSponsorableOperations(tx: Transaction, account: string, sponsor: 
   const ops = tx.operations
   if (ops.length === 0) throw new SponsorRejectedError('La transacción no tiene operaciones.')
 
-  // Lo que arma este módulo (fuente = sponsor): cuenta o trustline USDC con reserva patrocinada.
+  // Crear la cuenta (fuente = sponsor): no puede salir del usuario porque aún no existe.
   if (tx.source === sponsor) {
     const [begin, middle, end] = ops
     const ok =
       ops.length === 3 &&
       begin.type === 'beginSponsoringFutureReserves' &&
       begin.sponsoredId === account &&
+      middle.type === 'createAccount' &&
+      middle.destination === account &&
       end.type === 'endSponsoringFutureReserves' &&
-      end.source === account &&
-      ((middle.type === 'createAccount' && middle.destination === account) ||
-        (middle.type === 'changeTrust' &&
-          middle.source === account &&
-          middle.line instanceof Asset &&
-          isUsdc(middle.line)))
+      end.source === account
     if (!ok) throw new SponsorForbiddenError('Esta transacción no se puede patrocinar.')
     return
   }
+
+  if (isSponsoredTrustline(tx, account, sponsor)) return
 
   const contracts = allowedContracts()
   for (const op of ops) {
@@ -328,6 +366,16 @@ export async function submitFeeBumped(
     throw new SponsorRejectedError('La transacción no viene firmada.')
   }
   assertSponsorableOperations(inner, account, sponsor.publicKey())
+
+  // La trustline patrocinada necesita la firma del sponsor (origen del begin). Si la
+  // wallet la quitó al firmar, se repone: la forma ya se validó arriba.
+  if (isSponsoredTrustline(inner, account, sponsor.publicKey())) {
+    const sponsorSigned = hasSignature(inner, sponsor)
+    console.info(
+      `[sponsor] trustline: ${inner.signatures.length} firma(s), sponsor ${sponsorSigned ? 'presente' : 'ausente → se repone'}`,
+    )
+    if (!sponsorSigned) inner.sign(sponsor)
+  }
 
   const resourceFee = sorobanResourceFee(inner)
   const cap = maxResourceFee()
