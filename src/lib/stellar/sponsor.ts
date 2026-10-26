@@ -319,6 +319,8 @@ function assertSponsorableOperations(tx: Transaction, account: string, sponsor: 
       throw new SponsorForbiddenError('Esta transacción opera sobre otra cuenta.')
     }
     if (op.type === 'changeTrust' && op.line instanceof Asset && isUsdc(op.line)) continue
+    // Enviar USDC desde Enviar: la cuenta del usuario no tiene XLM para la comisión.
+    if (op.type === 'payment' && isUsdc(op.asset)) continue
     if (op.type === 'invokeHostFunction') {
       const contract = contractOf(op.func)
       if (contract && contracts.has(contract)) continue

@@ -2,6 +2,7 @@
 
 import type { PollarClient } from '@pollar/core'
 import { pollarSignXdr, waitForPollarSession } from '@/lib/pollar/client-api'
+import { signAndSubmit } from '@/components/retiro/api'
 
 export type SeyfPayAsset = 'XLM' | 'USDC'
 
@@ -26,6 +27,12 @@ export async function sendStellarToSeyf(opts: {
   const buildData = (await buildRes.json().catch(() => ({}))) as { xdr?: string; error?: string }
   if (!buildRes.ok || !buildData.xdr) {
     throw new Error(buildData.error || 'No se pudo construir la transacción')
+  }
+
+  // USDC: la cuenta no suele tener XLM para la comisión (tx_insufficient_balance);
+  // el sponsor la paga con fee-bump, igual que abonar o pedir el adelanto.
+  if (asset === 'USDC') {
+    return { txHash: await signAndSubmit(client, publicKey, buildData.xdr) }
   }
 
   const signedXdr = await pollarSignXdr(client, buildData.xdr, publicKey)
