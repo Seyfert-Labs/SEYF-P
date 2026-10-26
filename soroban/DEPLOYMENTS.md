@@ -22,11 +22,20 @@ cambian metadatos de compilación. Se usó Stellar CLI 28.1.0.
 | Rol | Cuenta |
 | --- | --- |
 | Admin (`seyf-admin`) | `GA7OITMN2PC55EPIMQL5SWX6ZGT55HEHJEIC7FDAHCZWCPLFZZ5N6V7U` |
-| Keeper (`seyf-keeper`, solo paga `settle`) | `GCMD53GFMYHH5AY2WUM672EEBOA3PE5KQOWS3FATTEVZXDS7BHA7UTY4` |
-| Sponsor de reservas y comisiones (`seyf-sponsor`) | `GCEXGM4CSDNLV6P5WRRSXDY2F7UCQO5IETZGYGCCPL6NEXBY4P5T7IXE` |
+| Keeper (`seyf-keeper-hot`, solo paga `settle`) | `GAYVVUKEUZQ76FYKORZNQL2S3HU56VSFSBE4KTPJXCLASB3XELHXTSC3` |
+| Sponsor de reservas y comisiones (`seyf-sponsor-hot`) | `GDPVVG4AWVXDS6WBS4PEBGH7UVJKFJUKC26UVBCG7LYIYIM3S6EQHB72` |
+| Firma de challenges SEP-10 (`seyf-sep10`, sin fondos) | `GAOG5JOMKZTTVQWBJIFDMOGCEVAGP435LSRQDXXSD3QGB4MGFFRCMFIS` |
 
-Las llaves están en el almacén seguro del sistema operativo (`stellar keys
-generate --secure-store`) y nunca en el repo. Hay cuentas *look-alike* que imitan
+Las llaves se guardan de dos maneras distintas y ninguna está en el repo:
+
+- **Admin:** en el almacén seguro del sistema operativo (`stellar keys
+  generate --secure-store`). No se puede exportar y nunca va a un servidor.
+- **Keeper, sponsor y SEP-10:** son llaves *calientes* que viven en GitHub
+  Actions o en Vercel, así que tienen que poder exportarse. Por eso llevan el
+  saldo mínimo.
+
+Primero el keeper y el sponsor se crearon en el almacén seguro: `GCMD53GF…` y
+`GCEXGM4C…`. No se podían exportar, así que se fusionaron de vuelta al admin. Hay cuentas *look-alike* que imitan
 estas direcciones (mismo inicio y mismo final) y que mandaron transacciones de
 polvo para envenenar el historial. **Nunca copies una dirección desde el historial
 de transacciones**: usa solo esta tabla.
@@ -46,8 +55,9 @@ de transacciones**: usa solo esta tabla.
 | Paso | Resultado | Transacción | Comisión (XLM) |
 | --- | --- | --- | --- |
 | Trustline de USDC del admin | — | [0b29c9f6…](https://stellar.expert/explorer/public/tx/0b29c9f68a3b72c29f0a8aa52ca44e4c69ed550c1d8c24ad4eccf5179f781329) | 0.00001 |
-| Crear la cuenta del sponsor (3 XLM) | — | [dc2ef705…](https://stellar.expert/explorer/public/tx/dc2ef705f72cdc08d52d31caf36401e7ef1f78e7f8b9130a1b22f7573ceb9128) | 0.00001 |
-| Crear la cuenta del keeper (2 XLM) | — | [77a4eb59…](https://stellar.expert/explorer/public/tx/77a4eb598fb6daa7f4964b16ce37ba8289cba03d044a41a759e94bedb897c73a) | 0.00001 |
+| Crear la cuenta del keeper (2 XLM) | — | [a34ebafb…](https://stellar.expert/explorer/public/tx/a34ebafbae0a4dcb6da98a1bc7d72b3168644132cc0deeed3910c1a7bdf929a6) | 0.00001 |
+| Crear la cuenta del sponsor (6 XLM) | — | [267ce58c…](https://stellar.expert/explorer/public/tx/267ce58c4c83910749b378c41bd3428b707452b6e82e7ec0b183fe6cfdf5d959) | 0.00001 |
+| Fusionar keeper y sponsor viejos con el admin | — | [e9b5f7c3…](https://stellar.expert/explorer/public/tx/e9b5f7c3c01253ca8dc1b51b24acdb37939588aabf70606c3a20d6070e99d52a), [313672cf…](https://stellar.expert/explorer/public/tx/313672cf3d8c71e731182056813d3509e14af246445ef1e3d16c1ed5a6e0936a) | 0.00001 c/u |
 | Subir el wasm | — | [0170a085…](https://stellar.expert/explorer/public/tx/0170a085269d803862140bfe99616ee09d49f2d4e653dc69d4e5b07711b59655) | 22.36 |
 | Desplegar con constructor | lectura verificada de admin, vault, activo y parámetros | [1fa79ed9…](https://stellar.expert/explorer/public/tx/1fa79ed90c90bf71063be5fbbdcc5fd30ea398d47d8dee7e3a12ff34cd6e540c) | 0.11 |
 | `fund_treasury` (2 USDC) | `treasury()` = 20 000 000 | [633b79df…](https://stellar.expert/explorer/public/tx/633b79df5073010cdc92a1a37766f92602f52169bda0ea2e69916bcf4ea40c8c) | 0.038 |
