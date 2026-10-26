@@ -338,8 +338,8 @@ export function ScreenProfile({ go }: { go: Go }) {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent-2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="shield" size={20} /></span>
             <div>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Saldo asegurado</p>
-              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>Hasta $3,000,000 MXN · cifrado AES‑256</p>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Verificable en Stellar</p>
+              <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--txt-muted)" }}>Tú firmas cada movimiento y queda registrado en una red pública.</p>
             </div>
           </div>
         </div>
