@@ -59,7 +59,7 @@ function Splash() {
 }
 
 /** Aviso mientras se abre la sesión SEP-10 (sin ella no se lee ni se firma el ahorro). */
-function SessionBanner() {
+function SessionBanner({ raised }: { raised: boolean }) {
   const app = useAppRetiro();
   // Wallets Turnkey de Pollar no firman nada (ni la sesión) hasta tener un método
   // de recuperación: passkey, otro dispositivo o correo con código.
@@ -74,30 +74,32 @@ function SessionBanner() {
   }, [recoveryLocked, sessionOk, retry]);
 
   if (!app || sessionOk) return null;
-  if (recoveryLocked) {
-    return (
-      <div style={{ position: "fixed", left: 0, right: 0, top: 0, zIndex: 50, padding: "10px 16px", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-        <div className="alert alert-info" style={{ margin: 0, maxWidth: 440, display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
-          <span style={{ flex: 1 }}>Protege tu cuenta para continuar: agrega una passkey o tu correo para recuperarla.</span>
-          <button className="chip" onClick={openRecoveryModal}>Proteger mi cuenta</button>
-        </div>
-      </div>
-    );
-  }
+  // Tarjeta sólida que sube desde abajo (encima de la barra de pestañas), para
+  // no tapar el encabezado. Mismos textos y mismos botones que antes.
+  const state = recoveryLocked ? "locked" : app.sep10.state;
   return (
-    <div style={{ position: "fixed", left: 0, right: 0, top: 0, zIndex: 50, padding: "10px 16px", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-      <div className={`alert ${app.sep10.state === "error" ? "alert-error" : "alert-info"}`} style={{ margin: 0, maxWidth: 440, display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
-        {app.sep10.state === "pending" ? (
-          <>
-            <span className="spin" /> Abriendo tu sesión segura…
-          </>
-        ) : (
-          <>
-            No se pudo abrir tu sesión segura.
-            <button className="chip" onClick={() => void app.sep10.retry()}>Reintentar</button>
-          </>
-        )}
-      </div>
+    <div className={`session-card${raised ? " raised" : ""}${state === "error" ? " err" : ""}`} role="status">
+      {recoveryLocked ? (
+        <>
+          <span className="sc-ic"><Icon name="shield" size={18} /></span>
+          <div className="sc-copy">
+            <p className="sc-t">Protege tu cuenta para continuar</p>
+            <p className="sc-s">Agrega una passkey o tu correo para recuperarla.</p>
+          </div>
+          <button className="btn btn-primary sc-btn" onClick={openRecoveryModal}>Proteger mi cuenta</button>
+        </>
+      ) : app.sep10.state === "pending" ? (
+        <>
+          <span className="sc-ic"><span className="spin" /></span>
+          <div className="sc-copy"><p className="sc-t">Abriendo tu sesión segura…</p></div>
+        </>
+      ) : (
+        <>
+          <span className="sc-ic"><Icon name="info" size={18} /></span>
+          <div className="sc-copy"><p className="sc-t">No se pudo abrir tu sesión segura.</p></div>
+          <button className="btn btn-ghost sc-btn" onClick={() => void app.sep10.retry()}>Reintentar</button>
+        </>
+      )}
     </div>
   );
 }
@@ -149,7 +151,7 @@ export default function SeyfApp() {
           loggingIn ? <ScreenLogin onBack={() => setLoggingIn(false)} /> : <Onboarding onDone={onEnter} />
         ) : (
           <>
-            <SessionBanner />
+            <SessionBanner raised={showTabs} />
             {SCREENS[route.screen] || SCREENS.home}
             {showTabs && <TabBar screen={route.screen} go={go} />}
           </>

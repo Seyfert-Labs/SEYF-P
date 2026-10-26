@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui";
 import { Celebration } from "../Celebration";
-import { PiggyBank, VaultDial } from "../SavingsArt";
+import { GrowthBars, VaultDial } from "../SavingsArt";
 import { BondPicker, COIN_GRADIENT, CoinSphere, coinKind } from "../BondCoins";
 import { SubHeader, AvatarButton } from "../shared";
 import { IS_MAINNET } from "@/lib/rails";
@@ -188,8 +188,6 @@ export function ScreenVaults({ go }: { go: Go }) {
   const [creating, setCreating] = useState<null | { stellar?: DefindexStrategyLive; evmPlan?: VaultPlan }>(null);
   const [recId] = useState<string | null>(() => loadRiskProfile());
   const recPlan = recId ? planById(recId) : null;
-  // Moneda elegida en "Elige dónde rinde" (solo presentación; la recomendada va primero).
-  const [picked, setPicked] = useState<string | null>(null);
 
   // Preferencia XLM: es la bóveda con la que el usuario sí puede depositar
   // (tiene XLM por Friendbot). Se preselecciona aunque el quiz recomiende otra.
@@ -197,7 +195,6 @@ export function ScreenVaults({ go }: { go: Go }) {
   // Si el catálogo no trae USDC, no se oculta nada (mejor ver opciones que una pantalla vacía).
   const usdcOnly = strategies.filter((s) => s.assetSymbol === "USDC");
   const offered = IS_MAINNET && usdcOnly.length > 0 ? usdcOnly : strategies;
-  const offeredByPlanId = (id?: string | null) => offered.find((s) => s.planId === id);
   const defaultStrategy = IS_MAINNET
     ? offered[0]
     : byPlanId("balanceado") ?? (recPlan && byPlanId(recPlan.id)) ?? strategies[0];
@@ -220,8 +217,6 @@ export function ScreenVaults({ go }: { go: Go }) {
   // Ancla del timer del total = lectura de saldo más reciente entre las bóvedas.
   const totalAnchorMs = vaults.reduce((m, v) => Math.max(m, v.updatedAt ?? 0), 0) || undefined;
   const atCap = vaults.length >= MAX_VAULTS;
-  const pickedStrategy =
-    offeredByPlanId(picked) ?? offeredByPlanId(recPlan?.id) ?? defaultStrategy;
   const { isAuthenticated: pollarOk, wallet: pollarWallet } = usePollar();
   const pollarPk = pollarWallet?.address;
   const [orphanOnchain, setOrphanOnchain] = useState<
@@ -294,24 +289,23 @@ export function ScreenVaults({ go }: { go: Go }) {
       </div>
       <div className="screen-pad">
         {(busy || opening) && (
-          <div className="card" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--accent-soft)", border: "none" }}>
+          <div className="card" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 12, background: "var(--surface-2)" }}>
             <span className="spin" style={{ color: "var(--accent)" }} />
             <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)" }}>Procesando en la red… esto tarda unos segundos.</p>
           </div>
         )}
 
         {/* Hero — ahorro total creciendo en vivo */}
-        {/* Héroe: la alcancía recibe monedas y suelta moneditas de rendimiento. */}
-        <div className="hero-v2 violet">
+        {/* Héroe sólido: barras de crecimiento animadas. */}
+        <div className="hero-v2">
           <div className="savings-hero">
             <div style={{ minWidth: 0 }}>
-              <p className="eyebrow">Tu alcancía</p>
+              <p className="eyebrow">Tu ahorro total</p>
               <div style={{ marginTop: 12 }}>
-                {/* Violeta = saldo en bóveda (misma convención que el split del Inicio). */}
-                <GrowingAmount base={totalSaved} apy={weightedApy} size={44} align="left" color="#e2d9ff" id="vaults-total" anchorMs={totalAnchorMs} />
+                                <GrowingAmount base={totalSaved} apy={weightedApy} size={44} align="left" color="#fff" id="vaults-total" anchorMs={totalAnchorMs} />
               </div>
             </div>
-            <PiggyBank size={124} live={totalSaved > 0} />
+            <GrowthBars size={112} live={totalSaved > 0} />
           </div>
           {totalSaved > 0 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
@@ -338,7 +332,7 @@ export function ScreenVaults({ go }: { go: Go }) {
         )}
 
         {STELLAR_RAIL && orphanOnchain.length > 0 && (
-          <div className="card" style={{ marginTop: 14, padding: "14px 16px", background: "var(--accent-soft)", border: "1px solid var(--accent)" }}>
+          <div className="card" style={{ marginTop: 14, padding: "14px 16px", background: "var(--surface-2)", border: "1px solid var(--accent)" }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "var(--txt)" }}>
               Tienes saldo invertido sin bóveda asignada
             </p>
@@ -378,7 +372,7 @@ export function ScreenVaults({ go }: { go: Go }) {
         </div>
         {vaults.length === 0 ? (
           <button type="button" className="first-vault" onClick={() => setCreating({ stellar: defaultStrategy })}>
-            <VaultDial color="#A78BFA" size={50} />
+            <VaultDial color="#C8FF4D" size={50} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p className="t">Crea tu primera bóveda</p>
               <p className="s">Ponle nombre a tu meta y elige dónde rinde.</p>
@@ -413,8 +407,13 @@ export function ScreenVaults({ go }: { go: Go }) {
 
         {/* Activos de ahorro (Stellar) o perfiles de riesgo (EVM) */}
         <div className="sec-head" style={{ marginTop: 24 }}>
-          <h3>{STELLAR_RAIL ? "Elige dónde rinde" : "Estrategias de ahorro"}</h3>
+          <h3>{STELLAR_RAIL ? "Tasas de hoy" : "Estrategias de ahorro"}</h3>
         </div>
+        {STELLAR_RAIL && (
+          <p style={{ margin: "0 2px 12px", fontSize: 12.5, color: "var(--txt-muted)", lineHeight: 1.5 }}>
+            Lo que paga hoy cada activo. Cambia con el mercado.
+          </p>
+        )}
         {!STELLAR_RAIL && (
           <p style={{ margin: "0 2px 14px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
             {recPlan ? (
@@ -426,19 +425,35 @@ export function ScreenVaults({ go }: { go: Go }) {
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {STELLAR_RAIL
-            ? pickedStrategy && (
-                <div className="card" style={{ padding: "18px 18px 20px" }}>
-                  <BondPicker options={offered} value={pickedStrategy.planId} onChange={setPicked} />
-                  {/* Mismo efecto que tocar la tarjeta de estrategia: abre "Nueva bóveda" con ese activo. */}
-                  <button
-                    className="btn btn-primary"
-                    style={{ marginTop: 16 }}
-                    disabled={atCap}
-                    onClick={atCap ? undefined : () => setCreating({ stellar: pickedStrategy })}
-                  >
-                    {recPlan?.id === pickedStrategy.planId && <Icon name="star" size={16} />}
-                    Abrir bóveda en {pickedStrategy.assetSymbol}
-                  </button>
+            ? offered.length > 0 && (
+                // Lista informativa de tasas (la elección con monedas vive solo en "Nueva bóveda").
+                // Tocar una fila hace lo mismo que antes el botón "Abrir bóveda en …".
+                <div className="card rate-list">
+                  {offered.map((s) => {
+                    const apy = s.apy ?? s.apyTarget;
+                    return (
+                      <button
+                        key={s.planId}
+                        type="button"
+                        className="rate-row"
+                        disabled={atCap}
+                        onClick={atCap ? undefined : () => setCreating({ stellar: s })}
+                      >
+                        <CoinSphere kind={coinKind(s)} size={38} label={s.assetSymbol} />
+                        <div className="rr-mid">
+                          <p className="rr-nm">
+                            {s.assetSymbol ?? s.name}
+                            {recPlan?.id === s.planId && <span style={{ marginLeft: 6, verticalAlign: -1 }}><Icon name="star" size={12} color="var(--accent)" /></span>}
+                          </p>
+                          <p className="rr-ex">{s.exposure} · Riesgo {s.risk.toLowerCase()}</p>
+                        </div>
+                        <div className="rr-apy">
+                          <div className="v num">{apy != null && Number.isFinite(apy) ? `${FMT(apy, 1)}%` : "—"}</div>
+                          <div className="k">anual</div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )
             : RISK_PROFILES.map((p) => {

@@ -19,7 +19,7 @@ import { DepositModal } from "../modals/DepositModal";
 import { SendModal } from "../modals/SendModal";
 import { MoreSheet } from "../modals/MoreSheet";
 import { OnboardingQuiz } from "../RiskQuiz";
-import { PiggyBank } from "../SavingsArt";
+import { GrowthBars } from "../SavingsArt";
 import { loadRiskProfile, planById } from "../data";
 import { Portal } from "../Portal";
 import { ClabeCard } from "../ClabeCard";
@@ -199,7 +199,7 @@ export function ScreenHome({ go }: { go: Go }) {
           <div className="pill-row">
             <button className="pill-btn main" onClick={() => setModal("deposit")}><Icon name="plus" size={17} /> Agregar</button>
             <button className="pill-btn" onClick={() => setModal("send")}><Icon name="send" size={16} /> Enviar</button>
-            <button className="pill-btn violet" onClick={onAdvance}><Icon name="bolt" size={16} /> Adelanto</button>
+            <button className="pill-btn" onClick={onAdvance}><Icon name="bolt" size={16} /> Adelanto</button>
             <button className="pill-btn icon" onClick={() => setModal("more")} aria-label="Más opciones"><span style={{ fontSize: 18, letterSpacing: 1, lineHeight: 1 }}>···</span></button>
           </div>
         </div>
@@ -220,15 +220,15 @@ export function ScreenHome({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* ── 1b. TU ALCANCÍA — el ahorro con su propio color (violeta) y animación.
+        {/* ── 1b. TU AHORRO — tarjeta sólida con barras de crecimiento animadas.
               Sin ahorro todavía, invita a abrir la primera bóveda. ── */}
         <button type="button" className="save-teaser" onClick={() => go("bovedas")}>
           <div className="st-copy">
-            <p className="st-k">Tu alcancía</p>
+            <p className="st-k">Tu ahorro</p>
             {totalSaved > 0 ? (
               <>
                 <div style={{ marginTop: 6 }}>
-                  <GrowingAmount base={totalSaved} apy={weightedApy} size={26} align="left" color="#d8ccff" id="home-alcancia" />
+                  <GrowingAmount base={totalSaved} apy={weightedApy} size={26} align="left" color="#fff" id="home-alcancia" />
                 </div>
                 <p className="st-s">Creciendo ahora mismo, segundo a segundo.</p>
               </>
@@ -240,7 +240,7 @@ export function ScreenHome({ go }: { go: Go }) {
             )}
             <span className="st-cta">{totalSaved > 0 ? "Ver mi ahorro" : "Empezar a ahorrar"} <Icon name="chevR" size={14} /></span>
           </div>
-          <PiggyBank size={104} live={totalSaved > 0} />
+          <GrowthBars size={96} live={totalSaved > 0} />
         </button>
 
         {/* ── 1c. OTROS ACTIVOS — saldos líquidos (divisas de conversiones + wallet Stellar).
