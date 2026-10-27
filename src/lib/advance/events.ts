@@ -87,36 +87,50 @@ async function eventsInRange(
   throw new Error(`getEvents no terminó el tramo ${start}–${end} en ${MAX_PAGES_PER_CHUNK} páginas`)
 }
 
-/** Liquidaciones de `user` dentro de la ventana del RPC, de la más vieja a la más nueva. */
-export async function settledEvents(user: string): Promise<AdvanceSettledEvent[]> {
+export type EventScan = {
+  events: rpc.Api.EventResponse[]
+  /** Primer ledger escaneado: el pedido, o el inicio de la ventana del RPC si es más viejo. */
+  firstLedger: number
+  latestLedger: number
+}
+
+/**
+ * Eventos del contrato de adelanto que coinciden con `topics`, desde `fromLedger`
+ * (o desde el inicio de la ventana del RPC) hasta el último ledger. Sin
+ * duplicados y del más viejo al más nuevo.
+ */
+export async function scanAdvanceEvents(topics: string[][], fromLedger = 0): Promise<EventScan> {
   const server = sorobanServer()
   const filters: rpc.Api.EventFilter[] = [
-    {
-      type: 'contract',
-      contractIds: [advanceContractId()],
-      topics: [[SETTLED_TOPIC, new Address(user).toScVal().toXDR('base64')]],
-    },
+    { type: 'contract', contractIds: [advanceContractId()], topics },
   ]
 
   const health = await server.getHealth()
   const retention = health.ledgerRetentionWindow || DEFAULT_RETENTION_LEDGERS
-  const first =
+  const windowStart =
     Math.max(health.oldestLedger ?? 0, health.latestLedger - retention) + RETENTION_MARGIN_LEDGERS
+  const first = Math.max(windowStart, fromLedger)
   const last = health.latestLedger + 1
 
   const chunks: Promise<rpc.Api.EventResponse[]>[] = []
   for (let start = first; start < last; start += CHUNK_LEDGERS) {
     chunks.push(eventsInRange(server, filters, start, Math.min(start + CHUNK_LEDGERS, last)))
   }
-  const events = (await Promise.all(chunks)).flat()
 
   const seen = new Set<string>()
-  const out: AdvanceSettledEvent[] = []
-  for (const ev of events) {
-    if (seen.has(ev.id)) continue
+  const events = (await Promise.all(chunks)).flat().filter((ev) => {
+    if (seen.has(ev.id)) return false
     seen.add(ev.id)
-    const settled = toSettledEvent(ev)
-    if (settled) out.push(settled)
-  }
-  return out.sort((a, b) => a.ledger - b.ledger)
+    return true
+  })
+  events.sort((a, b) => a.ledger - b.ledger || a.id.localeCompare(b.id))
+  return { events, firstLedger: first, latestLedger: health.latestLedger }
+}
+
+/** Liquidaciones de `user` dentro de la ventana del RPC, de la más vieja a la más nueva. */
+export async function settledEvents(user: string): Promise<AdvanceSettledEvent[]> {
+  const { events } = await scanAdvanceEvents([
+    [SETTLED_TOPIC, new Address(user).toScVal().toXDR('base64')],
+  ])
+  return events.map(toSettledEvent).filter((e): e is AdvanceSettledEvent => e !== null)
 }

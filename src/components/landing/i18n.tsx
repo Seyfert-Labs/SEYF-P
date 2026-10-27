@@ -66,6 +66,14 @@ const es = {
     sub: "Cada pieza de SEYF corre sobre protocolos abiertos y auditables del ecosistema.",
     roles: ["Red de pagos · liquidación en ~5 s", "Bóvedas de rendimiento on-chain", "Wallet sin seed phrase", "CETES tokenizados · SPEI"],
   },
+  live: {
+    tag: "En vivo en Stellar",
+    title: "El adelanto ya corre en mainnet.",
+    sub: "Cifras leídas del contrato seyf_advance, sin contar la cuenta administradora del contrato. Es una beta con topes bajos mientras se audita.",
+    stats: ["adelantos de rendimiento abiertos", "cuentas que pidieron un adelanto", "USDC de ahorro bloqueados como respaldo"],
+    asOf: "Datos al",
+    verify: "Verificar en stellar.expert",
+  },
   security: {
     tag: "Seguridad primero",
     title: "Tu dinero, blindado en cada capa.",
@@ -193,6 +201,14 @@ const en: Dict = {
     sub: "Every piece of SEYF runs on open, auditable protocols from the ecosystem.",
     roles: ["Payments network · ~5 s settlement", "On-chain yield vaults", "Wallet with no seed phrase", "Tokenized CETES · SPEI"],
   },
+  live: {
+    tag: "Live on Stellar",
+    title: "The advance is already live on mainnet.",
+    sub: "Figures read from the seyf_advance contract, excluding the contract's admin account. It's a beta with low caps while it gets audited.",
+    stats: ["yield advances opened", "accounts that took an advance", "USDC of savings locked as collateral"],
+    asOf: "Data as of",
+    verify: "Verify on stellar.expert",
+  },
   security: {
     tag: "Security first",
     title: "Your money, armored at every layer.",
@@ -317,6 +333,14 @@ const pt: Dict = {
     title: "A melhor infraestrutura da Stellar.",
     sub: "Cada peça da SEYF roda sobre protocolos abertos e auditáveis do ecossistema.",
     roles: ["Rede de pagamentos · liquidação em ~5 s", "Cofres de rendimento on-chain", "Carteira sem seed phrase", "CETES tokenizados · SPEI"],
+  },
+  live: {
+    tag: "Ao vivo na Stellar",
+    title: "O adiantamento já roda na mainnet.",
+    sub: "Números lidos do contrato seyf_advance, sem contar a conta administradora do contrato. É uma beta com limites baixos enquanto passa por auditoria.",
+    stats: ["adiantamentos de rendimento abertos", "contas que pediram um adiantamento", "USDC de poupança bloqueados como garantia"],
+    asOf: "Dados de",
+    verify: "Verificar no stellar.expert",
   },
   security: {
     tag: "Segurança em primeiro lugar",

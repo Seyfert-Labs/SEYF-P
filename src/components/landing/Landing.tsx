@@ -638,6 +638,58 @@ function SecHead({ tag, title, sub, center = false }: { tag: string; title: stri
   );
 }
 
+/* ---------- actividad del adelanto en mainnet ----------
+   Cifras de /api/advance/activity, leídas del contrato seyf_advance. No es
+   TVL: el vault es de un tercero. Sin datos, la sección no se muestra. */
+type AdvanceActivity = { advances: number; accounts: number; backing: string; asOf: string; contract: string };
+const DATE_LOCALE = { es: "es-MX", en: "en-US", pt: "pt-BR" } as const;
+
+function LiveActivity() {
+  const { t, lang } = useI18n();
+  const [activity, setActivity] = useState<AdvanceActivity | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("/api/advance/activity", { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { activity?: AdvanceActivity | null } | null) => setActivity(body?.activity ?? null))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+
+  if (!activity) return null;
+  const backing = Number(BigInt(activity.backing)) / 1e7; // USDC: 7 decimales
+  const asOf = new Date(activity.asOf).toLocaleString(DATE_LOCALE[lang], {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+
+  return (
+    <section className="sec-pad" id="en-vivo">
+      <div className="wrap">
+        <SecHead center tag={t.live.tag} title={t.live.title} sub={t.live.sub} />
+        <div className="stats stats-3">
+          {[
+            { n: <Counter target={activity.advances} />, l: t.live.stats[0] },
+            { n: <Counter target={activity.accounts} />, l: t.live.stats[1] },
+            { n: <><span className="suf">$</span><Counter target={backing} decimals={2} /></>, l: t.live.stats[2] },
+          ].map((s, i) => (
+            <Reveal key={i} delay={i * 0.08} className="stat">
+              <div className="n num">{s.n}</div>
+              <div className="l">{s.l}</div>
+            </Reveal>
+          ))}
+        </div>
+        <p className="live-note">
+          <span className="live-dot" /> {t.live.asOf} {asOf} ·
+          <a href={`https://stellar.expert/explorer/public/contract/${activity.contract}`} target="_blank" rel="noopener noreferrer">
+            {t.live.verify}
+          </a>
+        </p>
+      </div>
+    </section>
+  );
+}
+
 // el rol de cada aliado está en t.partners.roles (mismo orden)
 const PARTNERS = [
   { name: "Stellar", logo: "/partners/stellar.svg", h: 30, url: "https://stellar.org", color: "#ffffff" },
@@ -871,6 +923,8 @@ function LandingInner() {
             </div>
           </div>
         </section>
+
+        <LiveActivity />
 
         <SecurityStack />
 
