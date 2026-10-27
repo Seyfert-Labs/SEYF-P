@@ -3,7 +3,7 @@
 /* UTONOMA — helpers de layout compartidos */
 import React from "react";
 import { Icon } from "./ui";
-import { FMT, type Txn } from "./data";
+import { FMT, txnDecimals, type Txn } from "./data";
 import type { Go, Screen } from "./nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import type { Conversion } from "@/hooks/useConversions";
@@ -94,17 +94,20 @@ export function Money({
   sign = false,
   size = "inherit",
   cents = true,
+  precise = false,
 }: {
   amount: number;
   cur?: string;
   sign?: boolean;
   size?: number | string;
   cents?: boolean;
+  /** Muestra los decimales de un monto menor a un centavo (ver `txnDecimals`). */
+  precise?: boolean;
 }) {
   const neg = amount < 0;
   const abs = Math.abs(amount);
   const s = sign ? (neg ? "−" : "+") : neg ? "−" : "";
-  const [int, dec] = FMT(abs, cents ? 2 : 0).split(".");
+  const [int, dec] = FMT(abs, !cents ? 0 : precise ? txnDecimals(abs) : 2).split(".");
   return (
     <span className="num" style={{ fontSize: size }}>
       {s}${int}
@@ -173,7 +176,7 @@ export function TxnRow({ t, go }: { t: Txn; go?: Go }) {
       </div>
       <div className="amt">
         <div className="a" style={{ color: pos ? "var(--accent)" : "var(--txt)" }}>
-          <Money amount={t.amt} cur={t.cur || "MXN"} sign={pos} />
+          <Money amount={t.amt} cur={t.cur || "MXN"} sign={pos} precise />
         </div>
         {t.sub && <div className="s num">{t.sub}</div>}
       </div>
