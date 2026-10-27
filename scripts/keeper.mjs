@@ -71,7 +71,12 @@ const IFACE = {
 // ~7 días de ledgers a 5 s: lo que guarda un RPC por defecto.
 const DEFAULT_RETENTION = 120_960
 const EVENTS_PAGE = 100
-const MAX_PAGES = 500
+// Cada `getEvents` escanea un tramo acotado de ledgers (10 000 en
+// mainnet.sorobanrpc.com) y responde con un cursor aunque no encuentre nada.
+// Se pide el rango en tramos de ese tamaño, en paralelo.
+const CHUNK_LEDGERS = 10_000
+// Tope de páginas por tramo, por si el proveedor escanea menos de CHUNK_LEDGERS.
+const MAX_PAGES_PER_CHUNK = 20
 
 class ConfigError extends Error {}
 
@@ -153,26 +158,45 @@ async function resolveStartLedger(server, requested) {
   return { start: Math.min(requested, latest), latest, clamped: false }
 }
 
-async function fetchOpenedUsers(server, contractId, startLedger) {
+/** Ledger al que apunta un cursor de `getEvents` (TOID: el ledger va en los 32 bits altos). */
+function cursorLedger(cursor) {
+  return Number(BigInt(cursor.split('-')[0]) >> 32n)
+}
+
+/** Eventos con ledger en [start, end). Un cursor no admite `endLedger`, así que se filtra aquí. */
+async function eventsInRange(server, filters, start, end) {
+  const out = []
+  let request = { filters, startLedger: start, endLedger: end, limit: EVENTS_PAGE }
+  for (let page = 0; page < MAX_PAGES_PER_CHUNK; page++) {
+    const res = await server.getEvents(request)
+    out.push(...res.events.filter((ev) => ev.ledger >= start && ev.ledger < end))
+    // Una página vacía no es el final: el RPC corta el escaneo y devuelve un
+    // cursor. Se termina cuando el cursor alcanza el final del tramo.
+    if (!res.cursor || cursorLedger(res.cursor) >= Math.min(end, res.latestLedger) - 1) return out
+    request = { filters, cursor: res.cursor, limit: EVENTS_PAGE }
+  }
+  throw new Error(`getEvents no terminó el tramo ${start}–${end} en ${MAX_PAGES_PER_CHUNK} páginas`)
+}
+
+async function fetchOpenedUsers(server, contractId, startLedger, latestLedger) {
   const topic = nativeToScVal(IFACE.openedEventTopic, { type: 'symbol' }).toXDR('base64')
   const filters = [{ type: 'contract', contractIds: [contractId], topics: [[topic, '*']] }]
-  const users = new Set()
-  let request = { startLedger, filters, limit: EVENTS_PAGE }
-  let events = 0
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await server.getEvents(request)
-    for (const ev of res.events) {
-      events++
-      const userTopic = ev.topic?.[1]
-      if (!userTopic) continue
-      users.add(Address.fromScVal(userTopic).toString())
-    }
-    // Se pagina hasta una página vacía: el RPC puede cortar el escaneo antes
-    // de llenar `limit`, y el cursor sigue siendo válido.
-    if (res.events.length === 0 || !res.cursor) break
-    request = { cursor: res.cursor, filters, limit: EVENTS_PAGE }
+  const last = latestLedger + 1
+  const chunks = []
+  for (let start = startLedger; start < last; start += CHUNK_LEDGERS) {
+    chunks.push(eventsInRange(server, filters, start, Math.min(start + CHUNK_LEDGERS, last)))
   }
-  return { users: [...users], events }
+
+  const seen = new Set()
+  const users = new Set()
+  for (const ev of (await Promise.all(chunks)).flat()) {
+    if (seen.has(ev.id)) continue
+    seen.add(ev.id)
+    const userTopic = ev.topic?.[1]
+    if (!userTopic) continue
+    users.add(Address.fromScVal(userTopic).toString())
+  }
+  return { users: [...users], events: seen.size }
 }
 
 // --- contrato ----------------------------------------------------------------
@@ -244,7 +268,7 @@ async function main() {
         ' Los adelantos abiertos antes van en KEEPER_EXTRA_USERS.',
     )
   }
-  const { users: fromEvents, events } = await fetchOpenedUsers(server, cfg.contractId, start)
+  const { users: fromEvents, events } = await fetchOpenedUsers(server, cfg.contractId, start, latest)
   const candidates = [...new Set([...fromEvents, ...cfg.extraUsers])]
   log(
     `eventos ${IFACE.openedEventTopic}: ${events} en ledgers ${start}..${latest}` +
