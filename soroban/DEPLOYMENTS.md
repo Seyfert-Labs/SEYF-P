@@ -111,6 +111,28 @@ Cuando el rendimiento cubrió el adelanto, una corrida manual (`dry_run=false`,
 liquidó la posición con `settle` (hash arriba). El cron programado no se había
 disparado solo; el despacho manual es el respaldo.
 
+### Actividad en la landing
+
+La sección "En vivo en Stellar" de www.seyf.app muestra cuántos adelantos se han
+abierto, en cuántas cuentas y cuánto ahorro los respaldó (el valor de las
+acciones bloqueadas al abrir). **No es TVL**: el vault Meru es de un tercero. Se
+excluye a la cuenta admin del contrato, porque sus adelantos son pruebas por CLI.
+
+El RPC guarda solo unos 7 días de eventos, así que el acumulado es un corte
+verificable, [`src/lib/advance/activity-checkpoint.json`](../src/lib/advance/activity-checkpoint.json),
+más los eventos `advance_opened` posteriores. El primer corte va del despliegue
+(ledger 65138478) al ledger 65156352: 4 adelantos, 2 cuentas y 9.0000598 USDC.
+
+**Hay que actualizar el corte al menos una vez por semana**, antes de que su
+ledger salga de la ventana del RPC. Si sale, la landing sigue mostrando los
+datos del corte con su fecha, pero deja de sumar los nuevos.
+
+```bash
+NEXT_PUBLIC_STELLAR_NETWORK=mainnet \
+NEXT_PUBLIC_STELLAR_ADVANCE_CONTRACT=CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH \
+node scripts/advance-checkpoint.mjs   # luego commit del JSON
+```
+
 ### Riesgos del vault elegido
 
 Ver la sección **Riesgos de la beta en mainnet** del [README en español](../README.es.md#riesgos-de-la-beta-en-mainnet) y [docs/contracts.md](../docs/contracts.md#known-limits-of-the-beta).

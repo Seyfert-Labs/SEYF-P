@@ -359,6 +359,11 @@ html.lenis, html.lenis body { height: auto; }
 .lp .stat .n .suf { color: var(--accent); }
 .lp .stat .l { font-size: 14.5px; color: var(--muted); margin-top: 12px; font-weight: 600; max-width: 200px; }
 
+/* actividad del adelanto en mainnet: tres cifras leídas del contrato */
+.lp .stats-3 { grid-template-columns: repeat(3, 1fr); }
+.lp .live-note { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; font-size: 13.5px; color: var(--muted); font-weight: 600; }
+.lp .live-note a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
 /* ---------- bonos: carril horizontal ---------- */
 .lp .rail-sticky { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 48px; }
 .lp .rail-head { width: 100%; }
@@ -537,6 +542,10 @@ html.lenis, html.lenis body { height: auto; }
   .lp .stats { grid-template-columns: repeat(2, 1fr); }
   .lp .stat:nth-child(2) { border-right: none; }
   .lp .stat:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+  /* tres cifras caben en una fila: sin la rejilla de 2×2 */
+  .lp .stats-3 { grid-template-columns: repeat(3, 1fr); }
+  .lp .stats-3 .stat:nth-child(n) { border-bottom: none; border-right: 1px solid var(--line); }
+  .lp .stats-3 .stat:last-child { border-right: none; }
   .lp .ally-grid { grid-template-columns: repeat(2, 1fr); }
   .lp .stack-stage { height: 420px; order: -1; }
   .lp .stack { width: 200px; height: 200px; margin-top: 80px; }
@@ -548,6 +557,9 @@ html.lenis, html.lenis body { height: auto; }
   .lp .wrap { padding: 0 18px; }
   .lp .stats { grid-template-columns: 1fr 1fr; }
   .lp .stat { padding: 28px 16px; }
+  .lp .stats-3 { grid-template-columns: 1fr; }
+  .lp .stats-3 .stat:nth-child(n) { border-right: none; border-bottom: 1px solid var(--line); }
+  .lp .stats-3 .stat:last-child { border-bottom: none; }
   .lp .bond { width: min(300px, 78vw); }
   .lp .rail-track { gap: 16px; padding-left: calc((100vw - min(300px, 78vw)) / 2); padding-right: calc((100vw - min(300px, 78vw)) / 2); }
   .lp .bond-stage { height: 200px; }
