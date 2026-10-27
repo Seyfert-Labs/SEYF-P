@@ -3,6 +3,11 @@
 export const FMT = (n: number, dec = 2) =>
   n.toLocaleString("es-MX", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
+/* Decimales para un movimiento: 2, o los que hagan falta (hasta 7, los de USDC
+   en Stellar) para que un monto menor a un centavo no se vea como $0.00. */
+export const txnDecimals = (abs: number) =>
+  abs === 0 || abs >= 0.01 ? 2 : Math.min(7, 2 - Math.floor(Math.log10(abs)));
+
 export interface Alloc { key: string; nm: string; vl: number; color: string; }
 export interface Vault {
   id: string; nm: string; bal: number; goal: number; apy: number; color: string;

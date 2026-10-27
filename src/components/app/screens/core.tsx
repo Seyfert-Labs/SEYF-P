@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "../ui";
 import { TopBar, SubHeader, TxnRow, PendingTxnRow, ConvTxnRow } from "../shared";
-import { TXNS, FMT, type Txn } from "../data";
+import { TXNS, FMT, txnDecimals, type Txn } from "../data";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useOnchainTxns } from "@/hooks/useOnchain";
@@ -386,14 +386,27 @@ function onchainToRow(t: OnchainTransfer, i: number): Txn {
   };
 }
 
+/* Operaciones del vault y del adelanto. El adelanto bloquea las acciones del
+   vault; pagarlo o liquidarlo con el rendimiento las desbloquea. */
+const CONTRACT_ROWS: Partial<Record<StellarOperation["type"], { nm: string; ic: string; tint: Txn["tint"]; sub?: string }>> = {
+  vault_deposit: { nm: "Abono a tu ahorro", ic: "vault", tint: "vault" },
+  vault_withdraw: { nm: "Retiro de tu ahorro", ic: "vault", tint: "vault" },
+  advance_open: { nm: "Adelanto recibido", ic: "bolt", tint: "advance", sub: "Ahorro bloqueado" },
+  advance_repay: { nm: "Adelanto pagado", ic: "bolt", tint: "advance", sub: "Ahorro desbloqueado" },
+  advance_settle: { nm: "Adelanto cubierto con rendimiento", ic: "bolt", tint: "advance", sub: "Ahorro desbloqueado" },
+};
+
 function stellarOpToRow(op: StellarOperation): Txn {
   const pos = op.direction === "in";
   const isSwap = op.type === "path_payment_strict_send" || op.type === "path_payment_strict_receive";
   const isTrust = op.type === "change_trust";
   const isCreate = op.type === "create_account";
+  const contractRow = CONTRACT_ROWS[op.type];
 
   let nm: string, ic: string, tint: Txn["tint"];
-  if (isSwap) {
+  if (contractRow) {
+    ({ nm, ic, tint } = contractRow);
+  } else if (isSwap) {
     nm = `${op.sourceAsset ?? "?"} → ${op.asset}`;
     ic = "swap";
     tint = "swap";
@@ -427,6 +440,7 @@ function stellarOpToRow(op: StellarOperation): Txn {
       : "Stellar",
     amt,
     cur: isSwap ? (pos ? op.asset : (op.sourceAsset ?? op.asset)) : op.asset,
+    sub: contractRow?.sub,
     ic,
     pos: pos || (isSwap && op.direction === "self"),
     tint,
@@ -717,10 +731,10 @@ export function ScreenTxnDetail({ go, ctx }: { go: Go; ctx: unknown }) {
                 {pos ? "+" : "−"}$
               </span>
               <span style={{ fontSize: 52, color: pos ? "var(--accent)" : "var(--txt)" }}>
-                {FMT(absAmt, 2).split(".")[0]}
+                {FMT(absAmt, txnDecimals(absAmt)).split(".")[0]}
               </span>
               <span style={{ fontSize: 28, color: "var(--txt-muted)", fontWeight: 700 }}>
-                .{FMT(absAmt, 2).split(".")[1]}
+                .{FMT(absAmt, txnDecimals(absAmt)).split(".")[1]}
               </span>
               <span style={{ fontSize: 14, color: "var(--txt-muted)", fontWeight: 600, marginLeft: 6, letterSpacing: 0 }}>{cur}</span>
             </span>
