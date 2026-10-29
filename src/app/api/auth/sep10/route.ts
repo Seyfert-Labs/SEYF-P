@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server'
 import {
   Sep10NotConfiguredError,
   buildAccountProofChallenge,
+  buildMessageChallenge,
   buildSep10Challenge,
   issueSeyfSession,
   verifyAccountProof,
+  verifyMessageProof,
   verifySep10Challenge,
 } from '@/lib/stellar/sep10'
 import { rateLimitResponse } from '@/lib/seyf/guards'
@@ -40,6 +42,11 @@ export async function GET(request: Request) {
   }
 
   try {
+    // mode=message: mensaje SEP-53 (no es una transacción; Pollar no pide confirmarlo).
+    if (params.get('mode') === 'message') {
+      const { message, challenge } = buildMessageChallenge(account)
+      return NextResponse.json({ message, challenge }, { headers: noStore })
+    }
     const { transaction, networkPassphrase } = accountProof
       ? buildAccountProofChallenge(account)
       : buildSep10Challenge(account)
@@ -61,7 +68,31 @@ export async function POST(request: Request) {
   const limited = await rateLimitResponse(request, 'auth/sep10-token', { limit: 30, windowSec: 300 })
   if (limited) return limited
 
-  const body = (await request.json().catch(() => null)) as { transaction?: unknown; mode?: unknown } | null
+  const body = (await request.json().catch(() => null)) as {
+    transaction?: unknown
+    mode?: unknown
+    message?: unknown
+    challenge?: unknown
+    signature?: unknown
+  } | null
+
+  if (body?.mode === 'message') {
+    const str = (v: unknown) => (typeof v === 'string' ? v : '')
+    if (!str(body.message) || !str(body.challenge) || !str(body.signature)) {
+      return NextResponse.json({ error: 'message, challenge y signature requeridos' }, { status: 400, headers: noStore })
+    }
+    try {
+      const account = await verifyMessageProof(str(body.message), str(body.challenge), str(body.signature))
+      const { token, expiresIn } = issueSeyfSession(account)
+      return NextResponse.json({ token, expires_in: expiresIn, account }, { headers: noStore })
+    } catch (e) {
+      const cfg = configError(e)
+      if (cfg) return cfg
+      console.warn('[auth/sep10] mensaje rechazado:', e instanceof Error ? e.message : e)
+      return NextResponse.json({ error: 'Firma de sesión inválida.' }, { status: 401, headers: noStore })
+    }
+  }
+
   const signedXdr = typeof body?.transaction === 'string' ? body.transaction.trim() : ''
   if (!signedXdr) {
     return NextResponse.json({ error: 'transaction requerido' }, { status: 400, headers: noStore })

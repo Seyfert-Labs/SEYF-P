@@ -80,11 +80,54 @@ export function sep10DeviceNotEnrolled(): boolean {
   return deviceNotEnrolled
 }
 
+/**
+ * Sesión con un mensaje firmado (SEP-53). No es una transacción, así que Pollar no
+ * muestra "Confirm transaction" y el usuario no ve una firma que no pidió.
+ */
+async function mintWithMessage(client: PollarClient, publicKey: string): Promise<string> {
+  const q = `account=${encodeURIComponent(publicKey)}&mode=message`
+  const res = await fetch(`/api/auth/sep10?${q}`, { headers: { Accept: 'application/json' } })
+  const { message, challenge, error } = (await res.json().catch(() => ({}))) as {
+    message?: string
+    challenge?: string
+    error?: string
+  }
+  if (!res.ok || !message || !challenge) throw new Error(error || 'No se pudo iniciar la sesión segura.')
+  // Solo se firma un mensaje de inicio de sesión para esta cuenta, nunca otra cosa.
+  if (!message.includes(' inicio de sesión\n') || !message.includes(`\nCuenta: ${publicKey}\n`)) {
+    throw new Error('El mensaje de sesión no corresponde a tu cuenta. No se firmó nada.')
+  }
+
+  const out = await client.stellar.sep53.signMessage(message)
+  if (out.status !== 'signed') throw new Error(out.details || out.code || 'Pollar no pudo firmar el mensaje')
+  if (out.signerAddress !== publicKey) throw new Error('La firma no corresponde a tu cuenta.')
+
+  const tokenRes = await fetch('/api/auth/sep10', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'message', message, challenge, signature: out.signature }),
+  })
+  const token = (await tokenRes.json().catch(() => ({}))) as TokenResponse
+  if (!tokenRes.ok || !token.token) throw new Error(token.error || 'No se pudo validar tu firma.')
+  setSeyfAuthToken(token.token, token.account ?? publicKey, token.expires_in ?? 86_400)
+  return token.token
+}
+
 async function mintToken(client: PollarClient, publicKey: string): Promise<string | null> {
   const passphrase = stellarNetworkPassphrase()
   deviceNotEnrolled = false
 
-  // 1) Prueba de cuenta. La app de Pollar es cosignada (Turnkey) y ahí
+  // 0) Mensaje firmado: sin diálogo de confirmación.
+  try {
+    return await mintWithMessage(client, publicKey)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    deviceNotEnrolled = msg.includes('SDK_COSIGN_DEVICE_NOT_ENROLLED')
+    if (deviceNotEnrolled) throw e
+    console.info('[sep10] mensaje firmado no disponible, uso prueba de cuenta:', msg)
+  }
+
+  // 1) Prueba de cuenta (transacción con secuencia 0; Pollar pide confirmarla). La app de Pollar es cosignada (Turnkey) y ahí
   //    /stellar/sep10/sign siempre responde 502: intentarlo primero solo sumaba
   //    una ida y vuelta y un error en cada inicio de sesión.
   try {
