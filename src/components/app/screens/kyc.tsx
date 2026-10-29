@@ -147,7 +147,8 @@ export function ScreenKyc({ go }: { go: Go }) {
     if (!stellar.authenticated || !stellar.publicKey) return;
     let cancelled = false;
     void (async () => {
-      await refreshStatus();
+      // Si leer el estado falla, igual avanza: el formulario no depende de él.
+      await refreshStatus().catch(() => undefined);
       if (cancelled) return;
       setStep((s) => (s === "connect" ? (justVerifiedRef.current ? "verified" : "identity") : s));
     })();
@@ -309,7 +310,10 @@ export function ScreenKyc({ go }: { go: Go }) {
     kyc?.status === "approved_chain_deploying" ||
     kyc?.status === "proposed";
 
-  const STEPS: Step[] = ["connect", "identity", "documents", "agreements"];
+  // Con la sesión ya abierta (el caso normal: se entró a la app con el código del
+  // correo) el paso del código no aplica: ni se muestra ni cuenta en el progreso.
+  const signedIn = stellar.authenticated && Boolean(stellar.publicKey);
+  const STEPS: Step[] = signedIn ? ["identity", "documents", "agreements"] : ["connect", "identity", "documents", "agreements"];
   // "verified" es transición connect→identity: muestra el progreso del paso de datos.
   const stepIdx = Math.max(0, STEPS.indexOf(step === "verified" ? "identity" : step));
 
@@ -347,8 +351,16 @@ export function ScreenKyc({ go }: { go: Go }) {
           </div>
         )}
 
-        {/* 1 · Cuenta segura (OTP por correo, sin nombrar al proveedor) */}
-        {step === "connect" && stellar.enabled && (
+        {/* Sesión abierta: mientras se lee el estado de la verificación, no mostrar el paso del código. */}
+        {step === "connect" && signedIn && (
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="spin" />
+            <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)" }}>Revisando tu verificación…</p>
+          </div>
+        )}
+
+        {/* 1 · Cuenta segura (OTP por correo, sin nombrar al proveedor). Solo sin sesión. */}
+        {step === "connect" && stellar.enabled && !signedIn && (
           <div className="card" style={{ textAlign: "center", padding: 22 }}>
             <span style={{ width: 60, height: 60, borderRadius: 18, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="shield" size={30} />
