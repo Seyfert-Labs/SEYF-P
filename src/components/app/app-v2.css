@@ -181,7 +181,8 @@
 /* hojas inferiores de vidrio */
 .modal-overlay { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .modal-sheet {
-  background: rgba(22,19,36,.86);
+  /* casi opaco: el desenfoque no siempre aplica y lo de atrás se encimaba con el monto */
+  background: rgba(22,19,36,.97);
   backdrop-filter: blur(30px) saturate(150%);
   -webkit-backdrop-filter: blur(30px) saturate(150%);
   border-top: 1px solid rgba(255,255,255,.12);
