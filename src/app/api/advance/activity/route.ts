@@ -3,10 +3,12 @@ import { advanceActivity } from '@/lib/advance/activity'
 import { errorResponse } from '@/lib/advance/http'
 
 export const runtime = 'nodejs'
-// Datos públicos de la cadena: se cachean y se recalculan cada 5 minutos, así
-// las visitas a la landing no llegan al RPC.
-export const dynamic = 'force-static'
-export const revalidate = 300
+// Dinámica: con `force-static` se generaba en el build y, si el RPC tardaba más de
+// 60 s, tumbaba el deploy. El caché de 5 min lo hace el CDN (s-maxage), así las
+// visitas a la landing siguen sin llegar al RPC.
+export const dynamic = 'force-dynamic'
+
+const CACHE = { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' }
 
 /**
  * GET /api/advance/activity
@@ -15,7 +17,7 @@ export const revalidate = 300
  */
 export async function GET() {
   try {
-    return NextResponse.json({ activity: await advanceActivity() })
+    return NextResponse.json({ activity: await advanceActivity() }, { headers: CACHE })
   } catch (e) {
     return errorResponse(e, 'advance/activity')
   }

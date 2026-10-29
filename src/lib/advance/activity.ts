@@ -20,6 +20,9 @@ import { readContract } from '@/lib/advance/soroban'
 
 const OPENED_TOPIC = nativeToScVal('advance_opened', { type: 'symbol' }).toXDR('base64')
 
+/** Tiempo máximo para leer eventos del RPC antes de usar solo el corte. */
+const SCAN_BUDGET_MS = 20_000
+
 /** Cuenta fuente para simular `admin()`; no necesita existir. */
 const READ_SOURCE = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'
 
@@ -46,10 +49,27 @@ export async function advanceActivity(): Promise<AdvanceActivity | null> {
     contract,
   }
 
-  const [scan, admin] = await Promise.all([
-    scanAdvanceEvents([[OPENED_TOPIC, '*']], checkpoint.ledger + 1),
-    readContract<string>(READ_SOURCE, contract, 'admin', [], () => undefined),
-  ])
+  // Si el RPC tarda o falla, el corte sigue siendo cierto: mejor eso que un error en la landing.
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const budget = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`el RPC tardó más de ${SCAN_BUDGET_MS / 1000} s`)), SCAN_BUDGET_MS)
+  })
+  let scan: Awaited<ReturnType<typeof scanAdvanceEvents>>
+  let admin: string | undefined
+  try {
+    ;[scan, admin] = await Promise.race([
+      Promise.all([
+        scanAdvanceEvents([[OPENED_TOPIC, '*']], checkpoint.ledger + 1),
+        readContract<string>(READ_SOURCE, contract, 'admin', [], () => undefined),
+      ]),
+      budget,
+    ])
+  } catch (e) {
+    console.error('[advance/activity] sin eventos recientes, se muestran los datos del corte:', e instanceof Error ? e.message : e)
+    return fromCheckpoint
+  } finally {
+    clearTimeout(timer)
+  }
   if (scan.firstLedger > checkpoint.ledger + 1) {
     console.error(
       `[advance/activity] el corte (ledger ${checkpoint.ledger}) salió de la ventana del RPC; ` +
