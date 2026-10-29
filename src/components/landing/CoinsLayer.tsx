@@ -82,7 +82,9 @@ export default function CoinsLayer({
     } catch {
       return;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // celular: 1.5x basta y cuesta casi la mitad de píxeles que 2x
+    const lite = window.matchMedia("(max-width: 880px), (pointer: coarse)").matches;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, lite ? 1.5 : 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.domElement.style.cssText = "width:100%;height:100%;display:block";

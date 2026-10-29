@@ -25,9 +25,9 @@ const ARCS = [
 // Desplazamiento en z que hace que los arcos se "crucen" en lugar de atravesarse.
 const weave = (y: number, lift: number) => lift * 0.1 * Math.tanh(-y / 0.3);
 
-function buildArc(a: (typeof ARCS)[number], mat: THREE.Material) {
+function buildArc(a: (typeof ARCS)[number], mat: THREE.Material, lite = false) {
   const g = new THREE.Group();
-  const torus = new THREE.TorusGeometry(R, TUBE, 48, 220, ARC);
+  const torus = lite ? new THREE.TorusGeometry(R, TUBE, 32, 140, ARC) : new THREE.TorusGeometry(R, TUBE, 48, 220, ARC);
   torus.rotateZ(a.start);
   torus.translate(a.cx, a.cy, 0);
   const pos = torus.attributes.position;
@@ -35,7 +35,7 @@ function buildArc(a: (typeof ARCS)[number], mat: THREE.Material) {
   torus.computeVertexNormals();
   g.add(new THREE.Mesh(torus, mat));
   // tapas redondas (stroke-linecap: round)
-  const cap = new THREE.SphereGeometry(TUBE, 40, 28);
+  const cap = lite ? new THREE.SphereGeometry(TUBE, 28, 20) : new THREE.SphereGeometry(TUBE, 40, 28);
   for (const ang of [a.start, a.start + ARC]) {
     const x = a.cx + R * Math.cos(ang);
     const y = a.cy + R * Math.sin(ang);
@@ -72,7 +72,9 @@ export default function Symbol3D({
     } catch {
       return; // sin WebGL: el contenedor queda con su fondo/fallback CSS
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // celular: 1.5x basta y cuesta casi la mitad de píxeles que 2x
+    const lite = window.matchMedia("(max-width: 880px), (pointer: coarse)").matches;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, lite ? 1.5 : 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -113,13 +115,13 @@ export default function Symbol3D({
     );
 
     const symbol = new THREE.Group();
-    ARCS.forEach((a, i) => symbol.add(buildArc(a, mats[i])));
+    ARCS.forEach((a, i) => symbol.add(buildArc(a, mats[i], lite)));
     const rig = new THREE.Group(); // rig = mouse/scroll; symbol = idle
     rig.add(symbol);
     scene.add(rig);
 
     // partículas: el "dinero" que flota alrededor
-    const N = 420;
+    const N = lite ? 240 : 420;
     const pGeo = new THREE.BufferGeometry();
     const pPos = new Float32Array(N * 3);
     const pCol = new Float32Array(N * 3);

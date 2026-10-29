@@ -318,7 +318,8 @@ html.lenis, html.lenis body { height: auto; }
 @keyframes amPulse { 0% { box-shadow: 0 0 0 0 rgba(200,255,77,.45); } 100% { box-shadow: 0 0 0 14px rgba(200,255,77,0); } }
 .lp .am-new { background: linear-gradient(90deg, rgba(200,255,77,.08), transparent 70%); margin: 0 -18px; padding-left: 18px; padding-right: 18px; }
 .lp .am-toast { position: absolute; z-index: 10; top: 8px; left: 14px; right: 14px; display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-  border-radius: 22px; background: rgba(36,32,54,.92); border: 1px solid rgba(255,255,255,.12);
+  border-radius: 22px; background: #242036; border: 1px solid rgba(255,255,255,.12);
+  /* opaca: dentro del teléfono escalado el blur no siempre aplica y el saludo se leía a través */
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 20px 40px -12px rgba(0,0,0,.8); }
 .lp .am-toast-ic { width: 38px; height: 38px; border-radius: 12px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0; }
 .lp .am-toast-ti { font-size: 14px; font-weight: 800; }
@@ -517,24 +518,33 @@ html.lenis, html.lenis body { height: auto; }
 @media (max-width: 880px) {
   /* hero: símbolo arriba, texto abajo */
   /* móvil: canvas a pantalla completa; el símbolo sube junto al texto y baja al centro en "Rinde 9%" */
-  .lp .hero-sym { --sx: 0px; --sy: -23svh; }
+  .lp .hero-sym { --sx: 0px; --sy: -19svh; }
   .lp .hero-sticky { align-items: flex-end; }
   .lp .beat-1 { padding-bottom: max(8vh, 40px); }
   .lp .hero-copy { max-width: none; }
   .lp .hero-eyebrow { margin-bottom: 16px; font-size: 11.5px; }
   .lp .hero-copy h1 { font-size: clamp(38px, 9.6vw, 56px); }
-  .lp .lede { font-size: 16.5px; margin-top: 18px; }
+  .lp .lede { font-size: 16px; margin-top: 16px; }
+  /* botón y enlace en una sola fila: al envolverse empujaban el texto contra el símbolo */
+  .lp .hero-cinema .hero-cta { margin-top: 24px; flex-wrap: nowrap; gap: 6px; }
+  .lp .hero-cinema .hero-cta .btn-lg { padding-left: 22px; padding-right: 22px; white-space: nowrap; }
+  .lp .hero-cinema .hero-link { font-size: 14px; white-space: nowrap; }
   .lp .hero-cinema .store-btn { display: none; }
   .lp .hero-trust { margin-top: 20px; }
   .lp .pill-tag { margin-bottom: 18px; }
   .lp .beat-2, .lp .beat-3 { justify-content: flex-end; padding-bottom: 12vh; }
   .lp .beat-2 { justify-content: center; padding-bottom: 0; }
-  .lp .beat-2-foot { bottom: 5vh; }
-  .lp .beat-2-row { flex-direction: column; font-size: clamp(54px, 15vw, 90px); }
-  .lp .beat-2-row .big-gap { width: auto; height: 34svh; }
+  .lp .beat-2-foot { bottom: 4vh; }
+  .lp .beat-2-row { flex-direction: column; font-size: clamp(44px, 13vw, 80px); }
+  /* hueco a la medida del símbolo móvil (escala .46): "diario" ya no baja sobre el texto */
+  .lp .beat-2-row .big-gap { width: auto; height: 24svh; }
+  .lp .beat-2 .beat-sub { font-size: 15px; margin-top: 0; }
+  .lp .beat-2 .beat-cards { margin-top: 16px; gap: 10px; flex-wrap: nowrap; }
+  .lp .beat-2 .float-card { flex: 1 1 0; }
   .lp .beat-2-row .big-l, .lp .beat-2-row .big-r { flex: none; text-align: center; }
-  .lp .beat-2 .float-card { padding: 14px 18px; min-width: 0; }
-  .lp .beat-2 .float-card .v { font-size: 24px; }
+  .lp .beat-2 .float-card { padding: 12px 14px; min-width: 0; }
+  .lp .beat-2 .float-card .k { font-size: 11px; }
+  .lp .beat-2 .float-card .v { font-size: 22px; margin-top: 6px; }
   .lp .scroll-hint { display: none; }
 
   .lp .story-grid { grid-template-columns: 1fr; gap: 18px; }
@@ -550,6 +560,10 @@ html.lenis, html.lenis body { height: auto; }
   /* en pantallas chicas el teléfono ocupa casi todo el ancho: sin tarjetas flotantes */
   .lp .float-chip { display: none; }
   .lp .phone-screen { border-radius: 34px; }
+  /* sin canto 3D en celular: en Safari iOS la capa de atrás (translateZ) a veces se pinta
+     encima de la pantalla y la deja negra; el giro aquí casi no se nota */
+  .lp .phone::before { display: none; }
+  .lp .phone, .lp .phone-tilt { transform-style: flat; }
   .lp .phone-stage { order: -1; }
 
   .lp .split { grid-template-columns: 1fr; gap: 48px; }
@@ -589,4 +603,11 @@ html.lenis, html.lenis body { height: auto; }
   .lp .relief, .lp .relief-pulse, .lp .marquee-track, .lp .live-dot, .lp .scroll-hint i::after, .lp .am-pulse .ic { animation: none !important; }
   .lp .phone-tilt { transition: none; transform: none !important; }
   .lp .btn-primary::before { display: none; }
+}
+
+/* móvil bajo: sin el eyebrow para que el símbolo quepa entre la barra y el titular */
+@media (max-width: 880px) and (max-height: 740px) {
+  .lp .hero-eyebrow { display: none; }
+  .lp .hero-copy h1 { font-size: clamp(34px, 9vw, 44px); }
+  .lp .beat-1 { padding-bottom: 32px; }
 }
