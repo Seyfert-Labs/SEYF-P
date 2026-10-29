@@ -719,6 +719,11 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
         ? v.apy
         : defindexStrategy?.apyTarget ?? 0;
   const vaultAsset = defindexStrategy?.assetSymbol ?? "MXN";
+  // Saldo de la wallet en el activo de la bóveda: lo que se puede abonar. Sin
+  // filas de saldo (aún cargando o sin conectar) no se conoce y no se limita.
+  const stellar = useSeyfStellarWallet();
+  const walletRow = stellar.assetBalances.find((b) => (b.code || "").toUpperCase() === vaultAsset.toUpperCase());
+  const walletAvailable = STELLAR_RAIL && stellar.assetBalances.length > 0 ? Number(walletRow?.balance ?? 0) : undefined;
 
   // Adelanto (`seyf_advance`): al abrirlo, las acciones del vault pasan al
   // contrato en garantía, así que el saldo de la bóveda ya es solo lo libre.
@@ -928,6 +933,7 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             locked={0}
             maxDeposit={limits?.available}
             cap={limits?.max}
+            walletAvailable={walletAvailable}
             onClose={() => setAction(null)}
             onConfirm={(amt) => updateBalance(v.id, action === "abonar" ? amt : -amt)}
           />
@@ -1269,7 +1275,7 @@ function friendlyVaultError(e: unknown, assetSymbol = "MXN"): string {
   return "No se pudo completar la operación. Intenta de nuevo en un momento.";
 }
 
-function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDeposit, cap, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; assetSymbol?: string; locked?: number; maxDeposit?: number; cap?: number; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
+function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDeposit, cap, walletAvailable, onClose, onConfirm }: { mode: "abonar" | "retirar"; vault: UserVault; assetSymbol?: string; locked?: number; maxDeposit?: number; cap?: number; walletAvailable?: number; onClose: () => void; onConfirm: (amt: number) => void | Promise<string | undefined> }) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -1277,8 +1283,11 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
   const [error, setError] = useState<string | null>(null);
   // Abonar: limitado por el cupo disponible bajo el tope de la beta (cap por usuario,
   // leído on-chain). Si no se conoce el cupo, no se restringe localmente.
+  // y por lo que hay en la wallet.
   // Retirar: limitado por el saldo LIBRE (saldo − colateral bloqueado por un adelanto).
-  const max = mode === "retirar" ? Math.max(0, vault.bal - locked) : (maxDeposit ?? Infinity);
+  const capRoom = maxDeposit ?? Infinity;
+  const walletRoom = walletAvailable ?? Infinity;
+  const max = mode === "retirar" ? Math.max(0, vault.bal - locked) : Math.min(capRoom, walletRoom);
   const n = Number(amount);
   const valid = n > 0 && n <= max && !submitting;
 
@@ -1326,7 +1335,7 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
               transition={{ delay: 0.18, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               style={{ margin: "6px 0 0", fontSize: 30, fontWeight: 700, color: "var(--accent)" }}
             >
-              ${FMT(n, 2)} MXN
+              ${FMT(n, 2)} {assetSymbol}
             </motion.p>
             <p className="modal-sub" style={{ textAlign: "center", marginTop: 8 }}>
               {isAbono ? (
@@ -1386,7 +1395,7 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
             />
           </div>
           <div className="ax-sym">{STELLAR_RAIL ? assetSymbol : "MXN"}</div>
-          {mode === "retirar" && max > 0 && Number.isFinite(max) && (
+          {max > 0 && Number.isFinite(max) && (
             <div className="quick-amts">
               {[0.25, 0.5].map((f) => (
                 <button key={f} type="button" className="chip" onClick={() => setAmount(String(Math.floor(max * f * 100) / 100))}>{f * 100}%</button>
@@ -1403,16 +1412,27 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
             )}
           </p>
         )}
-        {mode === "abonar" && maxDeposit != null && (
+        {mode === "abonar" && walletAvailable != null && (
           <p className="modal-sub" style={{ margin: "8px 0 0" }}>
-            Puedes depositar hasta ${FMT(max, 2)}
-            {cap != null && <span style={{ color: "var(--txt-dim)" }}> · tope de la beta ${FMT(cap, 0)} por usuario</span>}
+            Disponible en tu wallet: <b style={{ color: "var(--txt)" }}>${FMT(walletAvailable, 2)} {assetSymbol}</b>
+          </p>
+        )}
+        {mode === "abonar" && maxDeposit != null && (
+          <p className="modal-sub" style={{ margin: "4px 0 0", color: "var(--txt-dim)" }}>
+            Tope de la beta: te quedan ${FMT(maxDeposit, 2)}{cap != null && <> de ${FMT(cap, 0)} por usuario</>}
+          </p>
+        )}
+        {mode === "abonar" && walletAvailable === 0 && (
+          <p className="modal-sub" style={{ margin: "4px 0 0" }}>
+            No tienes {assetSymbol} en tu wallet. Agrega dinero primero desde Inicio.
           </p>
         )}
         {n > max && Number.isFinite(max) && (
           <p className="modal-sub" style={{ margin: "4px 0 0", color: "var(--neg)" }}>
             {mode === "abonar"
-              ? `Durante la beta puedes depositar como máximo $${FMT(max, 2)} más.`
+              ? walletRoom <= capRoom
+                ? `Solo tienes $${FMT(walletRoom, 2)} ${assetSymbol} disponibles en tu wallet.`
+                : `Durante la beta puedes depositar como máximo $${FMT(max, 2)} más.`
               : `El máximo retirable es $${FMT(max, 2)}${locked > 0 ? " (tienes colateral bloqueado por un adelanto activo)" : ""}.`}
           </p>
         )}

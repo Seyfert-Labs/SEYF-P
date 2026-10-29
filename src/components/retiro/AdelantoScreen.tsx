@@ -26,17 +26,20 @@ export default function AdelantoScreen({ ctx }: { ctx: RetiroCtx }) {
   const decimals = Number(vault.data?.decimals ?? DEFAULT_DECIMALS) || DEFAULT_DECIMALS
   const position = advance.data?.position ?? null
 
+  // Sin título propio: la pestaña, la pantalla o el modal que lo monta ya lo tienen.
   return (
     <>
-      <div className="sec-head" style={{ marginTop: 6 }}>
-        <h3>Adelanto de rendimiento</h3>
-      </div>
-
       {advance.loading && !advance.data && <div className="card"><div className="skel" style={{ height: 80 }} /></div>}
       <ErrorBox error={advance.error} />
 
       {advance.data && !position && (
-        <QuoteAndOpen ctx={ctx} decimals={decimals} run={tx.run} busy={tx.busy} />
+        <QuoteAndOpen
+          ctx={ctx}
+          decimals={decimals}
+          treasury={advance.data.treasury !== undefined ? toBigInt(advance.data.treasury) : null}
+          run={tx.run}
+          busy={tx.busy}
+        />
       )}
 
       {advance.data && position && (
@@ -52,14 +55,9 @@ export default function AdelantoScreen({ ctx }: { ctx: RetiroCtx }) {
       <ErrorBox error={tx.error} />
       <TxList txs={tx.txs} />
 
-      {advance.data?.treasury !== undefined && (
-        <BetaNote>
-          Tesorería del contrato disponible para adelantos: {formatUnits(toBigInt(advance.data.treasury), decimals)} USDC.
-        </BetaNote>
-      )}
       <BetaNote>
-        Beta en {ctx.network === 'mainnet' ? 'mainnet' : 'testnet'} con topes bajos y lista de permitidos. El contrato no
-        está auditado. Firmas tú; SEYF paga la comisión de red.
+        Beta en {ctx.network === 'mainnet' ? 'mainnet' : 'testnet'} con montos bajos y acceso por invitación. El contrato
+        aún no está auditado. Tú firmas cada operación y SEYF paga la comisión de red.
       </BetaNote>
     </>
   )
@@ -68,11 +66,13 @@ export default function AdelantoScreen({ ctx }: { ctx: RetiroCtx }) {
 function QuoteAndOpen({
   ctx,
   decimals,
+  treasury,
   run,
   busy,
 }: {
   ctx: RetiroCtx
   decimals: number
+  treasury: bigint | null
   run: ReturnType<typeof useTxRunner>['run']
   busy: string | null
 }) {
@@ -110,6 +110,8 @@ function QuoteAndOpen({
   }, [ctx.publicKey, shares, days])
 
   const adv = quote ? toBigInt(quote.advance) : BigInt(0)
+  // Los adelantos salen de los fondos del contrato: si no alcanzan, la firma fallaría.
+  const noFunds = treasury !== null && adv > treasury
 
   const open = () =>
     run('Adelanto recibido', async () => {
@@ -129,9 +131,9 @@ function QuoteAndOpen({
   if (shares <= BigInt(0)) {
     return (
       <div className="card">
-        <p style={{ margin: 0, fontWeight: 800 }}>Primero ahorra en el vault</p>
+        <p style={{ margin: 0, fontWeight: 800 }}>Primero empieza a ahorrar</p>
         <p className="modal-sub" style={{ margin: '6px 0 0' }}>
-          El adelanto se calcula sobre tu ahorro: necesitas acciones del vault para pedirlo.
+          El adelanto se calcula sobre lo que tu ahorro va a ganar. Abona a tu bóveda y vuelve aquí.
         </p>
         <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => ctx.goTo('ahorro')}>
           Ir a Mi ahorro
@@ -153,7 +155,7 @@ function QuoteAndOpen({
           {quoting ? <span className="spin" /> : quote ? formatUnits(adv, decimals) : '—'}
           <span className="aq-cur">USDC</span>
         </div>
-        <p className="aq-s">Monto real de la beta, cotizado por el contrato</p>
+        <p className="aq-s">Lo que tu ahorro ganaría en {days} {days === 1 ? 'día' : 'días'}, cotizado en vivo</p>
       </div>
 
       <span className="field-label">Plazo: {days} {days === 1 ? 'día' : 'días'}</span>
@@ -182,12 +184,17 @@ function QuoteAndOpen({
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <Row label="Ahorro que se bloquea" value={quote ? `${formatUnits(toBigInt(quote.value), decimals)} USDC` : '—'} hint={`${formatUnits(shares, decimals, 0)} acciones del vault`} />
-        <Row label="Tu capital" value="No se toca" hint="Queda apartado hasta que repagues o el rendimiento cubra el adelanto" />
+        <Row label="Ahorro que queda apartado" value={quote ? `${formatUnits(toBigInt(quote.value), decimals)} USDC` : '—'} hint="Sigue rindiendo mientras tanto" />
+        <Row label="Tu capital" value="Intacto" hint="Lo recuperas completo al terminar" />
       </div>
       <ErrorBox error={quoteError} />
+      {noFunds && (
+        <div className="alert alert-info" style={{ marginTop: 12 }}>
+          Por ahora no hay fondos suficientes para este adelanto. Prueba con un plazo más corto o vuelve más tarde.
+        </div>
+      )}
 
-      <button className="btn btn-primary aq-cta" disabled={Boolean(busy) || quoting || !quote || adv <= BigInt(0)} onClick={() => void open()}>
+      <button className="btn btn-primary aq-cta" disabled={Boolean(busy) || quoting || !quote || adv <= BigInt(0) || noFunds} onClick={() => void open()}>
         {busy ? <span className="spin" /> : <><Icon name="bolt" size={18} /> Pedir adelanto</>}
       </button>
 
@@ -242,53 +249,54 @@ function OpenPosition({
   return (
     <div className="card glow">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-3)', color: 'var(--txt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="lock" size={20} />
+        <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-3)', color: covered ? 'var(--accent)' : 'var(--txt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={covered ? 'check' : 'lock'} size={20} />
         </span>
         <div style={{ flex: 1 }}>
-          <p style={{ margin: 0, fontWeight: 800 }}>{covered ? 'Listo para liberar' : 'Ahorro bloqueado'}</p>
+          <p style={{ margin: 0, fontWeight: 800 }}>{covered ? 'Tu adelanto ya está cubierto' : 'Adelanto activo'}</p>
           <p style={{ margin: '2px 0 0', fontSize: 'var(--t-xs)', color: 'var(--txt-muted)' }}>
-            Adelanto de <b className="num" style={{ color: 'var(--accent)' }}>{formatUnits(adv, decimals)} USDC</b>
+            Recibiste <b className="num" style={{ color: 'var(--accent)' }}>{formatUnits(adv, decimals)} USDC</b>
           </p>
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xxs)', color: 'var(--txt-dim)', marginBottom: 6 }}>
-          <span>Rendimiento que cubre el adelanto</span>
-          <span className="num">{pct.toFixed(pct < 10 ? 1 : 0)}%</span>
+      <div style={{ marginTop: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', color: 'var(--txt-muted)', marginBottom: 8 }}>
+          <span>Tu rendimiento ya cubrió</span>
+          <span className="num" style={{ color: 'var(--txt)', fontWeight: 800 }}>{pct.toFixed(pct < 10 ? 1 : 0)}%</span>
         </div>
         <div className="pbar"><span style={{ width: `${pct}%`, background: covered ? 'var(--accent)' : 'var(--accent-2)' }} /></div>
+        <p style={{ margin: '8px 0 0', fontSize: 'var(--t-xxs)', color: 'var(--txt-dim)' }}>
+          {covered
+            ? 'Ya puedes liberar tu ahorro. Si no lo haces tú, se libera solo en breve.'
+            : <>Se libera solo alrededor del {formatDate(toDate(p.expectedUnlockAt))}{missing > BigInt(0) && <> · faltan {formatUnits(missing, decimals)} USDC de rendimiento</>}. La fecha depende del rendimiento real.</>}
+        </p>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <Row label="Valor actual" value={valueNow !== null ? `${formatUnits(valueNow, decimals)} USDC` : '—'} />
-        <Row label="Valor de desbloqueo" value={unlockValue !== null ? `${formatUnits(unlockValue, decimals)} USDC` : '—'} hint="Valor al abrir + adelanto" />
-        {!covered && missing > BigInt(0) && <Row label="Falta de rendimiento" value={`${formatUnits(missing, decimals)} USDC`} />}
-        <Row label="Valor al abrir" value={`${formatUnits(atOpen, decimals)} USDC`} hint={`${formatUnits(toBigInt(p.shares), decimals, 0)} acciones bloqueadas`} />
-        <Row label="Abierto" value={<span style={{ fontSize: 'var(--t-xs)' }}>{formatDate(toDate(p.openedAt))}</span>} />
-        <Row label="Desbloqueo estimado" value={<span style={{ fontSize: 'var(--t-xs)' }}>{formatDate(toDate(p.expectedUnlockAt))}</span>} hint="Depende del rendimiento real" />
-      </div>
+      {covered ? (
+        <button className="btn btn-primary" style={{ marginTop: 16 }} disabled={Boolean(busy)} onClick={() => void settle()}>
+          {busy === 'Adelanto liquidado' ? <span className="spin" /> : 'Liberar mi ahorro'}
+        </button>
+      ) : (
+        <>
+          <button className="btn btn-ghost" style={{ marginTop: 16 }} disabled={Boolean(busy) || !canRepay} onClick={() => void repay()}>
+            {busy === 'Adelanto repagado' ? <span className="spin" /> : `Repagar ${formatUnits(adv, decimals)} USDC y liberar ya`}
+          </button>
+          <p style={{ margin: '8px 2px 0', fontSize: 'var(--t-xxs)', color: canRepay ? 'var(--txt-dim)' : 'var(--warning, #E8A838)' }}>
+            {canRepay
+              ? 'Opcional: si repagas, recuperas tu ahorro completo hoy.'
+              : `Para repagar necesitas ${formatUnits(adv, decimals)} USDC en tu cuenta${walletUsdc !== null ? ` (tienes ${formatUnits(walletUsdc, 7)})` : ''}.`}
+          </p>
+        </>
+      )}
 
-      <span className="field-label">Repagar y desbloquear todo</span>
-      <p className="modal-sub" style={{ margin: 0 }}>
-        Devuelves {formatUnits(adv, decimals)} USDC y recuperas todas tus acciones.
-        {walletUsdc !== null && ` Tienes ${formatUnits(walletUsdc, 7)} USDC en tu cuenta.`}
-      </p>
-      {!canRepay && <div className="alert alert-info">Te faltan USDC en tu cuenta para repagar el adelanto completo.</div>}
-      <button className="btn btn-primary" style={{ marginTop: 12 }} disabled={Boolean(busy) || !canRepay} onClick={() => void repay()}>
-        {busy === 'Adelanto repagado' ? <span className="spin" /> : 'Repagar'}
-      </button>
-
-      <span className="field-label">Liquidar</span>
-      <p className="modal-sub" style={{ margin: 0 }}>
-        Cuando el rendimiento cubre el adelanto, el contrato retira solo las acciones que valen{' '}
-        {formatUnits(adv, decimals)} USDC hacia la tesorería y te devuelve el resto. Un proceso automático lo hace
-        solo; también puedes hacerlo tú.
-      </p>
-      <button className="btn btn-ghost" style={{ marginTop: 12 }} disabled={Boolean(busy) || !covered} onClick={() => void settle()}>
-        {busy === 'Adelanto liquidado' ? <span className="spin" /> : covered ? 'Liquidar ahora' : 'Liquidar (aún no cubierto)'}
-      </button>
+      <details className="adv-details" style={{ marginTop: 14 }}>
+        <summary style={{ cursor: 'pointer', fontSize: 'var(--t-xs)', color: 'var(--txt-muted)', fontWeight: 700, padding: '6px 0' }}>Ver detalle</summary>
+        <Row label="Valor de tu ahorro hoy" value={valueNow !== null ? `${formatUnits(valueNow, decimals)} USDC` : '—'} />
+        <Row label="Valor para liberarlo" value={unlockValue !== null ? `${formatUnits(unlockValue, decimals)} USDC` : '—'} hint="Valor al pedirlo + adelanto" />
+        <Row label="Valor al pedirlo" value={`${formatUnits(atOpen, decimals)} USDC`} />
+        <Row label="Pedido el" value={<span style={{ fontSize: 'var(--t-xs)' }}>{formatDate(toDate(p.openedAt))}</span>} />
+      </details>
     </div>
   )
 }
