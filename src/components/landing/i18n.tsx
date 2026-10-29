@@ -16,6 +16,7 @@ const es = {
   nav: { product: "Producto", bonds: "Bonos", security: "Seguridad", login: "Iniciar sesión", start: "Iniciar", lang: "Idioma" },
   store: { appSub: "Descarga en", playSub: "Disponible en" },
   hero: {
+    eyebrow: "Ahorro e inversión en pesos",
     words: ["Tu", "dinero,", "protegido", "y", "creciendo", "en", "automático."],
     lede: "Tus pesos generan rendimiento todos los días. Sin comisiones.",
     cta: "Iniciar ahora",
@@ -151,6 +152,7 @@ const en: Dict = {
   nav: { product: "Product", bonds: "Bonds", security: "Security", login: "Log in", start: "Get started", lang: "Language" },
   store: { appSub: "Download on the", playSub: "Get it on" },
   hero: {
+    eyebrow: "Savings and investing in pesos",
     words: ["Your", "money,", "protected", "and", "growing", "on", "autopilot."],
     lede: "Your pesos earn yield every single day. No fees.",
     cta: "Get started",
@@ -284,6 +286,7 @@ const pt: Dict = {
   nav: { product: "Produto", bonds: "Títulos", security: "Segurança", login: "Entrar", start: "Começar", lang: "Idioma" },
   store: { appSub: "Baixe na", playSub: "Disponível no" },
   hero: {
+    eyebrow: "Poupança e investimento em pesos",
     words: ["Seu", "dinheiro,", "protegido", "e", "crescendo", "no", "automático."],
     lede: "Seus pesos rendem todos os dias. Sem taxas.",
     cta: "Começar agora",

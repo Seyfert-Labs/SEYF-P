@@ -1,0 +1,93 @@
+/* ============================================================
+   SEYF — páginas institucionales (scoped bajo .doc-root)
+   Mismos tokens que la landing, tipografía de lectura.
+   ============================================================ */
+
+.doc-root {
+  --bg: #08080D;
+  --surface: rgba(255,255,255,0.035);
+  --line: rgba(255,255,255,0.09);
+  --line-2: rgba(255,255,255,0.16);
+  --txt: #F4F2FB;
+  --body: #CFCADF;
+  --muted: #A29CB8;
+  --dim: #6A6582;
+  --accent: #C8FF4D;
+  --on-accent: #0A0A0F;
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--body);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.7;
+}
+.doc-root a { color: inherit; }
+.doc-wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+
+.doc-nav { position: sticky; top: 0; z-index: 10; background: rgba(8,8,13,.85); border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.doc-nav-in { display: flex; align-items: center; justify-content: space-between; height: 64px; max-width: 1080px; }
+.doc-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; color: var(--txt); text-decoration: none; }
+.doc-brand .mk { width: 28px; height: 28px; border-radius: 8px; background: #0A0912; border: 1px solid var(--line); display: grid; place-items: center; }
+.doc-cta { font-size: 14px; font-weight: 700; text-decoration: none; color: var(--txt); padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line-2); }
+.doc-cta:hover { border-color: var(--txt); }
+
+.doc-head { padding: 72px 0 36px; border-bottom: 1px solid var(--line); margin-bottom: 40px; }
+.doc-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.doc-head h1 { font-family: var(--font-display), system-ui, sans-serif; font-weight: 600; letter-spacing: -0.03em; line-height: 1.08;
+  font-size: clamp(34px, 6vw, 52px); color: var(--txt); margin: 14px 0 0; }
+.doc-lede { font-size: 18px; color: var(--muted); margin: 18px 0 0; max-width: 620px; }
+.doc-updated { font-size: 13px; color: var(--dim); margin-top: 20px; }
+
+.doc-body { padding-bottom: 96px; }
+.doc-body h2 { font-family: var(--font-display), system-ui, sans-serif; font-weight: 600; letter-spacing: -0.02em;
+  color: var(--txt); font-size: 22px; margin: 48px 0 12px; scroll-margin-top: 84px; }
+.doc-body h3 { color: var(--txt); font-size: 16px; font-weight: 700; margin: 28px 0 8px; }
+.doc-body p, .doc-body li { font-size: 15.5px; }
+.doc-body p { margin: 0 0 14px; }
+.doc-body ul, .doc-body ol { margin: 0 0 16px; padding-left: 22px; }
+.doc-body li { margin-bottom: 6px; }
+.doc-body li::marker { color: var(--dim); }
+.doc-body strong { color: var(--txt); font-weight: 700; }
+.doc-body a { text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.doc-body a:hover { text-decoration-color: var(--txt); color: var(--txt); }
+.doc-body code { font-size: 13.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; word-break: break-all; }
+
+/* índice */
+.doc-toc { border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; margin: 0 0 8px; background: var(--surface); }
+.doc-toc p { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.doc-toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 28px; }
+.doc-toc li { font-size: 14px; margin-bottom: 4px; break-inside: avoid; }
+.doc-toc a { text-decoration: none; }
+
+/* recuadro de aviso importante */
+.doc-note { border: 1px solid var(--line-2); border-left: 3px solid var(--accent); border-radius: 12px; padding: 16px 18px; margin: 20px 0; background: var(--surface); }
+.doc-note p:last-child { margin-bottom: 0; }
+
+/* tablas (comisiones, encargados) */
+.doc-table { width: 100%; border-collapse: collapse; margin: 8px 0 20px; font-size: 14.5px; }
+.doc-table th, .doc-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.doc-table th { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.doc-table td:first-child { color: var(--txt); font-weight: 600; }
+.doc-scroll { overflow-x: auto; }
+
+/* tarjetas de contacto (soporte, prensa) */
+.doc-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 8px 0 24px; }
+.doc-card { border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; background: var(--surface); }
+.doc-card h3 { margin: 0 0 4px; }
+.doc-card p { font-size: 14.5px; margin: 0; color: var(--muted); }
+.doc-card a { color: var(--txt); font-weight: 600; }
+
+.doc-foot { border-top: 1px solid var(--line); padding: 32px 0 40px; }
+.doc-foot .doc-wrap { max-width: 1080px; }
+.doc-foot-links { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 14px; }
+.doc-foot-links a { font-size: 14px; color: var(--muted); text-decoration: none; }
+.doc-foot-links a:hover { color: var(--txt); }
+.doc-foot p { font-size: 13px; color: var(--dim); margin: 0; }
+
+@media (max-width: 640px) {
+  .doc-head { padding: 48px 0 28px; }
+  .doc-toc ol { columns: 1; }
+  .doc-cards { grid-template-columns: 1fr; }
+}

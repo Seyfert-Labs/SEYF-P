@@ -22,7 +22,7 @@ import {
   WebAuth,
   type Transaction,
 } from '@stellar/stellar-sdk'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { horizonUrl, stellarNetworkPassphrase } from '@/lib/stellar/network'
 import { signSeyfJwt, verifySeyfJwt, type SeyfJwtPayload } from '@/lib/stellar/jwt'
 
@@ -250,6 +250,76 @@ export async function verifyAccountProof(signedXdr: string): Promise<string> {
   if (!hasSignature(tx, account)) throw new Error('Falta la firma de la cuenta.')
 
   // Cuenta multisig: una firma suelta de la master key no basta.
+  const server = new Horizon.Server(horizonUrl())
+  try {
+    const acc = await server.loadAccount(account)
+    const master = acc.signers.find((sg) => sg.key === account)
+    if (!master || master.weight < Math.max(1, acc.thresholds.med_threshold)) {
+      throw new Error('La llave de la cuenta no alcanza el umbral para autenticarse.')
+    }
+  } catch (e) {
+    const status = (e as { response?: { status?: number } })?.response?.status
+    if (!(e instanceof NotFoundError) && status !== 404) throw e
+  }
+  return account
+}
+
+/*
+ * Prueba de cuenta por mensaje (SEP-53). Firmar una transacción, aunque nunca se
+ * envíe, hace que Pollar muestre "Confirm transaction" en cada inicio de sesión:
+ * el usuario no hizo nada y se le pide firmar algo que parece un movimiento.
+ * Un mensaje no es una transacción (no puede mover fondos) y Pollar lo firma sin
+ * ese diálogo. Sin estado: el servidor firma el mensaje que emite y al volver
+ * comprueba su propia firma, el vencimiento y la firma SEP-53 de la cuenta.
+ */
+
+const SEP53_PREFIX = 'Stellar Signed Message:\n'
+
+function sep53Hash(message: string): Buffer {
+  return createHash('sha256').update(SEP53_PREFIX, 'utf8').update(message, 'utf8').digest()
+}
+
+/** Mensaje a firmar + la firma del servidor sobre él (para verificarlo sin estado). */
+export function buildMessageChallenge(account: string): { message: string; challenge: string } {
+  if (!StrKey.isValidEd25519PublicKey(account)) {
+    throw new Error('Cuenta Stellar inválida.')
+  }
+  const cfg = sep10Config()
+  const expires = Math.floor(Date.now() / 1000) + CHALLENGE_TIMEOUT_SEC
+  // Texto legible: es lo que vería el usuario en una wallet que sí muestra mensajes.
+  const message = [
+    `${cfg.homeDomain} inicio de sesión`,
+    `Cuenta: ${account}`,
+    `Nonce: ${randomBytes(24).toString('base64')}`,
+    `Expira: ${expires}`,
+  ].join('\n')
+  const challenge = cfg.serverKeypair.sign(sep53Hash(message)).toString('base64')
+  return { message, challenge }
+}
+
+/** Verifica el mensaje firmado con SEP-53 y devuelve la cuenta. */
+export async function verifyMessageProof(message: string, challenge: string, signature: string): Promise<string> {
+  const cfg = sep10Config()
+  const hash = sep53Hash(message)
+  // Lo emitió este servidor: nadie más puede fabricar un mensaje con nonce válido.
+  if (!cfg.serverKeypair.verify(hash, Buffer.from(challenge, 'base64'))) {
+    throw new Error('Falta la firma del servidor.')
+  }
+
+  const lines = message.split('\n')
+  const account = lines[1]?.startsWith('Cuenta: ') ? lines[1].slice('Cuenta: '.length) : ''
+  const expires = lines[3]?.startsWith('Expira: ') ? Number(lines[3].slice('Expira: '.length)) : 0
+  if (lines[0] !== `${cfg.homeDomain} inicio de sesión` || !StrKey.isValidEd25519PublicKey(account)) {
+    throw new Error('Mensaje de sesión inválido.')
+  }
+  if (!Number.isFinite(expires) || Math.floor(Date.now() / 1000) > expires) {
+    throw new Error('Challenge vencido.')
+  }
+  if (!Keypair.fromPublicKey(account).verify(hash, Buffer.from(signature, 'base64'))) {
+    throw new Error('Falta la firma de la cuenta.')
+  }
+
+  // Mismo criterio multisig que la prueba por transacción.
   const server = new Horizon.Server(horizonUrl())
   try {
     const acc = await server.loadAccount(account)
