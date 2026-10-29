@@ -265,11 +265,14 @@ function HeroCinema() {
         {/* Beat 1 — propuesta */}
         <motion.div className="wrap beat beat-1" style={{ opacity: b1o, y: b1y }}>
           <div className="hero-copy">
+            <motion.div className="hero-eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.15, ease: EASE }}>
+              <span className="live-dot" /> {t.hero.eyebrow}
+            </motion.div>
             <h1 className="display">
               {t.hero.words.map((w, i) => (
                 <span className="hero-word-mask" key={i}>
                   <motion.span
-                    className={`hero-word${i === 2 ? " em" : ""}${i === 4 ? " em2" : ""}`}
+                    className="hero-word"
                     initial={{ y: "105%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.9, delay: 0.25 + i * 0.06, ease: EASE }}
@@ -297,7 +300,7 @@ function HeroCinema() {
           <div className="beat-2-row display">
             <span className="big-l">{t.hero.yieldL}</span>
             <span className="big-gap" />
-            <span className="big-r"><span className="em">{t.hero.yieldR}</span></span>
+            <span className="big-r">{t.hero.yieldR}</span>
           </div>
           <div className="beat-2-foot">
           <p className="beat-sub">{t.hero.yieldSub}</p>
@@ -309,7 +312,7 @@ function HeroCinema() {
             </div>
             <div className="float-card">
               <div className="k">{t.hero.withdrawK}</div>
-              <div className="v num" style={{ color: "#c4b5fd" }}>{t.hero.withdrawV}</div>
+              <div className="v num">{t.hero.withdrawV}</div>
             </div>
           </div>
           </div>
@@ -319,7 +322,7 @@ function HeroCinema() {
         <motion.div className="beat beat-3" style={{ opacity: b3o, y: b3y }}>
           <div className="wrap beat-3-inner">
             <h2 className="display">
-              {t.hero.simple[0]}<br />{t.hero.simple[1]}<br /><span className="em">{t.hero.simple[2]}</span>
+              <span className="soft">{t.hero.simple[0]}<br />{t.hero.simple[1]}</span><br />{t.hero.simple[2]}
             </h2>
             <p className="beat-sub">{t.hero.simpleSub}</p>
           </div>
@@ -705,13 +708,20 @@ const LAYERS = [
   { ic: <><path d="M12 11v3a5 5 0 01-1.5 3.5" /><path d="M8.5 7.5a5 5 0 017 1.5" /><path d="M6.5 12a6.5 6.5 0 0111-4.7" /></> },
 ];
 
-/** Placa de vidrio de la pila: la capa 0 es la base; las de arriba se separan más. */
-function Plate({ layer, label, i, gap, on }: { layer: (typeof LAYERS)[number]; label: string; i: number; gap: MotionValue<number>; on: boolean }) {
+// rebanadas bajo cada placa: dan el canto (grosor) sin geometría real
+const PLATE_EDGE = [2, 4, 6, 8, 10, 12, 14];
+
+/** Placa sólida de la pila: la capa 0 es la base; las de arriba se separan más.
+    El ícono va en la esquina frontal, la única zona que no tapa la placa de arriba. */
+function Plate({ layer, i, gap, on }: { layer: (typeof LAYERS)[number]; i: number; gap: MotionValue<number>; on: boolean }) {
   const z = useTransform(gap, (g) => i * g); // la elevación de la activa va en CSS (.plate.on)
   return (
     <motion.div className={`plate p${i}${on ? " on" : ""}`} style={{ translateZ: z }}>
-      <span className="plate-ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{layer.ic}</svg></span>
-      <span className="plate-lb">{label}</span>
+      {PLATE_EDGE.map((d) => (
+        <span key={d} className="plate-edge" style={{ transform: `translateZ(${-d}px)` }} />
+      ))}
+      <span className="plate-face" />
+      <span className="plate-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{layer.ic}</svg></span>
     </motion.div>
   );
 }
@@ -725,7 +735,7 @@ function SecurityStack() {
   const [active, setActive] = useState(0);
   const [hover, setHover] = useState(false);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
-  const gap = useTransform(scrollYProgress, [0, 1], [8, 74]);
+  const gap = useTransform(scrollYProgress, [0, 1], [18, 70]);
   const spin = useTransform(scrollYProgress, [0, 1], [-60, -45]);
   const coreZ = useTransform(gap, (g) => LAYERS.length * g + 40);
   useEffect(() => {
@@ -756,7 +766,7 @@ function SecurityStack() {
           <div className="stack-glow" />
           <motion.div className="stack" style={{ rotateZ: spin }}>
             {LAYERS.map((l, i) => (
-              <Plate key={i} layer={l} label={t.security.layers[i].ti} i={i} gap={gap} on={active === i} />
+              <Plate key={i} layer={l} i={i} gap={gap} on={active === i} />
             ))}
             <motion.div className="plate-core" style={{ translateZ: coreZ }}>
               <SeyfSymbol size={56} />
@@ -975,8 +985,8 @@ function LandingInner() {
                 <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 280, margin: 0 }}>{t.footer.tagline}</p>
               </div>
               <div className="foot-col"><h5>{t.footer.product}</h5><a href="#producto">{t.footer.digitalPesos}</a><a href="#bonos">{t.footer.bonds}</a><a href="#producto">{t.footer.vaults}</a></div>
-              <div className="foot-col"><h5>{t.footer.company}</h5><a href="#">{t.footer.about}</a><a href="#seguridad">{t.footer.security}</a><a href="#">{t.footer.jobs}</a><a href="#">{t.footer.press}</a></div>
-              <div className="foot-col"><h5>{t.footer.legal}</h5><a href="#">{t.footer.terms}</a><a href="#">{t.footer.privacy}</a><a href="#">{t.footer.fees}</a><a href="#">{t.footer.support}</a></div>
+              <div className="foot-col"><h5>{t.footer.company}</h5><Link href="/nosotros">{t.footer.about}</Link><a href="#seguridad">{t.footer.security}</a><Link href="/empleos">{t.footer.jobs}</Link><Link href="/prensa">{t.footer.press}</Link></div>
+              <div className="foot-col"><h5>{t.footer.legal}</h5><Link href="/terminos">{t.footer.terms}</Link><Link href="/privacidad">{t.footer.privacy}</Link><Link href="/comisiones">{t.footer.fees}</Link><Link href="/soporte">{t.footer.support}</Link></div>
               <div className="foot-col">
                 <h5>{t.footer.investors}</h5>
                 <a href="mailto:inversionistas@seyf.app">{t.footer.investorContact}</a>
