@@ -4,6 +4,7 @@
    de /retiro (`AdelantoScreen` sobre `seyf_advance`, verificada en mainnet).
    Aquí solo cambia la presentación; cotizar, pedir y repagar no se tocan. */
 import { useCallback, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui";
 import { AvatarButton } from "../shared";
 import type { Go } from "../nav";
@@ -23,6 +24,7 @@ export function ScreenAdvance({ go }: { go: Go }) {
     [go],
   );
   const ctx = useRetiroCtx(goTo);
+  const reduced = useReducedMotion();
 
   return (
     <div className="screen screen-enter">
@@ -37,16 +39,29 @@ export function ScreenAdvance({ go }: { go: Go }) {
         </div>
       </div>
       <div className="screen-pad">
-        {/* Encabezado limpio: una idea, al centro; tres pasos cortos debajo. */}
-        <div className="adv-top">
-          <AdvanceBolt size={64} />
-          <p className="at-k" style={{ marginTop: 6 }}>Adelanto de rendimiento</p>
-          <p className="at-t">Recibe hoy lo que tu ahorro va a ganar.</p>
+        {/* Héroe verde, hermano del de la bóveda: halo que respira y la moneda flotando. */}
+        <div className="adv-banner">
+          <motion.div
+            aria-hidden
+            className="ah-halo"
+            animate={reduced ? undefined : { scale: [1, 1.18, 1], opacity: [0.45, 0.9, 0.45] }}
+            transition={reduced ? undefined : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="ah-coin"
+            animate={reduced ? undefined : { y: [0, -6, 0] }}
+            transition={reduced ? undefined : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <AdvanceBolt size={76} />
+          </motion.div>
+          <p className="ah-k">Adelanto de rendimiento</p>
+          <p className="ah-t">Cobra hoy los intereses de tu ahorro.</p>
+          <p className="ah-s">Sin tocar tu capital. Se paga solo con lo que tu ahorro va generando.</p>
         </div>
         <div className="adv-steps">
-          <div><span className="n">1</span><p><b>Elige plazo</b>Ves cuánto recibes antes de firmar.</p></div>
-          <div><span className="n">2</span><p><b>Capital intacto</b>Solo queda apartado mientras tanto.</p></div>
-          <div><span className="n">3</span><p><b>Se paga solo</b>Con el rendimiento, o repagas cuando quieras.</p></div>
+          <div><span className="n">1</span><p><b>Elige el plazo</b>Ves el monto exacto antes de confirmar.</p></div>
+          <div><span className="n">2</span><p><b>Tu ahorro sigue rindiendo</b>Queda apartado como garantía, sin moverse.</p></div>
+          <div><span className="n">3</span><p><b>Se paga solo</b>Con tus intereses, o lo repagas antes si quieres.</p></div>
         </div>
 
         {ctx ? (

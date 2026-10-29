@@ -352,6 +352,20 @@
 .adv-top { text-align: center; padding: 8px 0 4px; display: flex; flex-direction: column; align-items: center; }
 .adv-top .at-k { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--txt-dim); }
 .adv-top .at-t { margin: 10px auto 0; max-width: 300px; font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
+/* Adelanto: héroe verde, mismo lenguaje que .vault-hero */
+.adv-banner {
+  position: relative; overflow: hidden; margin-top: 6px; padding: 24px 22px 26px; border-radius: 30px; text-align: center; color: #fff;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(255,255,255,.2), transparent 50%),
+    linear-gradient(150deg, #5DB83A, #14532D);
+  border: 1px solid rgba(255,255,255,.16); box-shadow: 0 30px 60px -30px #3F9B3A, inset 0 1px 0 rgba(255,255,255,.25);
+}
+.adv-banner .ah-halo { position: absolute; left: 50%; top: 30%; width: 240px; height: 240px; margin: -120px 0 0 -120px; border-radius: 50%;
+  pointer-events: none; background: radial-gradient(circle, rgba(236,255,190,.35), transparent 70%); }
+.adv-banner .ah-coin { position: relative; display: inline-flex; filter: drop-shadow(0 14px 22px rgba(0,0,0,.35)); }
+.adv-banner .ah-k { position: relative; margin: 10px 0 0; font-size: 11.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.75); }
+.adv-banner .ah-t { position: relative; margin: 8px auto 0; max-width: 290px; font-size: 25px; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
+.adv-banner .ah-s { position: relative; margin: 10px auto 0; max-width: 290px; font-size: 13.5px; line-height: 1.45; color: rgba(255,255,255,.8); }
 .adv-steps { display: grid; gap: 0; margin-top: 18px; padding: 4px 16px; border-radius: 22px; background: var(--surface-2); border: 1px solid var(--line); }
 .adv-steps > div { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .adv-steps > div:last-child { border-bottom: 0; }
