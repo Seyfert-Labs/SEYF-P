@@ -921,7 +921,16 @@ export function ScreenVaultDetail({ go, ctx }: { go: Go; ctx?: unknown }) {
             </button>
           )
         )}
-        <button disabled={busy || advanceDebt > 0} title={advanceDebt > 0 ? "Repaga tu adelanto para liberar la garantía antes de eliminar la bóveda" : undefined} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy || advanceDebt > 0 ? "default" : "pointer", opacity: busy || advanceDebt > 0 ? 0.5 : 1 }}>Eliminar bóveda</button>
+        {/* Solo se elimina una bóveda vacía: con saldo (o garantía de un adelanto) el botón no aparece. */}
+        {v.bal > 0 || advanceDebt > 0 ? (
+          <p style={{ marginTop: 18, fontSize: 12, color: "var(--txt-dim)" }}>
+            {advanceDebt > 0
+              ? "Para eliminar esta bóveda, primero repaga tu adelanto y retira tu saldo."
+              : "Para eliminar esta bóveda, primero retira tu saldo."}
+          </p>
+        ) : (
+          <button disabled={busy} onClick={async () => { await removeVault(v.id); go("bovedas"); }} style={{ marginTop: 18, background: "none", border: "none", color: "var(--neg)", fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }}>Eliminar bóveda</button>
+        )}
       </div>
       <div className="scroll-bottom" />
       {action && (
