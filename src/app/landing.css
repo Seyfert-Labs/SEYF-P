@@ -447,9 +447,10 @@ html.lenis, html.lenis body { height: auto; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 0 0 1px rgba(200,255,77,.18), 0 0 70px -12px rgba(200,255,77,.45); }
 /* esquina frontal (abajo-izquierda en el plano de la placa) */
 .lp .plate-ic { position: absolute; left: 26px; bottom: 26px; transform: translateZ(1px); }
-.lp .plate-core { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 26px; display: grid; place-items: center;
-  background: #0A0912; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 0 50px -6px rgba(139,92,246,.7); transform-style: preserve-3d; }
-.lp .plate-core img { rotate: x -58deg; }
+.lp .plate-core { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 26px; display: grid; place-items: center;
+  --face: linear-gradient(150deg, #1d1a2e 0%, #0d0b16 100%); --edge: #07060c; --rim: rgba(255,255,255,.2); transform-style: preserve-3d; }
+.lp .plate-core .plate-face { box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 0 50px -6px rgba(139,92,246,.7); }
+.lp .plate-core img { position: relative; transform: translateZ(1px); }
 
 /* ---------- faq ---------- */
 .lp .faq-list { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }

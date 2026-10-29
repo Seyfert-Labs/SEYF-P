@@ -768,8 +768,13 @@ function SecurityStack() {
             {LAYERS.map((l, i) => (
               <Plate key={i} layer={l} i={i} gap={gap} on={active === i} />
             ))}
+            {/* el símbolo va plano sobre la tapa: parado se hundía a medias en la placa */}
             <motion.div className="plate-core" style={{ translateZ: coreZ }}>
-              <SeyfSymbol size={56} />
+              {PLATE_EDGE.slice(0, 5).map((d) => (
+                <span key={d} className="plate-edge" style={{ transform: `translateZ(${-d}px)` }} />
+              ))}
+              <span className="plate-face" />
+              <SeyfSymbol size={52} />
             </motion.div>
           </motion.div>
         </div>
