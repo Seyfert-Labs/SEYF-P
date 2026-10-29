@@ -230,6 +230,35 @@ function Manifesto() {
   );
 }
 
+/** true mientras se cumpla la media query (false en el servidor y en el primer render). */
+function useMediaQuery(query: string) {
+  const [match, setMatch] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setMatch(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [query]);
+  return match;
+}
+
+/** Monta a sus hijos cuando el contenedor queda a `margin` de la pantalla, y ya no
+    los desmonta. Para escenas WebGL: crearlas cuesta (shaders, PMREM, geometría). */
+function LazyMount({ children, className, margin = "600px" }: { children: React.ReactNode; className?: string; margin?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || on) return;
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setOn(true), { rootMargin: margin });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [on, margin]);
+  if (on) return <>{children}</>;
+  return <div ref={ref} className={className} aria-hidden />;
+}
+
 /** Hero pinneado: el símbolo 3D gira con el scroll mientras cambian 3 mensajes. */
 function HeroCinema() {
   const { t } = useI18n();
@@ -246,7 +275,12 @@ function HeroCinema() {
   // --k: 1 = símbolo a la derecha (junto al texto), 0 = centrado; vuelve a la derecha en el beat 3
   const k = useTransform(p, [0, 0.26, 0.4, 0.6, 0.74], [1, 1, 0, 0, 1]);
   // en el beat 2 el símbolo se encoge para caber entre "Rinde" y "diario"
-  const symScale = useTransform(p, [0.26, 0.38, 0.6, 0.74], [1, 0.58, 0.58, 0.8]);
+  const symScaleDesk = useTransform(p, [0.26, 0.38, 0.6, 0.74], [1, 0.58, 0.58, 0.8]);
+  // móvil: el canvas ajusta el símbolo al ancho, así que de entrada se achica para
+  // caber entre la barra y el texto sin taparlos
+  const symScaleMob = useTransform(p, [0.26, 0.38, 0.6, 0.74], [0.66, 0.46, 0.46, 0.6]);
+  const mobile = useMediaQuery("(max-width: 880px)");
+  const symScale = mobile ? symScaleMob : symScaleDesk;
   const hint = useTransform(p, [0, 0.06], [1, 0]);
   // una parada por mensaje: propuesta, "Rinde diario", "Sin letras chiquitas"
   useSnapSection(ref, [0, 0.48, 0.88]);
@@ -453,7 +487,7 @@ function Phone({ screen }: { screen: number }) {
         </div>
       </motion.div>
       {/* monedas 3D: llueven, orbitan o se apilan según el paso */}
-      <CoinsLayer mode={screen} phoneRef={phoneRef} className="coins-layer" />
+      <LazyMount className="coins-layer"><CoinsLayer mode={screen} phoneRef={phoneRef} className="coins-layer" /></LazyMount>
       <AnimatePresence>
         {fx.chips.map((c, i) => (
           <motion.div
@@ -967,7 +1001,8 @@ function LandingInner() {
         <section className="sec-pad" id="descargar">
           <div className="wrap">
             <Reveal className="final">
-              <Symbol3D className="final-canvas" scale={0.8} />
+              {/* se monta al acercarse: crear la escena 3D al cargar la página trababa el celular */}
+              <LazyMount className="final-canvas"><Symbol3D className="final-canvas" scale={0.8} /></LazyMount>
               <div className="final-inner">
                 <h2 className="display">{t.final.title}</h2>
                 <p>{t.final.sub}</p>
