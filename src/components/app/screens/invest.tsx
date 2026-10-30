@@ -5,7 +5,6 @@ import React, { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui";
 import { Celebration } from "../Celebration";
-import { Seyf3D } from "@/components/brand/Seyf3D";
 import { GrowthBars, VaultDial } from "../SavingsArt";
 import { BondPicker, COIN_GRADIENT, CoinSphere, coinKind } from "../BondCoins";
 import { SubHeader, AvatarButton } from "../shared";
@@ -561,13 +560,8 @@ function CreateVaultModalStellar({
     <div className="modal-overlay" onClick={busy ? undefined : onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="modal-title">Nueva bóveda</p>
-            <p className="modal-sub" style={{ marginTop: 2 }}>Dos pasos: ponle nombre y elige dónde rinde.</p>
-          </div>
-          <Seyf3D kind="suitcase" size={88} style={{ margin: "-10px -6px -10px 0" }} />
-        </div>
+        <p className="modal-title">Nueva bóveda</p>
+        <p className="modal-sub" style={{ marginTop: 2 }}>Dos pasos: ponle nombre y elige dónde rinde.</p>
 
         <div className="cv-step">
           <span className="cv-n">1</span>
@@ -1197,8 +1191,10 @@ export function ScreenConvert({ go }: { go: Go }) {
                 )}
                 {status === "done" && doneInfo && (
                   <>
-                    <Seyf3D kind="coins" size={130} burst style={{ margin: "-8px auto -6px" }} />
-                    <h3 style={{ margin: "8px 0 0", fontSize: 19, fontWeight: 800 }}>¡Cambio completado!</h3>
+                    <div style={{ width: 58, height: 58, borderRadius: "50%", background: "var(--accent-soft)", display: "grid", placeItems: "center", margin: "0 auto" }}>
+                      <Icon name="check" size={30} color="var(--accent)" />
+                    </div>
+                    <h3 style={{ margin: "18px 0 0", fontSize: 19, fontWeight: 800 }}>¡Cambio completado!</h3>
                     <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "var(--txt-muted)", lineHeight: 1.55 }}>
                       Recibiste <b className="num" style={{ color: "var(--txt)" }}>{FMT(doneInfo.received, 6)} {doneInfo.recCode}</b> en tu wallet Stellar.
                       <br />
@@ -1330,8 +1326,15 @@ function VaultAmountModal({ mode, vault, assetSymbol = "MXN", locked = 0, maxDep
           <div className="modal-grab" />
           {isAbono && <Celebration originY="22%" />}
           <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-            <Seyf3D kind={isAbono ? "vault" : "coins"} size={150} burst style={{ margin: "-6px auto -10px" }} />
-            <p className="modal-title" style={{ marginTop: 8, textAlign: "center" }}>
+            <motion.span
+              initial={{ scale: 0, rotate: -25 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.05 }}
+              style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <Icon name="check" size={32} />
+            </motion.span>
+            <p className="modal-title" style={{ marginTop: 16, textAlign: "center" }}>
               {isAbono ? "¡Guardado en tu bóveda!" : "Retiro listo"}
             </p>
             <motion.p
