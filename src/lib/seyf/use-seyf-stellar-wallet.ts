@@ -117,6 +117,12 @@ function phaseFromAuth(step: AuthState['step']): StellarEnrollPhase {
     case 'entering_code':
       return 'code'
     case 'verifying_email_code':
+    // Tras un código correcto Pollar sigue con estos pasos antes de `authenticated`.
+    // Antes caían en 'idle' y la pantalla regresaba a "Enviarme un código".
+    case 'authenticating':
+    case 'authenticating_wallet':
+    case 'creating_passkey':
+    case 'deploying_smart_account':
       return 'verifying'
     case 'error':
       return 'error'

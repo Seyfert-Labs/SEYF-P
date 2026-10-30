@@ -14,10 +14,13 @@ export function ScreenLogin({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
 
-  const busy = stellar.phase === "sending" || stellar.phase === "verifying";
+  const verifying = stellar.phase === "verifying" || stellar.phase === "connected";
+  const busy = stellar.phase === "sending" || verifying;
+  // Una vez enviado el código, la pantalla no regresa al correo: mientras Pollar
+  // verifica y abre la wallet (varios pasos) se queda aquí con "Verificando…".
   const codeSent =
     stellar.phase === "code" ||
-    stellar.phase === "verifying" ||
+    verifying ||
     ((stellar.phase === "error" || stellar.phase === "sending") && stellar.codeSentOnce);
   const validEmail = /^\S+@\S+\.\S+$/.test(email.trim());
 
@@ -87,6 +90,7 @@ export function ScreenLogin({ onBack }: { onBack: () => void }) {
                 autoComplete="one-time-code"
                 placeholder="123456"
                 value={code}
+                disabled={verifying}
                 onChange={(e) => setCode(e.target.value.trim())}
                 onKeyDown={(e) => e.key === "Enter" && code && !busy && void stellar.verifyCode(code)}
               />
@@ -96,16 +100,24 @@ export function ScreenLogin({ onBack }: { onBack: () => void }) {
                 disabled={busy || code.length < 4}
                 onClick={() => void stellar.verifyCode(code)}
               >
-                {busy ? <span className="spin" /> : "Entrar"}
+                {verifying ? (
+                  <><span className="spin" /> Verificando…</>
+                ) : busy ? (
+                  <span className="spin" />
+                ) : (
+                  "Entrar"
+                )}
               </button>
-              <button
-                className="btn btn-ghost"
-                style={{ marginTop: 10, padding: 13, fontSize: "var(--t-sm)" }}
-                disabled={busy || !validEmail}
-                onClick={send}
-              >
-                Mandar otro código
-              </button>
+              {!verifying && (
+                <button
+                  className="btn btn-ghost"
+                  style={{ marginTop: 10, padding: 13, fontSize: "var(--t-sm)" }}
+                  disabled={busy || !validEmail}
+                  onClick={send}
+                >
+                  Mandar otro código
+                </button>
+              )}
             </>
           )}
 
