@@ -176,7 +176,22 @@ export async function pollarSignAccountProof(
     tx.operations.every((op) => op.type === 'manageData' && op.source === address)
   if (!ok) throw new Error('El challenge de sesión no es válido. No se firmó nada.')
 
-  const out = await client.signTx(xdr, { skipSponsorship: true })
+  // Es la prueba de inicio de sesión que acabamos de validar (secuencia 0, solo
+  // manageData de la propia cuenta: la red la rechaza, no mueve fondos). Pollar
+  // pide "Confirm transaction" para cualquier signTx y al usuario le parece un
+  // cobro en pleno login. Aprobamos SOLO esta confirmación: mismo XDR exacto.
+  // Cualquier otra firma sigue mostrando el diálogo de Pollar.
+  const unsub = client.onConfirmationRequest((pending) => {
+    for (const p of pending) {
+      if (p.kind === 'sign' && p.network === 'STELLAR' && p.unsignedXdr === xdr) p.confirm()
+    }
+  })
+  let out: Awaited<ReturnType<PollarClient['signTx']>>
+  try {
+    out = await client.signTx(xdr, { skipSponsorship: true })
+  } finally {
+    unsub()
+  }
   if (out.status === 'signed') return out.signedXdr
   if (out.status === 'cosign_pending') {
     throw new Error('Aprueba la firma en tu dispositivo para abrir tu sesión segura.')
