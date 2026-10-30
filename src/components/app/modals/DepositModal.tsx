@@ -8,6 +8,7 @@ import { useCallback } from "react";
 import { Icon } from "../ui";
 import FondearScreen from "@/components/retiro/FondearScreen";
 import { useRetiroCtx } from "../RetiroContext";
+import { Seyf3D } from "@/components/brand/Seyf3D";
 
 export function DepositModal({
   onClose,
@@ -35,11 +36,11 @@ export function DepositModal({
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-grab" />
         <div className="sheet-head">
-          <span className="ic"><Icon name="recv" size={22} /></span>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <p className="modal-title" style={{ margin: 0 }}>Agregar dinero</p>
             <p className="modal-sub" style={{ margin: "2px 0 0" }}>Recibe dólares digitales (USDC) y ponlos a rendir.</p>
           </div>
+          <Seyf3D kind="coins" size={84} style={{ margin: "-12px -6px -12px 0" }} />
         </div>
 
         {ctx ? (
