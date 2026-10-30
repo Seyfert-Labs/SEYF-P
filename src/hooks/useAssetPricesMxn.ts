@@ -9,6 +9,8 @@ import { useCallback, useEffect, useState } from 'react'
  */
 export function useAssetPricesMxn(codes: string[], wallet?: string | null) {
   const [prices, setPrices] = useState<Record<string, number>>({})
+  // Clave cuya primera respuesta ya llegó (con o sin éxito): permite esperar a los precios sin colgarse.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
   // Clave estable para no re-fetch en cada render por identidad del array.
   const key = codes.map((c) => c.toUpperCase()).sort().join(',')
 
@@ -23,6 +25,7 @@ export function useAssetPricesMxn(codes: string[], wallet?: string | null) {
     } catch {
       // conserva el último mapa
     }
+    setLoadedKey(key)
   }, [key, wallet])
 
   useEffect(() => {
@@ -47,5 +50,8 @@ export function useAssetPricesMxn(codes: string[], wallet?: string | null) {
   /** Hay precio cargado para el activo (sin él, `valueOf` devuelve 0). */
   const hasPrice = useCallback((code: string) => typeof prices[code.toUpperCase()] === 'number', [prices])
 
-  return { prices, valueOf, hasPrice, refresh }
+  /** Ya respondió el primer fetch para el conjunto actual de activos. */
+  const loaded = !key || loadedKey === key
+
+  return { prices, valueOf, hasPrice, loaded, refresh }
 }
