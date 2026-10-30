@@ -5,6 +5,8 @@
    - OnboardingQuiz: pantalla completa estilo Typeform (para el onboarding).
    - RiskQuizBanner + RiskQuizModal: banner en home + modal (para usuarios ya activos). */
 import React, { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { Seyf3D, type ObjectKind } from "@/components/brand/Seyf3D";
 import { Icon } from "./ui";
 import {
   RISK_QUESTIONS,
@@ -121,55 +123,127 @@ export function OnboardingQuiz({ onDone }: OnboardingQuizProps) {
   );
 }
 
+/** Objeto 3D que representa cada perfil (mismo set que las piezas de redes). */
+const PLAN_OBJECT: Record<string, ObjectKind> = {
+  afore: "vault",
+  conservador: "padlock",
+  moderado: "vault",
+  balanceado: "hourglass",
+  crecimiento: "coins",
+};
+
+/** Cuenta de 0 a `to` con ease-out; con reduce-motion muestra el valor final. */
+function useCountUp(to: number, ms = 1400, delay = 0) {
+  const reduced = useReducedMotion();
+  const [v, setV] = useState(reduced ? to : 0);
+  React.useEffect(() => {
+    if (reduced) return;
+    let raf = 0;
+    const t0 = performance.now() + delay;
+    const tick = (now: number) => {
+      const k = Math.min(1, Math.max(0, (now - t0) / ms));
+      setV(to * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, ms, delay, reduced]);
+  return reduced ? to : v;
+}
+
+const rise = (i: number) => ({
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+  transition: { delay: 0.35 + i * 0.12, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
+});
+
 function QuizResultFull({ plan, onDone }: { plan: VaultPlan; onDone: () => void }) {
-  const projection = projectSavings(0, 2000, plan.apy, 20);
+  const MONTHLY = 2000;
+  const projection = projectSavings(0, MONTHLY, plan.apy, 20);
+  const apy = useCountUp(plan.apy, 1200, 450);
+  const total = useCountUp(projection, 1600, 700);
+  // Barras a 5/10/15/20 años: lo que aportas (violeta) vs. lo que llegas a tener (lima).
+  const bars = [5, 10, 15, 20].map((y) => ({
+    y,
+    total: projectSavings(0, MONTHLY, plan.apy, y),
+    put: MONTHLY * 12 * y,
+  }));
+  const gain = projection - MONTHLY * 12 * 20;
+
   return (
-    <div className="onb screen-enter" style={{ justifyContent: "flex-start", paddingTop: 24 }}>
-      <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "var(--accent)", letterSpacing: ".06em", textTransform: "uppercase" }}>
-        Tu perfil de retiro
-      </p>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-        <span style={{ fontSize: 52 }}>{plan.emoji}</span>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>{plan.name}</h2>
-          <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--txt-muted)" }}>{plan.tagline}</p>
-        </div>
+    <div className="onb screen-enter qr" style={{ justifyContent: "flex-start", paddingTop: 12 }}>
+      {/* Escenario: objeto 3D del perfil con monedas que salen al revelar */}
+      <div className="qr-stage">
+        <Seyf3D kind={PLAN_OBJECT[plan.id] ?? "vault"} size={190} burst />
       </div>
 
-      {/* APY destacado */}
-      <div className="card" style={{ background: "var(--accent-soft)", border: "none", marginBottom: 14 }}>
-        <p className="eyebrow" style={{ color: "var(--accent)" }}>Rendimiento estimado</p>
-        <p className="num" style={{ fontSize: 38, fontWeight: 700, color: "var(--accent)", margin: "8px 0 4px" }}>
-          {FMT(plan.apy, 1)}%
-          <span style={{ fontSize: 16, fontWeight: 600 }}> anual</span>
+      <motion.p {...rise(0)} className="qr-k">Tu perfil de retiro</motion.p>
+      <motion.h2 {...rise(1)} className="qr-name">{plan.name}</motion.h2>
+      <motion.p {...rise(2)} className="qr-tag">{plan.tagline}</motion.p>
+
+      {/* Rendimiento + proyección con barras que crecen */}
+      <motion.div {...rise(3)} className="qr-card">
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <p className="eyebrow" style={{ color: "var(--accent)" }}>Rendimiento estimado</p>
+            <p className="num qr-apy">
+              {FMT(apy, 1)}%<span> anual</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="qr-bars" role="img" aria-label={`Proyección: en 20 años tendrías $${FMT(projection, 0)}`}>
+          {bars.map((b, i) => (
+            <div key={b.y} className="qr-col">
+              <div className="qr-bar-wrap">
+                <motion.div
+                  className={`qr-bar${i === bars.length - 1 ? " last" : ""}`}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${(b.total / projection) * 100}%` }}
+                  transition={{ delay: 0.8 + i * 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <motion.div
+                    className="qr-put"
+                    initial={{ height: 0 }}
+                    animate={{ height: `${(b.put / b.total) * 100}%` }}
+                    transition={{ delay: 1 + i * 0.12, duration: 0.6 }}
+                  />
+                </motion.div>
+              </div>
+              <span className="qr-yr">{b.y} años</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="qr-proj">
+          Ahorrando <b className="num">${FMT(MONTHLY, 0)}</b>/mes, en 20 años tendrías{" "}
+          <b className="num" style={{ color: "var(--accent)" }}>${FMT(total, 0)}</b>.
         </p>
-        <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.5 }}>
-          Ahorrando <b className="num" style={{ color: "var(--txt)" }}>$2,000</b>/mes,
-          en 20 años tendrías <b className="num" style={{ color: "var(--accent)" }}>${FMT(projection, 0)}</b>.
-        </p>
-      </div>
+        <div className="qr-legend">
+          <span><i className="put" /> Lo que aportas</span>
+          <span><i className="gain" /> Lo que rinde: <b className="num">+${FMT(gain, 0)}</b></span>
+        </div>
+      </motion.div>
 
       {/* Composición */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <p style={{ margin: "0 0 10px", fontWeight: 800, fontSize: 14 }}>Tu mezcla de instrumentos</p>
-        {plan.blend
-          ? <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.55 }}>{plan.blend}</p>
-          : <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.55 }}>{plan.structured}</p>}
+      <motion.div {...rise(4)} className="card" style={{ marginBottom: 22, width: "100%" }}>
+        <p style={{ margin: "0 0 8px", fontWeight: 800, fontSize: 14 }}>Tu mezcla de instrumentos</p>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.55 }}>{plan.blend || plan.structured}</p>
         <div className="divider" />
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--txt-muted)" }}>
           <Icon name="globe" size={14} color="var(--accent)" />
           Instrumentos soberanos diversificados por país
         </div>
-      </div>
+      </motion.div>
 
-      <div style={{ marginTop: "auto", width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+      <motion.div {...rise(5)} style={{ marginTop: "auto", width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
         <button className="btn btn-primary" onClick={onDone}>
           <Icon name="check" size={18} /> Crear mi cuenta con este perfil
         </button>
         <p style={{ textAlign: "center", fontSize: 12, color: "var(--txt-dim)", margin: 0 }}>
-          Puedes cambiar tu perfil en cualquier momento desde Configuración.
+          Rendimiento estimado, no garantizado. Puedes cambiar tu perfil cuando quieras desde Configuración.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -6,9 +6,9 @@
 import { useCallback, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui";
+import { Seyf3D } from "@/components/brand/Seyf3D";
 import { AvatarButton } from "../shared";
 import type { Go } from "../nav";
-import { AdvanceBolt } from "../SavingsArt";
 import { Portal } from "../Portal";
 import { DepositModal } from "../modals/DepositModal";
 import { useRetiroCtx } from "../RetiroContext";
@@ -52,7 +52,7 @@ export function ScreenAdvance({ go }: { go: Go }) {
             animate={reduced ? undefined : { y: [0, -6, 0] }}
             transition={reduced ? undefined : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
           >
-            <AdvanceBolt size={76} />
+            <Seyf3D kind="hourglass" size={128} style={{ background: "none" }} />
           </motion.div>
           <p className="ah-k">Adelanto de rendimiento</p>
           <p className="ah-t">Cobra hoy los intereses de tu ahorro.</p>

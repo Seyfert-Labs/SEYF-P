@@ -4,6 +4,7 @@
    (El envío on-chain a direcciones Arbitrum/ERC-20 se retiró de la app.) */
 import React, { useState } from "react";
 import { Icon } from "../ui";
+import { Seyf3D } from "@/components/brand/Seyf3D";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useUserBanks } from "@/hooks/useUserBanks";
 import { useMonthlyLimits } from "@/hooks/useMonthlyLimits";
@@ -137,10 +138,8 @@ export function SendModal({
         <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
           <div className="modal-grab" />
           <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-            <span style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="check" size={32} />
-            </span>
-            <p className="modal-title" style={{ marginTop: 16, textAlign: "center" }}>Enviado por Stellar</p>
+            <Seyf3D kind="coins" size={140} burst style={{ margin: "-6px auto -8px" }} />
+            <p className="modal-title" style={{ marginTop: 8, textAlign: "center" }}>Enviado por Stellar</p>
             <p className="modal-sub" style={{ textAlign: "center" }}>
               Enviaste <b className="num" style={{ color: "var(--txt)" }}>{FMT(stAmt, 7)} {stAsset}</b> a{" "}
               <b className="num" style={{ color: "var(--txt)" }}>{stAddr.slice(0, 6)}…{stAddr.slice(-6)}</b>.

@@ -6,6 +6,7 @@
 import React, { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui";
+import { Seyf3D } from "@/components/brand/Seyf3D";
 import { SubHeader } from "../shared";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
@@ -532,10 +533,8 @@ export function ScreenKyc({ go }: { go: Go }) {
         {/* Done */}
         {step === "done" && (
           <div className="card glow" style={{ textAlign: "center", padding: 24 }}>
-            <span style={{ width: 64, height: 64, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="check" size={32} />
-            </span>
-            <p style={{ margin: "16px 0 6px", fontWeight: 800, fontSize: 18 }}>
+            <Seyf3D kind="padlock" size={140} burst={kycOk} style={{ margin: "-10px auto -8px" }} />
+            <p style={{ margin: "8px 0 6px", fontWeight: 800, fontSize: 18 }}>
               {kycOk ? "¡Identidad verificada!" : "Verificación enviada"}
             </p>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--txt-muted)", lineHeight: 1.55 }}>
