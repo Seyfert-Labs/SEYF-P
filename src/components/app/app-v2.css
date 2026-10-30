@@ -409,31 +409,3 @@
 .send-asset button.on { background: #fff; color: #0A0A0F; border-color: #fff; }
 .send-avail { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 0 0; font-size: var(--t-xs); color: var(--txt-dim); }
 .send-avail b { color: var(--txt-muted); }
-
-/* ── Resultado del perfil (onboarding): objeto 3D + proyección animada ── */
-.qr { align-items: stretch; }
-.qr-stage { display: flex; justify-content: center; margin: 0 auto -6px; }
-.qr-k { margin: 0; text-align: center; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-.qr-name { margin: 6px 0 0; text-align: center; font-size: 34px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
-.qr-tag { margin: 6px 0 18px; text-align: center; font-size: 14px; color: var(--txt-muted); }
-.qr-card { width: 100%; margin-bottom: 14px; padding: 18px; border-radius: 22px;
-  background: radial-gradient(120% 90% at 100% 0%, rgba(205,252,74,.16), transparent 60%), var(--accent-soft);
-  border: 1px solid rgba(205,252,74,.18); }
-.qr-apy { margin: 6px 0 0; font-size: 40px; font-weight: 700; color: var(--accent); line-height: 1; }
-.qr-apy span { font-size: 16px; font-weight: 600; }
-.qr-bars { display: flex; align-items: flex-end; gap: 10px; height: 92px; margin-top: 16px; }
-.qr-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
-.qr-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
-.qr-bar { position: relative; width: 100%; border-radius: 10px 10px 4px 4px; overflow: hidden;
-  background: linear-gradient(180deg, rgba(205,252,74,.75), rgba(205,252,74,.35)); }
-.qr-bar.last { background: linear-gradient(180deg, var(--accent), rgba(205,252,74,.6)); box-shadow: 0 0 22px rgba(205,252,74,.35); }
-.qr-put { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(131,87,245,.75); }
-.qr-yr { font-size: 11px; font-weight: 700; color: var(--txt-muted); }
-.qr-proj { margin: 14px 0 0; font-size: 13.5px; color: var(--txt-muted); line-height: 1.5; }
-.qr-proj b { color: var(--txt); }
-.qr-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 11.5px; color: var(--txt-muted); }
-.qr-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.qr-legend i { width: 9px; height: 9px; border-radius: 3px; }
-.qr-legend i.put { background: rgba(131,87,245,.85); }
-.qr-legend i.gain { background: var(--accent); }
-.qr-legend b { color: var(--accent); }
