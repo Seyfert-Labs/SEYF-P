@@ -91,14 +91,17 @@ export function useStellarVaults(address?: string) {
   const sessionOk = useAppRetiro()?.sep10.state === "ok";
 
   const [vaults, setVaults] = useState<UserVault[]>([]);
-  const [ready, setReady] = useState(false);
+  // `ready` se ata a la identidad cargada: si llega la wallet de Pollar después,
+  // vuelve a "cargando" en vez de mostrar un [] que no es real.
+  const loadKey = `${metaKey ?? ""}|${publicKey ?? ""}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const limits = null as VaultLimits | null;
 
   const reload = useCallback(async () => {
     if (!metaKey) {
       setVaults([]);
-      setReady(true);
+      setLoadedKey(loadKey);
       return;
     }
     // Sin sesión SEP-10 no hay metadata (/api/db responde 401), pero el saldo del
@@ -147,7 +150,7 @@ export function useStellarVaults(address?: string) {
     if (!onchain) {
       // Sin Pollar: mostrar saldo persistido en Supabase (ancla del money timer).
       setVaults(meta);
-      setReady(true);
+      setLoadedKey(loadKey);
       return;
     }
 
@@ -204,8 +207,8 @@ export function useStellarVaults(address?: string) {
     );
 
     setVaults(enriched);
-    setReady(true);
-  }, [metaKey, publicKey, onchain, sessionOk]);
+    setLoadedKey(loadKey);
+  }, [metaKey, publicKey, onchain, sessionOk, loadKey]);
 
   useEffect(() => {
     // reload() es async: el setState ocurre tras los awaits, no de forma síncrona.
@@ -375,6 +378,8 @@ export function useStellarVaults(address?: string) {
   );
 
   const totalSaved = vaults.reduce((s, v) => s + v.bal, 0);
+  // Con metaKey pero sin wallet de Pollar todavía, el resultado no es definitivo.
+  const ready = loadedKey === loadKey && !(STELLAR_VAULTS_ONCHAIN && metaKey && !publicKey);
 
   return {
     vaults,

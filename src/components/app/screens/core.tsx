@@ -95,7 +95,7 @@ export function ScreenHome({ go }: { go: Go }) {
   const conv = useConversions(wallet.address);
   // Riel correcto (Stellar/DeFindex o EVM) para que "En bóveda" del home coincida
   // con el saldo real reconciliado de la pantalla de Ahorro (mismo hook, misma fuente).
-  const { vaults, totalSaved } = useVaultsRail(wallet.address);
+  const { vaults, totalSaved, ready: vaultsReady } = useVaultsRail(wallet.address);
   const kyc = useKycStatus();
   const refreshBal = wallet.refreshBalance;
 
@@ -132,12 +132,15 @@ export function ScreenHome({ go }: { go: Go }) {
   // Sin hardcodeo; genérico para cualquier activo → listo para mainnet.
   // Activo de cada bóveda (en mainnet, USDC): su saldo viene en esa unidad, no en MXN.
   const vaultAssets = vaults.map((v) => ({ code: assetSymbolForPlan(v.planId).toUpperCase(), bal: v.bal }));
-  const { valueOf: mxnValueOf } = useAssetPricesMxn(
+  const { valueOf: mxnValueOf, hasPrice } = useAssetPricesMxn(
     [...new Set([...stellarAssets.map((a) => a.code), ...vaultAssets.map((a) => a.code)])],
     stellar.publicKey,
   );
   // "En bóveda" en MXN, igual que "Disponible", para poder sumarlos.
   const savedMxn = vaultAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
+  // Mientras no hay bóvedas leídas o precio en MXN, la tarjeta "Tu ahorro" muestra
+  // un esqueleto: antes enseñaba "Pon a trabajar tu dinero" o $0 y luego brincaba.
+  const savingsLoading = !vaultsReady || vaultAssets.some((a) => a.bal > 0 && !hasPrice(a.code));
   const stellarMxn = stellarAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
   // "Disponible" del hero = valor real en MXN de los activos Stellar (no MXNB de Arbitrum).
   const pesos = realData ? stellarMxn : 48250.4;
@@ -229,7 +232,13 @@ export function ScreenHome({ go }: { go: Go }) {
         <button type="button" className="save-teaser" onClick={() => go("bovedas")}>
           <div className="st-copy">
             <p className="st-k">Tu ahorro</p>
-            {totalSaved > 0 ? (
+            {savingsLoading ? (
+              <>
+                <div className="skel" style={{ marginTop: 8, width: 120, height: 26 }} />
+                <div className="skel" style={{ marginTop: 10, width: "85%", height: 12 }} />
+                <div className="skel" style={{ marginTop: 6, width: "60%", height: 12 }} />
+              </>
+            ) : totalSaved > 0 ? (
               <>
                 <div style={{ marginTop: 6 }}>
                   <GrowingAmount base={savedMxn} apy={weightedApy} size={26} align="left" color="#fff" id="home-alcancia" />
@@ -242,9 +251,11 @@ export function ScreenHome({ go }: { go: Go }) {
                 <p className="st-s">Abre una bóveda y mira cómo rinde todos los días.</p>
               </>
             )}
-            <span className="st-cta">{totalSaved > 0 ? "Ver mi ahorro" : "Empezar a ahorrar"} <Icon name="chevR" size={14} /></span>
+            {!savingsLoading && (
+              <span className="st-cta">{totalSaved > 0 ? "Ver mi ahorro" : "Empezar a ahorrar"} <Icon name="chevR" size={14} /></span>
+            )}
           </div>
-          <GrowthBars size={96} live={totalSaved > 0} />
+          <GrowthBars size={96} live={!savingsLoading && totalSaved > 0} />
         </button>
 
         {/* ── 1c. OTROS ACTIVOS — saldos líquidos (divisas de conversiones + wallet Stellar).

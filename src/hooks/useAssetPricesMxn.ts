@@ -44,5 +44,8 @@ export function useAssetPricesMxn(codes: string[], wallet?: string | null) {
     [prices],
   )
 
-  return { prices, valueOf, refresh }
+  /** Hay precio cargado para el activo (sin él, `valueOf` devuelve 0). */
+  const hasPrice = useCallback((code: string) => typeof prices[code.toUpperCase()] === 'number', [prices])
+
+  return { prices, valueOf, hasPrice, refresh }
 }
