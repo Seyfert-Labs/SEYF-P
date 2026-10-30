@@ -132,7 +132,7 @@ export function ScreenHome({ go }: { go: Go }) {
   // Sin hardcodeo; genérico para cualquier activo → listo para mainnet.
   // Activo de cada bóveda (en mainnet, USDC): su saldo viene en esa unidad, no en MXN.
   const vaultAssets = vaults.map((v) => ({ code: assetSymbolForPlan(v.planId).toUpperCase(), bal: v.bal }));
-  const { valueOf: mxnValueOf, hasPrice } = useAssetPricesMxn(
+  const { valueOf: mxnValueOf, hasPrice, loaded: pricesLoaded } = useAssetPricesMxn(
     [...new Set([...stellarAssets.map((a) => a.code), ...vaultAssets.map((a) => a.code)])],
     stellar.publicKey,
   );
@@ -141,6 +141,12 @@ export function ScreenHome({ go }: { go: Go }) {
   // Mientras no hay bóvedas leídas o precio en MXN, la tarjeta "Tu ahorro" muestra
   // un esqueleto: antes enseñaba "Pon a trabajar tu dinero" o $0 y luego brincaba.
   const savingsLoading = !vaultsReady || vaultAssets.some((a) => a.bal > 0 && !hasPrice(a.code));
+  // El patrimonio suma tres fuentes que llegan por separado (saldo Stellar, bóvedas,
+  // precios). Pintarlo con la primera hacía que se viera bajo, subiera y luego
+  // ajustara: se espera a tenerlas todas y se muestra una sola vez.
+  const heroLoading =
+    showStellarAssets &&
+    (!stellar.balancesLoaded || savingsLoading || !pricesLoaded);
   const stellarMxn = stellarAssets.reduce((s, a) => s + mxnValueOf(a.code, a.bal), 0);
   // "Disponible" del hero = valor real en MXN de los activos Stellar (no MXNB de Arbitrum).
   const pesos = realData ? stellarMxn : 48250.4;
@@ -176,6 +182,14 @@ export function ScreenHome({ go }: { go: Go }) {
             }}>
               ••••••
             </p>
+          ) : heroLoading ? (
+            <>
+              <div className="skel" style={{ marginTop: 14, width: 230, height: 62 }} />
+              <div style={{ display: "flex", gap: 24, marginTop: 14 }}>
+                <div className="skel" style={{ width: 80, height: 34 }} />
+                <div className="skel" style={{ width: 80, height: 34 }} />
+              </div>
+            </>
           ) : (
             <div style={{ marginTop: 14 }}>
               {/* Número grande = patrimonio (crece a la tasa efectiva). Sin bóveda,
@@ -183,7 +197,7 @@ export function ScreenHome({ go }: { go: Go }) {
               <GrowingAmount base={hasVault ? patrimonio : pesos} apy={blendedApy} size={62} align="left" id="home-patrimonio" />
             </div>
           )}
-          {hasVault && !hide && (
+          {hasVault && !hide && !heroLoading && (
             // Split de estados: el mismo dinero, líquido vs. invertido.
             // Lima = Disponible · Violeta = En bóveda (crece en vivo).
             <div style={{ display: "flex", gap: 24, marginTop: 14 }}>

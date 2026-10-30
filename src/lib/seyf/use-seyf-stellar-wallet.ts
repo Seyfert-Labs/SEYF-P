@@ -10,6 +10,9 @@ import { installPollarOtpErrorShim } from '@/lib/pollar/otp-error-shim'
 /** Último refresco automático de saldo, compartido por todas las instancias del hook. */
 let lastAutoRefreshAt = 0
 
+/** Último saldo `loaded` por wallet, compartido: una pantalla recién montada no arranca en vacío. */
+let lastLoadedBalances: { publicKey: string; data: MappedBalances } | null = null
+
 export type SeyfStellarSession = {
   stellarAddress: string
   publicKey: string
@@ -234,20 +237,20 @@ export function useSeyfStellarWallet() {
     }
   }, [walletAddress])
 
-  const lastBalancesRef = useRef<MappedBalances>({ assetBalances: [], xlmBalance: null })
   const mapped = useMemo(() => mapBalances(walletBalance), [walletBalance])
 
   useEffect(() => {
-    if (walletBalance.step === 'loaded') {
-      lastBalancesRef.current = mapped
+    if (walletBalance.step === 'loaded' && publicKey) {
+      lastLoadedBalances = { publicKey, data: mapped }
     }
-  }, [walletBalance.step, mapped])
+  }, [walletBalance.step, mapped, publicKey])
 
-  // Mientras recarga, conserva el último saldo válido (evita parpadeos y datos “pegados” en loading).
-  const { assetBalances, xlmBalance } =
-    walletBalance.step === 'loading' && lastBalancesRef.current.assetBalances.length > 0
-      ? lastBalancesRef.current
-      : mapped
+  // Fuera de `loaded` (recargando, o un error/rate-limit del polling) conserva el
+  // último saldo válido de esta misma wallet: antes "Disponible" caía a 0 y volvía.
+  const last = isAuthenticated && publicKey && lastLoadedBalances?.publicKey === publicKey ? lastLoadedBalances.data : null
+  const { assetBalances, xlmBalance } = walletBalance.step !== 'loaded' && last ? last : mapped
+  /** Ya hubo al menos una lectura real del saldo (para no pintar $0 antes de tiempo). */
+  const balancesLoaded = walletBalance.step === 'loaded' || last != null
 
   const refreshBalanceNow = useCallback(async () => {
     if (!publicKey) return
@@ -406,6 +409,7 @@ export function useSeyfStellarWallet() {
     wallet,
     publicKey,
     assetBalances,
+    balancesLoaded,
     xlmBalance,
     cetesBalance,
     // Enrolamiento silencioso (OTP en nuestra UI).
