@@ -45,10 +45,9 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-bitso-signature');
   const webhookSecret = process.env.JUNO_WEBHOOK_SECRET;
 
-  if (webhookSecret && signature) {
-    if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-      return NextResponse.json({ error: 'Firma inválida' }, { status: 401 });
-    }
+  // Sin secreto o sin firma se rechaza: un evento falso podría emitir MXNB.
+  if (!webhookSecret || !signature || !verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+    return NextResponse.json({ error: 'Firma inválida' }, { status: 401 });
   }
 
   let event: JunoWebhookEvent | null = null;
