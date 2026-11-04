@@ -2,20 +2,23 @@ import { NextResponse } from "next/server";
 import { resolveMvpPartnerCryptoWalletId } from "@/lib/etherfuse/partner-accounts";
 import { toErrorResponse } from "@/lib/seyf/api-error";
 import { getEtherfuseKycGateResult } from "@/lib/seyf/etherfuse-kyc-guard";
-import { getEtherfuseRampContext } from "@/lib/seyf/etherfuse-ramp-context";
-import { guardEtherfuseRampRoutes } from "@/lib/seyf/etherfuse-ramp-guard";
+import { resolveEtherfuseRampContext } from "@/lib/seyf/etherfuse-ramp-context";
+import { guardEtherfuseRampRoutes, requireRampAccount } from "@/lib/seyf/etherfuse-ramp-guard";
 
 /**
  * GET /api/seyf/etherfuse/ramp-context
  * Wallet y IDs que usan las rutas de cotización/orden (misma lógica que GET /ramp/assets y POST order).
  * Incluye si Etherfuse devolvió un `cryptoWalletId` para esa clave Stellar (recomendado en órdenes).
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const denied = guardEtherfuseRampRoutes();
     if (denied) return denied;
 
-    const ctx = await getEtherfuseRampContext();
+    const auth = requireRampAccount(req);
+    if (!auth.ok) return auth.response;
+
+    const ctx = await resolveEtherfuseRampContext({ walletPublicKeyHint: auth.account });
     if (!ctx) {
       const productionMsg =
         "Sin contexto rampa: completa /identidad para crear sesión onboarding real.";

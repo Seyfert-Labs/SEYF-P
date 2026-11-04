@@ -7,7 +7,7 @@ import {
   registerOrganizationWallet,
 } from '@/lib/etherfuse/wallets'
 import {
-  getEtherfuseOnboardingSession,
+  getOnboardingSessionForAccount,
   resolveOnboardingIds,
   saveEtherfuseOnboardingSession,
 } from '@/lib/etherfuse/onboarding-session'
@@ -18,6 +18,7 @@ import {
 } from '@/lib/etherfuse/stellar-public-key'
 import { AppError, toErrorResponse } from '@/lib/seyf/api-error'
 import { rateLimitResponse } from '@/lib/seyf/guards'
+import { requireSession } from '@/lib/stellar/db-auth'
 import { normalizeDateOfBirthToIso } from '@/lib/seyf/normalize-date-of-birth'
 import { upsertStoredKycSnapshot } from '@/lib/seyf/kyc-state-store'
 import {
@@ -127,6 +128,9 @@ export async function POST(req: Request) {
   const limited = await rateLimitResponse(req, 'kyc/submit', { limit: 5, windowSec: 600 })
   if (limited) return limited
   try {
+    const auth = requireSession(req)
+    if (!auth.ok) return auth.response
+
     const raw = (await req.json().catch(() => null)) as unknown
     const parsed = bodySchema.safeParse(raw)
     if (!parsed.success) {
@@ -146,8 +150,11 @@ export async function POST(req: Request) {
       })
     }
 
-    // Supabase: pasa publicKey para buscar sesión guardada por wallet
-    const existing = await getEtherfuseOnboardingSession(publicKey)
+    if (publicKey !== auth.account) {
+      return NextResponse.json({ error: 'Esta cuenta no te pertenece.' }, { status: 403 })
+    }
+
+    const existing = await getOnboardingSessionForAccount(publicKey)
     const fresh = newEtherfuseOnboardingIds()
     const ids = resolveOnboardingIds(existing, publicKey, fresh)
     const hasMatchingSession =

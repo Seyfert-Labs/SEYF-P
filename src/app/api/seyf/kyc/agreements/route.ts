@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { acceptAllEtherfuseAgreements } from "@/lib/etherfuse/agreements";
 import { generateOnboardingPresignedUrlResolving409 } from "@/lib/etherfuse/onboarding";
-import { getEtherfuseOnboardingSession } from "@/lib/etherfuse/onboarding-session";
+import { getOnboardingSessionForAccount } from "@/lib/etherfuse/onboarding-session";
+import { requireSession } from "@/lib/stellar/db-auth";
 import { AppError, toErrorResponse } from "@/lib/seyf/api-error";
 import { upsertStoredAgreementsAccepted } from "@/lib/seyf/agreements-state-store";
 
@@ -31,7 +32,10 @@ const bodySchema = z.object({
  */
 export async function POST(req: Request) {
   try {
-    const session = await getEtherfuseOnboardingSession();
+    const auth = requireSession(req);
+    if (!auth.ok) return auth.response;
+
+    const session = await getOnboardingSessionForAccount(auth.account);
     if (!session) {
       throw new AppError("validation_error", {
         statusCode: 401,

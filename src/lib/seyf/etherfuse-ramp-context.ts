@@ -62,7 +62,9 @@ export async function resolveEtherfuseRampContext(options?: {
   // 2. Cookie httpOnly — solo si no mandaron wallet o la wallet coincide con /identidad.
   // Si el body trae otra clave Stellar (p. ej. Pollar ≠ cookie), usar la cookie aquí
   // rompía cotización vs orden (400 en /ramp/order: quote de otro customerId).
-  const session = await getEtherfuseOnboardingSession();
+  // La cookie no está firmada: en producción no se le cree.
+  const session =
+    process.env.NODE_ENV === "production" ? null : await getEtherfuseOnboardingSession();
   if (session) {
     const sessionPk = normalizeStellarPublicKey(session.publicKey);
     const cookieApplies = !hintPk || sessionPk === hintPk;

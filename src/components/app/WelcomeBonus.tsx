@@ -5,6 +5,7 @@
    2. 10,000 XLM testnet (Friendbot)
    Ambos muestran estado reclamado/disponible/bloqueado. */
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { seyfAuthHeaders } from "@/lib/stellar/auth-token";
 import { Icon } from "./ui";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
@@ -125,7 +126,7 @@ export function WelcomeBonus() {
     try {
       const quoteRes = await fetch("/api/seyf/etherfuse/quote/onramp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await seyfAuthHeaders()) },
         body: JSON.stringify({ sourceAmount: String(BONUS_AMOUNT), wallet: walletPk }),
       });
       const quoteData = await quoteRes.json();
@@ -135,7 +136,7 @@ export function WelcomeBonus() {
 
       const orderRes = await fetch("/api/seyf/etherfuse/order/onramp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await seyfAuthHeaders()) },
         body: JSON.stringify({ quoteId, wallet: walletPk }),
       });
       const orderData = await orderRes.json();

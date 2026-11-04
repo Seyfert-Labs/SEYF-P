@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AppError, toErrorResponse } from "@/lib/seyf/api-error";
 import { resolveEtherfuseRampContext } from "@/lib/seyf/etherfuse-ramp-context";
-import { guardEtherfuseRampRoutes } from "@/lib/seyf/etherfuse-ramp-guard";
+import { guardEtherfuseRampRoutes, requireRampAccount } from "@/lib/seyf/etherfuse-ramp-guard";
 import { prepareSpeiDepositQuoteAndOrder } from "@/lib/seyf/etherfuse-spei-deposit-prepare";
 
 const bodySchema = z.object({
@@ -31,8 +31,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const auth = requireRampAccount(req, parsed.data.wallet);
+  if (!auth.ok) return auth.response;
+
   const ctx = await resolveEtherfuseRampContext({
-    walletPublicKeyHint: parsed.data.wallet ?? null,
+    walletPublicKeyHint: auth.account,
   });
   if (!ctx) {
     return NextResponse.json(

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { fetchEtherfuseKycStatus } from '@/lib/etherfuse/kyc'
+import { normalizeStellarPublicKey } from '@/lib/etherfuse/stellar-public-key'
+import { requireSession } from '@/lib/stellar/db-auth'
 import {
-  getEtherfuseOnboardingSession,
+  getOnboardingSessionForAccount,
   saveEtherfuseOnboardingSession,
   type EtherfuseOnboardingSession,
 } from '@/lib/etherfuse/onboarding-session'
@@ -41,9 +43,15 @@ async function resolveRealCustomerId(
 
 export async function GET(req: Request) {
   try {
-    const url = new URL(req.url)
-    const walletHint = url.searchParams.get('wallet') ?? undefined
-    let session = await getEtherfuseOnboardingSession(walletHint)
+    const auth = requireSession(req)
+    if (!auth.ok) return auth.response
+
+    const requested = new URL(req.url).searchParams.get('wallet')
+    if (requested && normalizeStellarPublicKey(requested) !== auth.account) {
+      return NextResponse.json({ error: 'Esta cuenta no te pertenece.' }, { status: 403 })
+    }
+    const walletHint = auth.account
+    let session = await getOnboardingSessionForAccount(walletHint)
 
     // Sin sesión pero con wallet: intenta resolver el customerId real por lookup.
     if (!session && walletHint) {

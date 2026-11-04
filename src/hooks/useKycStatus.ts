@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { SEYF_AUTH_TOKEN_EVENT, seyfAuthHeaders } from "@/lib/stellar/auth-token";
 
 const VERIFIED = new Set(["approved", "approved_chain_deploying", "proposed"]);
 
@@ -76,7 +77,7 @@ export function useKycStatus() {
     setLoading(true);
     try {
       const qs = stellar.publicKey ? `?wallet=${encodeURIComponent(stellar.publicKey)}` : "";
-      const r = await fetch(`/api/seyf/kyc/status${qs}`);
+      const r = await fetch(`/api/seyf/kyc/status${qs}`, { headers: await seyfAuthHeaders() });
       const j = await r.json().catch(() => ({}));
       const status = j?.kyc?.status as string | undefined;
       setVerified((!!status && VERIFIED.has(status)) || readKycDoneLocal(stellar.publicKey));
@@ -97,9 +98,11 @@ export function useKycStatus() {
     const onUpdate = () => void refresh();
     window.addEventListener(KYC_STATUS_UPDATED_EVENT, onUpdate);
     window.addEventListener("focus", onUpdate);
+    window.addEventListener(SEYF_AUTH_TOKEN_EVENT, onUpdate);
     return () => {
       window.removeEventListener(KYC_STATUS_UPDATED_EVENT, onUpdate);
       window.removeEventListener("focus", onUpdate);
+      window.removeEventListener(SEYF_AUTH_TOKEN_EVENT, onUpdate);
     };
   }, [refresh]);
 

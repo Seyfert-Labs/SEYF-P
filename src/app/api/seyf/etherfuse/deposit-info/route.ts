@@ -3,7 +3,7 @@ import { toErrorResponse } from '@/lib/seyf/api-error'
 import { resolveEtherfuseRampContext } from '@/lib/seyf/etherfuse-ramp-context'
 import { fetchEtherfuseKycStatus } from '@/lib/etherfuse/kyc'
 import { etherfuseFetch, etherfuseReadBody } from '@/lib/etherfuse/client'
-import { guardEtherfuseRampRoutes } from '@/lib/seyf/etherfuse-ramp-guard'
+import { guardEtherfuseRampRoutes, requireRampAccount } from '@/lib/seyf/etherfuse-ramp-guard'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -92,8 +92,10 @@ export async function GET(request: Request) {
   const denied = guardEtherfuseRampRoutes()
   if (denied) return denied
   try {
-    const walletHint = new URL(request.url).searchParams.get('wallet') ?? null
-    const ctx = await resolveEtherfuseRampContext({ walletPublicKeyHint: walletHint })
+    const auth = requireRampAccount(request, new URL(request.url).searchParams.get('wallet'))
+    if (!auth.ok) return auth.response
+
+    const ctx = await resolveEtherfuseRampContext({ walletPublicKeyHint: auth.account })
 
     if (!ctx) {
       return NextResponse.json(
