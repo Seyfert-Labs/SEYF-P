@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { uploadEtherfuseKycDocuments } from '@/lib/etherfuse/kyc'
-import { getEtherfuseOnboardingSession } from '@/lib/etherfuse/onboarding-session'
+import { getOnboardingSessionForAccount } from '@/lib/etherfuse/onboarding-session'
+import { requireSession } from '@/lib/stellar/db-auth'
 import { isValidStellarPublicKey, normalizeStellarPublicKey } from '@/lib/etherfuse/stellar-public-key'
 import { AppError, toErrorResponse } from '@/lib/seyf/api-error'
 import { MAX_KYC_IMAGE_DATA_URL_CHARS } from '@/lib/seyf/kyc-upload-limits'
@@ -37,7 +38,10 @@ const bodySchema = z.object({
  */
 export async function POST(req: Request) {
   try {
-    const session = await getEtherfuseOnboardingSession()
+    const auth = requireSession(req)
+    if (!auth.ok) return auth.response
+
+    const session = await getOnboardingSessionForAccount(auth.account)
     if (!session) {
       throw new AppError('validation_error', {
         statusCode: 401,

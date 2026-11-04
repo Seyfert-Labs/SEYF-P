@@ -8,7 +8,7 @@ import {
 import { toErrorResponse } from "@/lib/seyf/api-error";
 import { resolveEtherfuseRampContext } from "@/lib/seyf/etherfuse-ramp-context";
 import { assertEtherfuseKycApproved } from "@/lib/seyf/etherfuse-kyc-guard";
-import { guardEtherfuseRampRoutes } from "@/lib/seyf/etherfuse-ramp-guard";
+import { guardEtherfuseRampRoutes, requireRampAccount } from "@/lib/seyf/etherfuse-ramp-guard";
 
 const bodySchema = z.object({
   sourceAmount: z.string().min(1),
@@ -37,8 +37,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const auth = requireRampAccount(req, parsed.data.wallet);
+  if (!auth.ok) return auth.response;
+
   const ctx = await resolveEtherfuseRampContext({
-    walletPublicKeyHint: parsed.data.wallet ?? null,
+    walletPublicKeyHint: auth.account,
   });
   if (!ctx) {
     return NextResponse.json(

@@ -73,6 +73,27 @@ export async function getEtherfuseOnboardingSession(
 }
 
 /**
+ * Sesión de onboarding de la cuenta ya autenticada con SEP-10.
+ * La cookie no está firmada y cualquiera puede escribirla, así que en producción
+ * no se le cree: solo cuenta lo guardado en Supabase para esa cuenta.
+ */
+export async function getOnboardingSessionForAccount(
+  account: string,
+): Promise<EtherfuseOnboardingSession | null> {
+  const publicKey = normalizeStellarPublicKey(account)
+  const stored = await getStoredOnboardingSession(publicKey)
+  if (stored) {
+    return { customerId: stored.customerId, bankAccountId: stored.bankAccountId, publicKey }
+  }
+  if (process.env.NODE_ENV === 'production') return null
+
+  const jar = await cookies()
+  const raw = jar.get(COOKIE_NAME)?.value
+  const session = raw ? parseCookieSession(raw) : null
+  return session?.publicKey === publicKey ? session : null
+}
+
+/**
  * Guarda la sesión en Supabase (fuente de verdad) y en cookie (fallback).
  */
 export async function saveEtherfuseOnboardingSession(

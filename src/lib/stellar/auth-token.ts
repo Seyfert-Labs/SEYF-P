@@ -34,6 +34,9 @@ function isFresh(state: TokenState | null): state is TokenState {
   return Boolean(state && state.expiresAt - 60_000 > Date.now())
 }
 
+/** Se emite al obtener sesión, para reintentar lo que salió antes de tener token. */
+export const SEYF_AUTH_TOKEN_EVENT = 'seyf:auth-token'
+
 export function setSeyfAuthToken(token: string, account: string, expiresInSec: number): void {
   current = { token, account, expiresAt: Date.now() + expiresInSec * 1000 }
   try {
@@ -41,6 +44,7 @@ export function setSeyfAuthToken(token: string, account: string, expiresInSec: n
   } catch {
     /* sessionStorage puede fallar en modo privado — el token igual vive en memoria */
   }
+  window.dispatchEvent(new Event(SEYF_AUTH_TOKEN_EVENT))
 }
 
 export function clearSeyfAuthToken(): void {

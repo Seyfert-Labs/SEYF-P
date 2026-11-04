@@ -10,6 +10,7 @@ import { SubHeader } from "../shared";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
 import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
+import { SEYF_AUTH_TOKEN_EVENT, seyfAuthHeaders } from "@/lib/stellar/auth-token";
 import { useEnsureCetesTrustline } from "@/lib/seyf/use-ensure-cetes-trustline";
 import { useEnsureStellarFunding } from "@/lib/seyf/use-ensure-stellar-funding";
 import type { EtherfuseKycSnapshot } from "@/lib/etherfuse/kyc";
@@ -127,7 +128,9 @@ export function ScreenKyc({ go }: { go: Go }) {
 
   const refreshStatus = useCallback(async () => {
     if (!stellar.publicKey) return;
-    const r = await fetch(`/api/seyf/kyc/status?wallet=${encodeURIComponent(stellar.publicKey)}`);
+    const r = await fetch(`/api/seyf/kyc/status?wallet=${encodeURIComponent(stellar.publicKey)}`, {
+      headers: await seyfAuthHeaders(),
+    });
     const j = await r.json().catch(() => ({}));
     const snap = j.kyc;
     if (r.ok && snap?.status) {
@@ -139,6 +142,13 @@ export function ScreenKyc({ go }: { go: Go }) {
       }
     }
   }, [stellar.publicKey]);
+
+  // Si el estado se pidió antes de tener sesión, se vuelve a leer al obtenerla.
+  useEffect(() => {
+    const onToken = () => void refreshStatus().catch(() => undefined);
+    window.addEventListener(SEYF_AUTH_TOKEN_EVENT, onToken);
+    return () => window.removeEventListener(SEYF_AUTH_TOKEN_EVENT, onToken);
+  }, [refreshStatus]);
 
   // Cuando la cuenta segura queda lista, avanza. Si el usuario acaba de verificar
   // su código, pasa por la pantalla intermedia "Código confirmado"; si regresa ya
@@ -218,7 +228,7 @@ export function ScreenKyc({ go }: { go: Go }) {
     void run(async () => {
       const r = await fetch("/api/seyf/kyc/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await seyfAuthHeaders()) },
         body: JSON.stringify({
           publicKey: stellar.publicKey,
           identity: {
@@ -279,7 +289,7 @@ export function ScreenKyc({ go }: { go: Go }) {
       ]);
       const r = await fetch("/api/seyf/kyc/documents", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await seyfAuthHeaders()) },
         body: JSON.stringify({
           document: { idFront: { label: "id_front", image: front }, idBack: { label: "id_back", image: back } },
           selfie: { label: "selfie", image: face },
@@ -295,7 +305,7 @@ export function ScreenKyc({ go }: { go: Go }) {
     run(async () => {
       const r = await fetch("/api/seyf/kyc/agreements", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await seyfAuthHeaders()) },
         body: JSON.stringify({}),
       });
       const j = await r.json().catch(() => ({}));

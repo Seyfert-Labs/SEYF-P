@@ -1,9 +1,10 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { toErrorResponse, AppError } from '@/lib/seyf/api-error'
+import { requireSession } from '@/lib/stellar/db-auth'
 import { fetchEtherfuseKycStatus } from '@/lib/etherfuse/kyc'
 import {
-  getEtherfuseOnboardingSession,
+  getOnboardingSessionForAccount,
   saveEtherfuseOnboardingSession,
 } from '@/lib/etherfuse/onboarding-session'
 import { createCustomerBankAccount, type BankAccountRegistration } from '@/lib/etherfuse/bank-accounts'
@@ -36,7 +37,10 @@ function toRegistration(
 
 export async function POST(req: Request) {
   try {
-    const session = await getEtherfuseOnboardingSession()
+    const auth = requireSession(req)
+    if (!auth.ok) return auth.response
+
+    const session = await getOnboardingSessionForAccount(auth.account)
     if (!session?.customerId) {
       throw new AppError('validation_error', {
         statusCode: 401,

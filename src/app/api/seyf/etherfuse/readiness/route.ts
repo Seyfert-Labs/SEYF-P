@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 import { toErrorResponse } from "@/lib/seyf/api-error";
 import { saveEtherfuseOnboardingSession } from "@/lib/etherfuse/onboarding-session";
-import { getEtherfuseRampContext } from "@/lib/seyf/etherfuse-ramp-context";
-import { guardEtherfuseRampRoutes } from "@/lib/seyf/etherfuse-ramp-guard";
+import { resolveEtherfuseRampContext } from "@/lib/seyf/etherfuse-ramp-context";
+import { guardEtherfuseRampRoutes, requireRampAccount } from "@/lib/seyf/etherfuse-ramp-guard";
 import { computeEtherfuseReadiness } from "@/lib/seyf/etherfuse-readiness";
 
 /**
  * GET /api/seyf/etherfuse/readiness
  * Semáforos de readiness para habilitar onramp programático.
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const denied = guardEtherfuseRampRoutes();
     if (denied) return denied;
 
-    const ctx = await getEtherfuseRampContext();
+    const auth = requireRampAccount(req);
+    if (!auth.ok) return auth.response;
+
+    const ctx = await resolveEtherfuseRampContext({ walletPublicKeyHint: auth.account });
     if (!ctx) {
       const webhookConfigured = Boolean(process.env.ETHERFUSE_WEBHOOK_SECRET?.trim());
       return NextResponse.json({

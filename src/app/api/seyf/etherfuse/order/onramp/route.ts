@@ -11,7 +11,7 @@ import { AppError, toErrorResponse } from "@/lib/seyf/api-error";
 import { upsertStoredAgreementsAccepted } from "@/lib/seyf/agreements-state-store";
 import { assertEtherfuseKycApproved } from "@/lib/seyf/etherfuse-kyc-guard";
 import { resolveEtherfuseRampContext } from "@/lib/seyf/etherfuse-ramp-context";
-import { guardEtherfuseRampRoutes } from "@/lib/seyf/etherfuse-ramp-guard";
+import { guardEtherfuseRampRoutes, requireRampAccount } from "@/lib/seyf/etherfuse-ramp-guard";
 import { acquireOnrampLock, releaseOnrampLock } from "@/lib/seyf/guards";
 import { resolveEffectiveBankAccountIdForOnramp } from "@/lib/seyf/etherfuse-readiness";
 import { saveStoredOnboardingSession } from "@/lib/seyf/onboarding-session-store";
@@ -67,8 +67,11 @@ export async function POST(req: Request) {
   }
 
   // Usar wallet hint del body para buscar sesión en Supabase (más confiable que solo cookie)
+  const auth = requireRampAccount(req, parsed.data.wallet);
+  if (!auth.ok) return auth.response;
+
   const ctx = await resolveEtherfuseRampContext({
-    walletPublicKeyHint: parsed.data.wallet ?? null,
+    walletPublicKeyHint: auth.account,
   });
   if (!ctx) {
     return NextResponse.json(
