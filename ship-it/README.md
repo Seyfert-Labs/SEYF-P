@@ -49,6 +49,20 @@ npm run build
 
 Lee el contrato de `ship-it/deployments.json` (`turbopack.root` apunta a `ship-it/`). Simula cada reclamo antes de pedir la firma y traduce los errores del contrato a español. Si la wallet no está en testnet, avisa y no deja reclamar.
 
+Wallets: Freighter, xBull, Albedo y LOBSTR. **Freighter aparece en el selector como «Varial»**, su nombre nuevo en Stellar Wallets Kit 2.8.
+
+### Probar la app sin wallet de navegador
+
+`app/scripts/e2e.mts` usa el mismo `src/lib/vault.ts` de la app (simular, ensamblar, enviar y hacer poll). La firma la hace stellar CLI:
+
+```bash
+cd ship-it/app
+npx tsx scripts/e2e.mts balance
+X=$(npx tsx scripts/e2e.mts prepare $(stellar keys address shipit-tn-juez) "Ship It")
+S=$(echo "$X" | stellar tx sign --sign-with-key shipit-tn-juez --network testnet)
+npx tsx scripts/e2e.mts submit "$S"
+```
+
 ## Paso a paso del jueves 26-nov (ventana 12:00–16:00 CDMX)
 
 > El contrato **oficial** se despliega **dentro de la ventana**, no antes. Conviene hacerlo cerca de la hora de entrega para que otro equipo tenga menos tiempo de reclamar antes que los jueces.
@@ -102,6 +116,22 @@ Contrato de ensayo `CDE5VNKEGPORPF7BM4AT7SE2ZFVMNXCY66NYLXYENWPHIHGTVQ6HZ63P` (w
 | `claim` sin saldo | rechazado en simulación: `Error(Contract, #2)` | — |
 | `fund` desde respaldo (recarga) | evento `funded` | [d94d3d44…](https://stellar.expert/explorer/testnet/tx/d94d3d4423b8927fc8c843cf242100a0fde619491d3b99a0350d4bb61570297a) |
 | segundo `claim` | paga 5555 | [11d58d8b…](https://stellar.expert/explorer/testnet/tx/11d58d8be8eeae5b39380bb00b172187f45837128317076b4da654cdd0f6cd7c) |
+
+Mismo contrato, probado con el código de la app (`scripts/e2e.mts`, 26-nov 00:30):
+
+| Caso | Resultado |
+|---|---|
+| saldo | `55550000000` |
+| "ship it" | «Código incorrecto. Revisa mayúsculas y espacios.» |
+| cuenta sin fondear | «Tu cuenta no existe en testnet. Fondéala con friendbot…» |
+| "Ship It" (firma CLI) | pagado, tx [7f59f41c…](https://stellar.expert/explorer/testnet/tx/7f59f41cc8719eed43262153e7c1b93c093910be6e34ffd009f01b7905671c1d) |
+| sin saldo | «La bóveda no tiene 5555 XLM en este momento…» |
+
+Después se recargó otra vez ([1c6cf028…](https://stellar.expert/explorer/testnet/tx/1c6cf028adcb2040a848d34444efca05eba879bdef925ba45c658834f8b4020e)): el contrato de ensayo quedó con **5555 XLM** para probar con Freighter.
+
+En local, la app (`npm run dev`) mostró el saldo de 5555 XLM leído de testnet y abrió el selector de wallets (xBull, Albedo, Varial, LOBSTR).
+
+**Pendiente (requiere wallet real):** reclamar desde la UI con Freighter/Varial en testnet y ver el aviso con la wallet en mainnet.
 
 Cuentas de ensayo, ya gastadas para depósitos: `shipit-tn-deployer`, `shipit-tn-backup`. `shipit-tn-juez` es la cuenta que reclama.
 
