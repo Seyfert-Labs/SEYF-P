@@ -175,7 +175,7 @@ export default function Page() {
             {kitReady ? "Conectar wallet" : "Cargando wallets…"}
           </button>
         )}
-        <span className="sub">Freighter, xBull, Albedo o Lobstr, configurada en testnet.</span>
+        <span className="sub">Freighter (en el selector aparece como «Varial»), xBull, Albedo o LOBSTR, configurada en testnet.</span>
         {wrongNetwork && (
           <div className="msg warn">
             Tu wallet está en <b>{wrongNetwork}</b>. Cámbiala a <b>Testnet</b> y vuelve a intentar.
