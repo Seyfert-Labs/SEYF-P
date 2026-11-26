@@ -1,0 +1,29 @@
+[package]
+name = "ship-it-vault"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Crate autónomo: no es miembro del workspace de `soroban/` (producción).
+[workspace]
+
+[lib]
+crate-type = ["lib", "cdylib"]
+doctest = false
+
+[dependencies]
+# Misma versión que `soroban/` (Protocol 29).
+soroban-sdk = "29.0.1"
+
+[dev-dependencies]
+soroban-sdk = { version = "29.0.1", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
