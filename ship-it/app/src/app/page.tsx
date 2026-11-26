@@ -74,15 +74,19 @@ export default function Page() {
     return () => clearInterval(t);
   }, [refreshBalance]);
 
-  const checkNetwork = useCallback(async () => {
+  /** Devuelve true si la wallet está en testnet (o no informa su red). */
+  const checkNetwork = useCallback(async (): Promise<boolean> => {
     const kit = kitRef.current;
-    if (!kit) return;
+    if (!kit) return false;
     try {
       const { networkPassphrase, network } = await kit.getNetwork();
-      setWrongNetwork(networkPassphrase && networkPassphrase !== NETWORK_PASSPHRASE ? network || networkPassphrase : null);
+      const wrong = networkPassphrase && networkPassphrase !== NETWORK_PASSPHRASE ? network || networkPassphrase : null;
+      setWrongNetwork(wrong);
+      return !wrong;
     } catch {
       // Algunas wallets (p. ej. Albedo) no informan la red; firman con la que se les pide.
       setWrongNetwork(null);
+      return true;
     }
   }, []);
 
@@ -113,7 +117,7 @@ export default function Page() {
     const clean = code.trim();
     setResult(null);
     try {
-      await checkNetwork();
+      if (!(await checkNetwork())) return;
       setBusy("Simulando…");
       const xdr = await prepareClaim(address, clean);
       setBusy("Firma en tu wallet…");
@@ -192,7 +196,7 @@ export default function Page() {
           spellCheck={false}
           onKeyDown={(e) => e.key === "Enter" && address && code.trim() && !busy && claim()}
         />
-        <button onClick={claim} disabled={!address || !code.trim() || !!busy || !!wrongNetwork}>
+        <button onClick={claim} disabled={!address || !code.trim() || !!busy}>
           {busy ?? "Reclamar"}
         </button>
         {!address && <span className="sub">Conecta tu wallet para reclamar.</span>}
