@@ -26,7 +26,7 @@ import {
 import Lenis from "lenis";
 import { SeyfSymbol } from "@/components/brand/SeyfLogo";
 import { GrowingAmount } from "@/components/app/GrowingAmount";
-import AppMock from "./AppMock";
+import AppMock, { WaysPhone } from "./AppMock";
 import { CountryRelief, type CountryCode } from "./CountryRelief";
 import { LangProvider, LangSwitch, useI18n } from "./i18n";
 
@@ -1170,45 +1170,7 @@ function WaysTabs() {
     return () => clearInterval(id);
   }, [auto, inView]);
   const panel = w.panels[i];
-  const a = w.art;
-  const art = [
-    // Ahorro: una bóveda de USDC como en "Mis bóvedas"; el rendimiento usa la tasa de
-    // referencia del vault USDC (4.5 % anual, `apyTarget` en lib/defindex/catalog.ts).
-    <div className="ways-card" key="s">
-      <span className="wc-k">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="12" cy="12" r="3.2" /></svg>
-        {a.saving}
-      </span>
-      <span className="wc-v num">$25,000.00</span>
-      <span className="wc-k">{a.unit}</span>
-      <div className="wc-row">
-        <span className="wc-k"><span className="live-dot" /> {a.earned}</span>
-        <GrowingAmount base={3.08} apy={4.5} size={22} align="left" color="#C8FF4D" prefix="+$" tail={2} id="lp-ways" />
-      </div>
-      <span className="wc-chip">{a.daily}</span>
-    </div>,
-    // Adelanto: 30 días de rendimiento de esa misma bóveda (25,000 × 4.5 % × 30/365).
-    <div className="ways-card" key="a">
-      <span className="wc-k">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" /></svg>
-        {a.advance}
-      </span>
-      <span className="wc-v num">$92.47</span>
-      <div className="wc-bar"><motion.i initial={{ scaleX: 0 }} animate={{ scaleX: 0.62 }} transition={{ duration: 1.1, delay: 0.25, ease: EASE }} /></div>
-      <span className="wc-k">{a.payoff}</span>
-      <div className="wc-row"><span className="wc-k">{a.backing}</span><span className="wc-chip wc-chip-v">{a.locked}</span></div>
-    </div>,
-    // Retiro: de la bóveda a la wallet (lo que hace la app hoy en mainnet; SPEI es "próximamente").
-    <div className="ways-card" key="r">
-      <span className="wc-k">{a.withdraw}</span>
-      <span className="wc-v num">−$2,500.00</span>
-      <div className="wc-row"><span className="wc-k">{a.to}</span></div>
-      <span className="wc-chip wc-ok">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12l5 5L20 7" /></svg>
-        {a.arrived}
-      </span>
-    </div>,
-  ][i];
+
   return (
     <section className="sec-pad ways" id="usos" ref={ref}>
       <div className="wrap">
@@ -1241,8 +1203,12 @@ function WaysTabs() {
             transition={{ duration: 0.5, ease: EASE }}
           >
             <div className="ways-art">
-              <motion.div initial={{ rotate: -6, scale: 0.9 }} animate={{ rotate: i === 1 ? 3 : -3, scale: 1 }} transition={{ type: "spring", stiffness: 180, damping: 16 }}>
-                {art}
+              <motion.div className="ways-phone" initial={{ rotate: -4, y: 24 }} animate={{ rotate: i === 1 ? 2 : -2, y: 0 }} transition={{ type: "spring", stiffness: 160, damping: 18 }}>
+                <div className="phone">
+                  <div className="phone-screen">
+                    <WaysPhone screen={i} />
+                  </div>
+                </div>
               </motion.div>
             </div>
             <div className="ways-copy">

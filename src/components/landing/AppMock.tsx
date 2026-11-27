@@ -255,7 +255,153 @@ function ScreenVaults() {
   );
 }
 
+/* ---------- Celular de "Tu dinero, a tu manera": las pantallas de hoy ----------
+   Calcan /app en mainnet: pestañas Inicio · Ahorro · Adelanto, bóvedas en USDC
+   (tasa de referencia 4.5 %), el adelanto de `seyf_advance` y el retiro de una
+   bóveda a la wallet. Mismos números que el texto de la sección. */
+function RealTabBar({ active }: { active: 0 | 1 | 2 }) {
+  const { t } = useI18n();
+  const ic = ["home", "vault", "bolt"] as const;
+  // como en /app: barra oscura flotante; la pestaña activa es una píldora blanca con su nombre
+  return (
+    <div className="am-rtab">
+      {t.ways.phone.tabs.map((lb, i) => (
+        <span key={lb} className={`am-rtab-i${i === active ? " on" : ""}`}>
+          <Icon name={ic[i]} size={20} stroke={2.2} />
+          {i === active && <span>{lb}</span>}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function WaysSavings() {
+  const { t } = useI18n();
+  const ph = t.ways.phone;
+  return (
+    <>
+      <Head title={ph.savings} />
+      <div className="am-pad">
+        <div className="card glow" style={{ padding: 22 }}>
+          <p className="eyebrow">{ph.total}</p>
+          <div style={{ marginTop: 14 }}>
+            <GrowingAmount base={25000} apy={4.5} size={46} align="left" tail={0} id="am-ways-total" />
+          </div>
+          <span className="am-chip" style={{ marginTop: 12 }}><Icon name="leaf" size={12} /> +$3.08 {ph.today}</span>
+        </div>
+        <div className="am-sec" style={{ display: "flex", justifyContent: "space-between" }}>{ph.myVaults}<span style={{ color: "var(--txt-dim)", fontSize: 13 }}>1/5</span></div>
+        <motion.div className="card am-vault" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5, ease: EASE }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- render 3D del kit, decorativo */}
+          <img src="/landing/kit/vault-a.png" alt="" width={46} height={46} style={{ objectFit: "contain" }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="am-v-ti">{ph.vault}</p>
+            <p className="am-v-su">{ph.vaultSub}</p>
+          </div>
+          <span className="num" style={{ fontSize: 15, fontWeight: 800 }}>$25,000</span>
+        </motion.div>
+        <div className="am-sec">{ph.rates}</div>
+        <p className="am-v-su" style={{ margin: "-4px 2px 10px" }}>{ph.ratesSub}</p>
+        <div className="card" style={{ padding: "4px 18px" }}>
+          <div className="lrow">
+            <div className="ava" style={{ color: "#7C9EFF" }}><Icon name="globe" size={20} /></div>
+            <div className="mid"><p className="ti">USDC</p><p className="su">{ph.usdc}</p></div>
+            <div className="amt"><div className="a num am-pos">4.5%</div><div className="s">{ph.annual}</div></div>
+          </div>
+        </div>
+      </div>
+      <RealTabBar active={1} />
+    </>
+  );
+}
+
+function WaysAdvance() {
+  const { t } = useI18n();
+  const ph = t.ways.phone;
+  return (
+    <>
+      <Head title={ph.advance} />
+      <div className="am-pad">
+        <div className="am-adv">
+          <motion.span className="am-adv-halo" animate={{ scale: [1, 1.18, 1], opacity: [0.45, 0.9, 0.45] }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }} />
+          <motion.img src="/landing/kit/bolt-a.png" alt="" width={96} height={96} className="am-adv-coin" animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} />
+          <p className="am-adv-k">{ph.advK}</p>
+          <p className="am-adv-t">{ph.advT}</p>
+          <p className="am-adv-s">{ph.advS}</p>
+        </div>
+        <div className="card" style={{ padding: 18, marginTop: 14 }}>
+          <p className="eyebrow">{ph.term}</p>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            {[7, 15, 30].map((d) => (
+              <span key={d} className={`am-term${d === 30 ? " on" : ""}`}>{d} {ph.days}</span>
+            ))}
+          </div>
+          <div className="am-rowk" style={{ marginTop: 16 }}><span>{ph.youGet}</span><b className="num am-pos" style={{ fontSize: 26 }}>$92.47</b></div>
+          <div className="am-rowk"><span>{ph.setAside}<small>{ph.keeps}</small></span><b className="num">$25,000</b></div>
+          <div className="am-rowk"><span>{ph.capital}</span><b>{ph.intact}</b></div>
+          <span className="am-cta">{ph.ask}</span>
+        </div>
+      </div>
+      <RealTabBar active={2} />
+    </>
+  );
+}
+
+function WaysWithdraw() {
+  const { t } = useI18n();
+  const ph = t.ways.phone;
+  return (
+    <>
+      <Head title={ph.vault} />
+      <motion.div className="am-toast" initial={{ y: -90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6, ease: EASE }}>
+        <span className="am-toast-ic"><Icon name="check" size={18} /></span>
+        <div style={{ flex: 1 }}>
+          <p className="am-toast-ti">{ph.toastTi}</p>
+          <p className="am-toast-su">{ph.toastSu}</p>
+        </div>
+      </motion.div>
+      <div className="am-pad">
+        <div className="card glow" style={{ padding: 22, display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ flex: 1 }}>
+            <p className="eyebrow">{ph.balance}</p>
+            <p className="num" style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-.03em", marginTop: 10 }}>$22,500<span style={{ fontSize: 20, color: "var(--txt-muted)" }}>.00</span></p>
+            <p className="am-v-su">{ph.vaultSub}</p>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- render 3D del kit, decorativo */}
+          <img src="/landing/kit/coin-a.png" alt="" width={86} height={86} style={{ objectFit: "contain" }} />
+        </div>
+        <div className="quick-row" style={{ marginTop: 14, gap: 8 }}>
+          <span className="quick"><span className="ic"><Icon name="plus" /></span><span className="tx">{ph.add}</span></span>
+          <span className="quick am-pulse"><span className="ic"><Icon name="send" /></span><span className="tx">{ph.withdraw}</span></span>
+        </div>
+        <div className="am-sec">{ph.activity}</div>
+        <div className="card" style={{ padding: "4px 18px" }}>
+          <motion.div className="lrow am-new" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1, duration: 0.5, ease: EASE }}>
+            <div className="ava"><Icon name="send" size={20} /></div>
+            <div className="mid"><p className="ti">{ph.rowW}</p><p className="su">{ph.now}</p></div>
+            <div className="amt"><div className="a num">−$2,500.00</div></div>
+          </motion.div>
+          <div className="lrow">
+            <div className="ava" style={{ color: "#c4b5fd" }}><Icon name="leaf" size={20} /></div>
+            <div className="mid"><p className="ti">{ph.rowY}</p><p className="su">{ph.yesterday}</p></div>
+            <div className="amt"><div className="a num am-pos">+$3.08</div></div>
+          </div>
+        </div>
+      </div>
+      <RealTabBar active={1} />
+    </>
+  );
+}
+
+/** Celular escalado con las pantallas de la sección de pestañas (0 Ahorra, 1 Adelanta, 2 Retira). */
+export function WaysPhone({ screen }: { screen: number }) {
+  return <PhoneCanvas screen={screen} render={(i) => (i === 0 ? <WaysSavings /> : i === 1 ? <WaysAdvance /> : <WaysWithdraw />)} />;
+}
+
 export default function AppMock({ screen }: { screen: number }) {
+  return <PhoneCanvas screen={screen} render={(i) => (i === 0 ? <ScreenDeposit /> : i === 1 ? <ScreenConvert /> : <ScreenVaults />)} />;
+}
+
+function PhoneCanvas({ screen, render }: { screen: number; render: (i: number) => React.ReactNode }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.72);
   useEffect(() => {
@@ -279,7 +425,7 @@ export default function AppMock({ screen }: { screen: number }) {
             exit={{ opacity: 0, x: -40 }}
             transition={{ duration: 0.5, ease: EASE }}
           >
-            {screen === 0 ? <ScreenDeposit /> : screen === 1 ? <ScreenConvert /> : <ScreenVaults />}
+            {render(screen)}
           </motion.div>
         </AnimatePresence>
       </div>
