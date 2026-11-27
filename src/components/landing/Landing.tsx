@@ -235,7 +235,6 @@ function Manifesto() {
       <motion.span className="mf-float mf-float-a" style={{ y: aY, rotate: aR }} aria-hidden><SeyfSymbol size={120} alt="" /></motion.span>
       <motion.span className="mf-float mf-float-b" style={{ y: bY, rotate: bR }} aria-hidden><SeyfSymbol size={72} alt="" /></motion.span>
       <div className="wrap">
-        <span className="sec-tag">{t.manifestoTag}</span>
         <div ref={ref} className="manifesto-text display">
           {words.map((w, i) => (
             <Word key={i} progress={scrollYProgress} range={[i / words.length, (i + 1) / words.length]}>
@@ -423,9 +422,6 @@ function HeroCinema() {
         <motion.div className="beat beat-1" style={{ opacity: b1o, y: b1y }}>
           <div className="wrap">
             <div className="hero-copy">
-              <motion.p className="hero-eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: EASE }}>
-                <span className="live-dot" /> {t.hero.eyebrow}
-              </motion.p>
               <h1 className="hero-title display">
                 <span className="hero-word-mask">
                   <motion.span className="hero-word" initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 0.9, delay: 0.15, ease: EASE }}>
@@ -597,7 +593,6 @@ function FilmReel() {
         <motion.div className="reel-glow" aria-hidden animate={{ background: `radial-gradient(closest-side, ${REEL_GLOW[idx]}, transparent)` }} transition={{ duration: 0.8 }} />
         <div className="wrap reel-grid">
           <div className="reel-side">
-            <p className="reel-tag"><span className="live-dot" /> {t.reel.tag}</p>
             <div className="reel-copies" aria-live="polite">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div className="reel-copy" key={idx} exit={{ opacity: 0, transition: { duration: 0.25, delay: 0.15 } }}>
@@ -785,7 +780,6 @@ function PhoneStory() {
       <div className="story-sticky">
         <div className="wrap story-grid">
           <div className="story-copy">
-            <span className="sec-tag">{t.story.tag}</span>
             <h2 className="sec-title display">{t.story.title}</h2>
             <div className="steps">
               {t.story.steps.map((s, i) => (
@@ -896,7 +890,6 @@ function BondsRail() {
     <section className="rail" id="bonos" ref={ref} style={{ height: `calc(100vh + ${dist}px)` }}>
       <div className="rail-sticky">
         <div className="wrap rail-head">
-          <span className="sec-tag">{t.bonds.tag}</span>
           <h2 className="sec-title display">{t.bonds.title}</h2>
           <p className="sec-sub">{t.bonds.sub}</p>
         </div>
@@ -928,10 +921,9 @@ function Reveal({ children, delay = 0, className, style }: { children: React.Rea
 }
 
 /** Título de sección con máscara: cada línea sube desde abajo. */
-function SecHead({ tag, title, sub, center = false }: { tag: string; title: string; sub?: string; center?: boolean }) {
+function SecHead({ title, sub, center = false }: { tag?: string; title: string; sub?: string; center?: boolean }) {
   return (
     <div className={center ? "sec-head-center" : undefined} style={{ marginBottom: 48 }}>
-      <Reveal><span className="sec-tag">{tag}</span></Reveal>
       <Reveal delay={0.05}><h2 className="sec-title display">{title}</h2></Reveal>
       {sub && <Reveal delay={0.12}><p className="sec-sub">{sub}</p></Reveal>}
     </div>
@@ -969,7 +961,6 @@ function QuotePin() {
           <motion.p className="quote-sub" style={{ opacity: subO }}>{t.quote.sub}</motion.p>
         </motion.div>
         <motion.div className="quote-two wrap" style={{ opacity: twoO, y: twoY, scale: twoS }}>
-          <p className="quote-pre">{t.quote.pre}</p>
           <p className="quote-big display">
             {t.quote.big[0]} <span>+</span> {t.quote.big[1]}
           </p>
@@ -1114,7 +1105,6 @@ function SecurityStack() {
     <section className="sec-pad" id="seguridad" ref={ref}>
       <div className="wrap split sec-stack-grid">
         <div>
-          <Reveal><span className="sec-tag">{t.security.tag}</span></Reveal>
           <Reveal delay={0.05}><h2 className="sec-title display">{t.security.title}</h2></Reveal>
           <Reveal delay={0.1}><p className="sec-sub">{t.security.sub}</p></Reveal>
           <div className="layer-list" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
