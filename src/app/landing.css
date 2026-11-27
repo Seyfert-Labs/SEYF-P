@@ -782,16 +782,24 @@ html.lenis, html.lenis body { height: auto; }
   font-size: clamp(48px, 6vw, 104px); line-height: .92; margin: 0; max-width: 11ch; }
 .lp .reel-s { font-size: 19px; line-height: 1.5; margin: 20px 0 0; max-width: 420px; opacity: .7; }
 .lp .reel-meter { display: flex; align-items: center; gap: 16px; margin-top: 30px; font-size: 13px; font-weight: 700; opacity: .7; }
-.lp .reel-bar { position: relative; width: 160px; height: 3px; border-radius: 3px; background: color-mix(in srgb, currentColor 22%, transparent); overflow: hidden; }
-.lp .reel-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: currentColor; border-radius: 3px; }
-.lp .reel-frame { position: relative; height: min(84svh, 860px); aspect-ratio: 768 / 1376; border-radius: 36px; overflow: hidden;
+.lp .reel-segs { display: flex; gap: 6px; }
+.lp .reel-seg { position: relative; width: 34px; height: 3px; border-radius: 3px; background: color-mix(in srgb, currentColor 22%, transparent); overflow: hidden; }
+.lp .reel-seg i { position: absolute; inset: 0; background: currentColor; border-radius: 3px; transform-origin: 0 50%; }
+.lp .reel-w { display: inline-block; overflow: hidden; vertical-align: top; padding: .14em 0 .04em; margin: -.14em .22em 0 0; }
+.lp .reel-w > span { display: inline-block; }
+.lp .reel-glow { position: absolute; right: -10vw; top: 50%; width: 80vw; height: 80vw; translate: 0 -50%; opacity: .55; filter: blur(40px); pointer-events: none; }
+.lp .reel-grid { position: relative; z-index: 1; }
+.lp .reel-frame { position: relative; height: min(84svh, 860px); aspect-ratio: 720 / 1288; border-radius: 36px; overflow: hidden; will-change: transform;
   box-shadow: 0 60px 110px -50px rgba(40,24,110,.55), 0 0 0 1px rgba(255,255,255,.4); background: #E7E2F8; }
-.lp .reel-media, .lp .reel-media-in { position: absolute; inset: 0; }
-.lp .reel-media img, .lp .reel-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lp .reel-media { position: absolute; inset: 0; will-change: filter, transform; }
+.lp .reel-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lp .reel-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, #fff, rgba(255,255,255,.6) 60%, rgba(200,255,77,.35)); pointer-events: none; }
 @media (max-width: 880px) {
   /* móvil: la escena ocupa la pantalla y el texto va abajo sobre un velo */
   .lp .reel-grid { display: block; padding: 0; max-width: none; }
   .lp .reel-frame { position: absolute; inset: 0; height: auto; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
+  .lp .reel-glow { display: none; }
+  .lp .reel-grid { position: static; }
   .lp .reel-side { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; min-height: 0; padding: 120px 22px max(5svh, 28px);
     background: linear-gradient(180deg, transparent, rgba(18,14,36,.78) 55%); color: #fff; }
   .lp .reel-t { font-size: clamp(42px, 12vw, 64px); color: #fff; }
