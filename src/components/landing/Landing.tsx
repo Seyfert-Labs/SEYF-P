@@ -491,14 +491,14 @@ function HeroCinema() {
 }
 
 /* Reel cinematográfico (estilo anuncio): 5 escenas 3D generadas con el kit de
-   marca, fijas al scroll. Cada escena entra con zoom y fundido. Cuando haya clips de
-   video por escena, van en `REEL[i].video` y reemplazan a la imagen. */
+   marca y animadas con Kling 4.0, fijas al scroll. Cada escena entra con zoom y
+   fundido; la imagen queda como poster mientras carga el clip. */
 const REEL: { img: string; video?: string }[] = [
-  { img: "/landing/reel/escena-1-moneda-celular.jpg" },
-  { img: "/landing/reel/escena-2-macro-emblema.jpg" },
-  { img: "/landing/reel/escena-3-boveda-abierta.jpg" },
-  { img: "/landing/reel/escena-5-moneda-rayo.jpg" },
-  { img: "/landing/reel/escena-6-trio-celular.jpg" },
+  { img: "/landing/reel/escena-1-moneda-celular.jpg", video: "/landing/reel/escena-1-moneda-celular.mp4" },
+  { img: "/landing/reel/escena-2-macro-emblema.jpg", video: "/landing/reel/escena-2-macro-emblema.mp4" },
+  { img: "/landing/reel/escena-3-boveda-abierta.jpg", video: "/landing/reel/escena-3-boveda-abierta.mp4" },
+  { img: "/landing/reel/escena-5-moneda-rayo.jpg", video: "/landing/reel/escena-5-moneda-rayo.mp4" },
+  { img: "/landing/reel/escena-6-trio-celular.jpg", video: "/landing/reel/escena-6-trio-celular.mp4" },
 ];
 
 function reelWindow(i: number, n: number) {
@@ -1130,23 +1130,35 @@ function WaysTabs() {
   const panel = w.panels[i];
   const a = w.art;
   const art = [
+    // Ahorro: una bóveda de USDC como en "Mis bóvedas"; el rendimiento usa la tasa de
+    // referencia del vault USDC (4.5 % anual, `apyTarget` en lib/defindex/catalog.ts).
     <div className="ways-card" key="s">
-      <span className="wc-k">{a.saving}</span>
+      <span className="wc-k">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="12" cy="12" r="3.2" /></svg>
+        {a.saving}
+      </span>
       <span className="wc-v num">$25,000.00</span>
+      <span className="wc-k">{a.unit}</span>
       <div className="wc-row">
         <span className="wc-k"><span className="live-dot" /> {a.earned}</span>
-        <GrowingAmount base={6.85} apy={9} size={22} align="left" color="#C8FF4D" prefix="+$" tail={2} id="lp-ways" />
+        <GrowingAmount base={3.08} apy={4.5} size={22} align="left" color="#C8FF4D" prefix="+$" tail={2} id="lp-ways" />
       </div>
       <span className="wc-chip">{a.daily}</span>
     </div>,
+    // Adelanto: 30 días de rendimiento de esa misma bóveda (25,000 × 4.5 % × 30/365).
     <div className="ways-card" key="a">
-      <span className="wc-k">{a.advance}</span>
-      <span className="wc-v num">$850.00</span>
+      <span className="wc-k">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" /></svg>
+        {a.advance}
+      </span>
+      <span className="wc-v num">$92.47</span>
       <div className="wc-bar"><motion.i initial={{ scaleX: 0 }} animate={{ scaleX: 0.62 }} transition={{ duration: 1.1, delay: 0.25, ease: EASE }} /></div>
+      <span className="wc-k">{a.payoff}</span>
       <div className="wc-row"><span className="wc-k">{a.backing}</span><span className="wc-chip wc-chip-v">{a.locked}</span></div>
     </div>,
+    // Retiro: de la bóveda a la wallet (lo que hace la app hoy en mainnet; SPEI es "próximamente").
     <div className="ways-card" key="r">
-      <span className="wc-k">{a.spei}</span>
+      <span className="wc-k">{a.withdraw}</span>
       <span className="wc-v num">−$2,500.00</span>
       <div className="wc-row"><span className="wc-k">{a.to}</span></div>
       <span className="wc-chip wc-ok">

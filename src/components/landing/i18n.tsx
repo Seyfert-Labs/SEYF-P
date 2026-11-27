@@ -83,14 +83,14 @@ const es = {
     title: "Tu dinero, a tu manera.",
     tabs: ["Ahorra", "Adelanta", "Retira"],
     panels: [
-      { h: "Ahorra y rinde diario", p: "Tus pesos generan rendimiento que se paga todos los días. Sin plazos forzosos ni saldo mínimo.", cta: "Empezar a ahorrar" },
-      { h: "Adelanta tu rendimiento", p: "Usa hoy lo que tu ahorro va a generar. Tu ahorro queda como respaldo y sigue siendo tuyo. Beta en Stellar con topes bajos.", cta: "Pedir un adelanto" },
-      { h: "Retira cuando quieras", p: "Manda tu dinero a tu cuenta por SPEI a cualquier hora, y llega en segundos.", cta: "Abrir mi cuenta" },
+      { h: "Ahorra en tus bóvedas", p: "Crea una bóveda, ponle nombre a tu meta y tu ahorro rinde todos los días en dólares digitales (USDC). Sin plazos forzosos ni saldo mínimo.", cta: "Crear mi bóveda" },
+      { h: "Adelanta tu rendimiento", p: "Cobra hoy los intereses que tu ahorro va a generar en los próximos 1 a 30 días. Tu capital queda apartado, sigue rindiendo y el adelanto se paga solo. Beta en Stellar con topes bajos.", cta: "Pedir un adelanto" },
+      { h: "Retira cuando quieras", p: "Saca tu dinero de la bóveda cuando quieras, sin penalización, y queda disponible en tu wallet en segundos. El retiro a tu banco por SPEI llega pronto.", cta: "Abrir mi cuenta" },
     ],
     art: {
-      saving: "Tu ahorro", earned: "Ganado hoy", daily: "rinde diario",
-      advance: "Adelanto disponible", backing: "Respaldo: tu ahorro", locked: "bloqueado",
-      spei: "SPEI enviado", to: "A tu cuenta ••90", arrived: "Llegó en segundos",
+      saving: "Bóveda · Viaje", unit: "MXN, ahorrado en USDC", earned: "Ganado hoy", daily: "rinde diario",
+      advance: "Adelanto a 30 días", payoff: "Se paga solo con tu rendimiento", backing: "Tu capital", locked: "Intacto",
+      withdraw: "Retiro de bóveda", to: "A tu wallet", arrived: "Listo en segundos",
     },
   },
   quote: {
@@ -253,14 +253,14 @@ const en: Dict = {
     title: "Your money, your way.",
     tabs: ["Save", "Advance", "Withdraw"],
     panels: [
-      { h: "Save and earn daily", p: "Your pesos earn yield that's paid every single day. No lock-up periods, no minimum balance.", cta: "Start saving" },
-      { h: "Advance your yield", p: "Use today what your savings will earn. Your savings stay as collateral and remain yours. Beta on Stellar with low caps.", cta: "Get an advance" },
-      { h: "Withdraw anytime", p: "Send your money to your account via SPEI at any hour, and it arrives in seconds.", cta: "Open my account" },
+      { h: "Save in your vaults", p: "Create a vault, name your goal and your savings earn every day in digital dollars (USDC). No lock-up periods, no minimum balance.", cta: "Create my vault" },
+      { h: "Advance your yield", p: "Get today the interest your savings will earn over the next 1 to 30 days. Your principal stays set aside, keeps earning and the advance pays itself off. Beta on Stellar with low caps.", cta: "Get an advance" },
+      { h: "Withdraw anytime", p: "Take your money out of the vault whenever you want, with no penalty, and it's in your wallet in seconds. Bank withdrawals via SPEI are coming soon.", cta: "Open my account" },
     ],
     art: {
-      saving: "Your savings", earned: "Earned today", daily: "earns daily",
-      advance: "Advance available", backing: "Collateral: your savings", locked: "locked",
-      spei: "SPEI sent", to: "To your account ••90", arrived: "Arrived in seconds",
+      saving: "Vault · Trip", unit: "MXN, saved in USDC", earned: "Earned today", daily: "earns daily",
+      advance: "30-day advance", payoff: "Pays itself off with your yield", backing: "Your principal", locked: "Intact",
+      withdraw: "Vault withdrawal", to: "To your wallet", arrived: "Ready in seconds",
     },
   },
   quote: {
@@ -421,14 +421,14 @@ const pt: Dict = {
     title: "Seu dinheiro, do seu jeito.",
     tabs: ["Poupe", "Antecipe", "Saque"],
     panels: [
-      { h: "Poupe e renda todo dia", p: "Seus pesos geram rendimento pago todos os dias. Sem prazos obrigatórios nem saldo mínimo.", cta: "Começar a poupar" },
-      { h: "Antecipe seu rendimento", p: "Use hoje o que sua poupança vai render. Ela fica como garantia e continua sendo sua. Beta na Stellar com limites baixos.", cta: "Pedir uma antecipação" },
-      { h: "Saque quando quiser", p: "Envie seu dinheiro para sua conta via SPEI a qualquer hora, e ele chega em segundos.", cta: "Abrir minha conta" },
+      { h: "Poupe nos seus cofres", p: "Crie um cofre, dê nome à sua meta e sua poupança rende todos os dias em dólares digitais (USDC). Sem prazos obrigatórios nem saldo mínimo.", cta: "Criar meu cofre" },
+      { h: "Antecipe seu rendimento", p: "Receba hoje os juros que sua poupança vai gerar nos próximos 1 a 30 dias. Seu capital fica reservado, continua rendendo e a antecipação se paga sozinha. Beta na Stellar com limites baixos.", cta: "Pedir uma antecipação" },
+      { h: "Saque quando quiser", p: "Tire seu dinheiro do cofre quando quiser, sem multa, e ele fica disponível na sua wallet em segundos. O saque para o banco via SPEI chega em breve.", cta: "Abrir minha conta" },
     ],
     art: {
-      saving: "Sua poupança", earned: "Ganho hoje", daily: "rende todo dia",
-      advance: "Antecipação disponível", backing: "Garantia: sua poupança", locked: "bloqueado",
-      spei: "SPEI enviado", to: "Para sua conta ••90", arrived: "Chegou em segundos",
+      saving: "Cofre · Viagem", unit: "MXN, poupado em USDC", earned: "Ganho hoje", daily: "rende todo dia",
+      advance: "Antecipação de 30 dias", payoff: "Se paga sozinha com seu rendimento", backing: "Seu capital", locked: "Intacto",
+      withdraw: "Saque do cofre", to: "Para sua wallet", arrived: "Pronto em segundos",
     },
   },
   quote: {
