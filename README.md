@@ -150,8 +150,8 @@ Without Supabase the app falls back to localStorage. The database schema is in
   `repay` or `settle`, and no upgrade path.
 - The vault (Meru) belongs to a third party and can be upgraded by a single key. Next step: our own
   non-upgradable DeFindex vault under a SEYF multisig.
-- The sponsor only pays for allowlisted operations (the contract, the vault, the USDC SAC and the
-  USDC trustline), with a capped `resourceFee`.
+- The sponsor only pays for allowlisted operations (the contract, the vault, the USDC SAC, the
+  USDC trustline and USDC payments from the user's own account), with a capped `resourceFee`.
 - Secrets live only on the server. The admin key lives in the OS secure store and never touches a
   server.
 

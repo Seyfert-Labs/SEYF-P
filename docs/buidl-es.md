@@ -1,111 +1,97 @@
-# 🏦 SEYF — La AFORE del futuro
+# SEYF: respuestas del envío (HackMeridian 2026)
 
-> **El retiro digno que el sistema no te va a dar: en pesos y dólares digitales, rindiendo desde el día uno, on-chain y para todos — incluido el 57% que ninguna AFORE cubre.**
+**Categoría:** Scale · **Track:** Stellar Composed
 
-**SEYF** es una super app de ahorro para el retiro construida sobre **MXNB** (el peso digital de Bitso/Juno en Arbitrum). Convierte rieles cripto en una experiencia de neobanco que cualquiera entiende: sin gas, sin seed phrases, sin saber que hay blockchain debajo.
+- **App en vivo:** https://www.seyf.app/app
+- **Repo:** https://github.com/Seyfert-Labs/SEYF-P (rama `meridian`)
+- **Contrato:** [`CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH`](https://stellar.expert/explorer/public/contract/CCZ77VBEZZIRBK3Z7RO4W227764G76ILXKO664R622FOSJTE7BX4CWXH) (mainnet de Stellar)
+- **Evidencia contra la rúbrica:** [docs/hackmeridian-2026.md](hackmeridian-2026.md) (en inglés)
 
-- 🔗 **Demo en vivo:** https://eth-mex2026.vercel.app
-- 💻 **Código:** https://github.com/MarxMad/EthMex2026
-- 🎬 **Video demo:** _[pega tu link de YouTube]_
+## En una línea
 
----
+Ahorro que te paga hoy: guarda USDC en Stellar, gana rendimiento real de Blend a través de un vault
+de DeFindex y recibe hoy parte del rendimiento de mañana, sin frase semilla y sin XLM.
 
-## 🔴 El problema
+## Problema
 
-El sistema de pensiones en México está roto por diseño:
+En México, la mayoría ahorra en una cuenta que casi no paga nada. El rendimiento on-chain existe,
+pero pide cosas que un ahorrador común no tiene: frase semilla, XLM para comisiones, trustlines y
+una extensión de wallet. Y el rendimiento llega después: quien tiene un gasto hoy tiene que romper
+su ahorro.
 
-- **Tasa de reemplazo ~30%** → te retiras con menos de un tercio de tu último sueldo.
-- **~57% de informalidad** → más de la mitad de los trabajadores (gig, freelancers, independientes) **no tienen AFORE**.
-- **Concentración + inflación** → las SIEFOREs están casi todas en activos en pesos; 40 años de devaluación se comen tu poder de compra.
-- **Opacidad** → nadie lee su estado de cuenta anual; el ahorro voluntario, con beneficio fiscal, está subutilizado.
+## Solución
 
-## 🟢 La solución
+1. **Entras con tu correo.** Pollar crea una wallet de Stellar cosignada (Turnkey 2 de 2).
+2. **Recibes USDC.** La app abre la trustline de USDC. Nuestro sponsor paga la reserva y cada
+   comisión con fee-bump, así que el usuario nunca tiene XLM.
+3. **Ahorras.** El USDC entra a un vault de DeFindex (Meru) que lo presta en un pool de Blend.
+4. **Pides un adelanto de tu rendimiento.** Nuestro contrato Soroban `seyf_advance` bloquea las
+   acciones del vault y paga, desde su propia tesorería, el rendimiento que van a generar en 1 a 30
+   días. El capital nunca se toca. El usuario puede repagar antes o esperar: cuando el rendimiento
+   real cubre el adelanto, un keeper llama a `settle` y el capital completo regresa.
 
-SEYF es **la AFORE del futuro**: voluntaria, global, on-chain y para todos. Cada peso que ahorras vive on-chain como MXNB — es genuinamente tuyo, rinde y se mueve global — pero la app se siente como cualquier banco.
+## Cómo usa Stellar
 
-| Feature | Por qué importa para el retiro |
-|---|---|
-| 💰 **MXNB que rinde diario** | Interés compuesto desde el peso 1 |
-| 💵 **Diversificación en dólares (FX justo)** | Blindaje contra 40 años de devaluación del peso |
-| 🏛️ **Bonos soberanos de 4 países desde $50** | El portafolio de una pensión, global y sin mínimos |
-| 🎯 **Bóvedas con aporte automático** | El ahorro voluntario vuelto hábito |
-| ⚡ **Adelanto de liquidez** | Emergencias sin romper tu retiro |
-| 👁️ **On-chain y en tiempo real** | Ves tu retiro crecer hoy, no en un PDF anual |
+| Pieza | Papel |
+| --- | --- |
+| Soroban `seyf_advance` (nuestro) | Custodia las acciones del vault, adelanta su rendimiento desde una tesorería dentro del contrato y liquida con rendimiento real |
+| DeFindex + Blend | El vault de USDC y el pool de préstamos detrás |
+| Pollar | Login con correo, wallet embebida cosignada, diálogo de firma |
+| USDC de Circle (SAC) | El activo que se ahorra |
+| SEP-10 + SEP-1 | Sesión, con la llave de firma publicada en `stellar.toml` |
+| Fee-bump + CAP-33 | El usuario no paga comisiones ni necesita reserva de XLM |
 
----
+## Prueba en mainnet (26 oct 2026)
 
-## ✨ Lo verdaderamente innovador (la arquitectura)
+Los primeros cuatro pasos se hicieron desde la app, firmados con una wallet de Pollar que tiene
+0 XLM. El último es el keeper liquidando un adelanto anterior:
 
-El reto: ¿cómo ofrece un fintech chico **FX y rendimiento grado-exchange** sin que cada usuario tenga una cuenta en un exchange? Bitso/Juno ve **una sola cuenta de negocio** (pooled). La atribución per-usuario no se le pide al exchange — **vive en nuestro ledger reconciliado**.
+| Paso | Transacción |
+| --- | --- |
+| Trustline de USDC patrocinada | [d8d98a95…](https://stellar.expert/explorer/public/tx/d8d98a958538a4183878f65eaf0863650eec9b232db714870cceb466aca9a840) |
+| Abono de 5 USDC al vault | [23572a98…](https://stellar.expert/explorer/public/tx/23572a98345f5973a144cd40422c22f815ac8d76b89e68e188cbcd8767a858d1) |
+| `open_advance` | [ab42eac9…](https://stellar.expert/explorer/public/tx/ab42eac9fbd19885cbe6f7fa47a035531ff794f387fd3f5a171ce0fb4586606c) |
+| `repay` | [5cfd5592…](https://stellar.expert/explorer/public/tx/5cfd5592482eac2cdb08a077df8b7e40696e1b2c24d284e1aaef98445bf4da80) |
+| `settle` del keeper, cuando el rendimiento real de Blend cubrió el adelanto | [be77ba1e…](https://stellar.expert/explorer/public/tx/be77ba1e080e77d337c45b351226d535982bafb24be2fb9ef022ff58ec5e0e19) |
 
-```
-1. Smart wallets de usuarios  (on-chain, por-usuario, tienen MXNB)
-          |  transfieren MXNB
-          v
-2. Pool del negocio — UNA cuenta Bitso/Juno (MXN/USDT revuelto)
-          |  cada movimiento se atribuye al wallet_address
-          v
-3. Ledger per-usuario (Supabase, keyed por wallet_address)
-          |
-          v
-4. Invariante de solvencia:  SUMA(todos los usuarios) <= saldo real del pool
-```
+Todos los hashes están en [`soroban/DEPLOYMENTS.md`](../soroban/DEPLOYMENTS.md).
 
-**Conversión orquestada, atómica e idempotente** (`/api/convert`):
+## Lo que se construyó en HackMeridian
 
-```ts
-// 1. reserva idempotente (un reintento NO duplica la orden)
-await beginConversion(wallet, { id: key, from, to, kind });
-// 2. orden de mercado real en Bitso
-const order = await placeConversionOrder(from, to, amount);
-// 3. (inverso) emite MXNB on-chain a la wallet del usuario vía Juno
-if (inverse) await withdrawMXNB(address, filledTo, key);
-// 4. liquida el ledger con los montos EJECUTADOS reales
-await completeConversion(key, { amountFrom, amountTo, oid: order.oid });
-```
+Llegamos con un prototipo en EVM (MXNB en Arbitrum). Durante el evento pasamos el producto a la
+mainnet de Stellar: 99 commits y 36 pull requests integrados el 25 y 26 de octubre.
 
-Y un **invariante de solvencia** verificable (`/api/treasury/reconcile`): para cada activo, `SUMA(ledger de todos los usuarios) <= saldo real del pool`. El sobrante es la reserva del negocio.
+- `seyf_advance` con la tesorería dentro del contrato, 17 tests y CI, desplegado en mainnet.
+- Un keeper en GitHub Actions que liquida los adelantos cubiertos.
+- Rutas de servidor que arman y simulan cada transacción, y un sponsor que solo paga operaciones de
+  una lista permitida, con tope de `resourceFee`.
+- Login con Pollar y sesión SEP-10, con una variante de prueba de cuenta para wallets cosignadas.
+- Toda la `/app` sobre Pollar y mainnet, con inicio y ahorro rediseñados.
 
----
+## Retos
 
-## 🔌 Integración Bitso / Juno / MXNB (sponsor track)
+- **Las wallets cosignadas de Pollar no pueden firmar un challenge SEP-10 estándar**
+  (`/stellar/sep10/sign` les responde 502). Agregamos un challenge de prueba de cuenta: una
+  transacción con secuencia 0 desde la cuenta del usuario, que nunca se puede enviar a la red y que
+  el servidor verifica.
+- **El usuario no tiene XLM.** Toda acción pasa por un fee-bump del servidor, así que el sponsor se
+  tuvo que limitar a una lista de operaciones y contratos.
+- **El rendimiento es real, así que es lento.** `settle` solo funciona cuando el rendimiento real de
+  Blend cubre el adelanto, y lo probamos en mainnet con el keeper.
 
-- **MXNB on Arbitrum** como activo base (ERC-20, 6 decimales) — saldo, transferencias y rendimiento.
-- **Juno Mint Platform** — issuance (depósito SPEI → mint MXNB), **withdrawals** (MXNB on-chain a la wallet del usuario), **redemptions** (MXNB→MXN, fondeo del pool).
-- **Bitso Exchange API** — órdenes de mercado para FX real (MXNB ↔ USDT) a tipo de cambio interbancario.
-- **Firma HMAC server-side** — las llaves de Bitso/Juno **nunca** tocan el cliente; toda orden se firma en route handlers.
-- ✅ **Probado end-to-end en stage:** redemption fondea el pool; forward (MXN→USDT) e inverse (USDT→MXNB on-chain) ejecutan con ledger + reconciliación sana.
+## Límites conocidos
 
-## 🧱 Stack técnico
+- `seyf_advance` no está auditado. En mainnet corre con topes de 1 USDC por usuario y 2 USDC en
+  total, una pausa que nunca bloquea `repay` ni `settle`, y sin forma de actualizarlo.
+- El vault Meru es de un tercero y una sola llave puede actualizarlo.
 
-- **Next.js 16** (App Router) · **React 19** · **TypeScript** · **Tailwind v4**
-- **Privy** — auth + embedded wallet + **smart wallet ERC-4337 con gas patrocinado** (UX sin gas)
-- **viem 2 + permissionless 0.2** — onchain
-- **Supabase** — persistencia + ledger per-usuario reconciliado
-- **Foundry** — contratos (`SeyfVaults`, `SeyfAdvance`)
-- **Arbitrum** — settlement L2 barato y rápido
+## Lo que sigue
 
-## 📲 Features
+SCF Build Award, Integration Track: un vault de DeFindex propio, no actualizable y con multifirma,
+y una ruta de auditoría para `seyf_advance`. Después, pesos de entrada y salida por SPEI con
+Etherfuse (hoy en testnet) y, por último, topes más altos y lanzamiento público en México.
 
-- Onboarding con quiz de perfil de riesgo
-- Bóvedas de ahorro con meta y aporte automático
-- Convertir MXN ⇄ divisas con tipo de cambio real (pop-up de confirmación + estado pendiente en historial)
-- Bonos soberanos de 4 países
-- Adelanto de liquidez contra tu ahorro
-- Tarjeta global (gasto multi-divisa)
-- Bono de bienvenida, CLABE de depósito (SPEI), límites mensuales
+## Uso de IA
 
-## 🛣️ Roadmap
-
-1. **Hoy** — capa de ahorro para el retiro **voluntario** (100% legal, sin licencia de AFORE)
-2. **Next** — nómina en USD que aterriza en segundos · ahorro recurrente automatizado · reconciliación + auth server-side
-3. **Visión** — el estándar de retiro on-chain para LatAm conforme madura la regulación de activos digitales
-
-> **No esperes una pensión. Constrúyela.**
-
----
-
-## 👥 Equipo
-
-- _[Nombre] — Full-stack / Web3_
-- _[Nombre] — [rol]_
+Parte del código, los tests y la documentación se escribieron con un asistente de código con IA
+(Claude Code) y el equipo los revisó. Todas las transacciones de mainnet las firmó el equipo.

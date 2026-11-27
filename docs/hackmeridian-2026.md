@@ -9,6 +9,21 @@ readiness and ecosystem impact.** (Source: meridian.stellar.org/hackmeridian, vi
 hackathon index, checked 2026-10-20.) This page maps each criterion to evidence in the repo and on
 chain.
 
+## Judging rubric at a glance
+
+The portal rubric rates seven criteria from 1 to 10, weighted to a total of 100. As a Scale
+project, SEYF is judged on **Ecosystem Alignment**. Each row points to the evidence.
+
+| Criterion (weight) | Evidence |
+| --- | --- |
+| **Ecosystem Alignment** (20 %) | Composes Pollar, DeFindex, Blend and Circle USDC (SAC) with SEP-10, SEP-1, fee-bump and CAP-33, and adds one contract of its own. Live on mainnet: [proof table](../README.md#live-on-mainnet-proof). |
+| **Technical Execution** (15 %) | Full user cycle on mainnet from the app: sponsored trustline → vault deposit → `open_advance` → `repay`, plus `settle` by the keeper after real Blend yield. 17 contract tests, CI, `npm run build` green. Known limits are listed in [§ 3](#3-production-readiness). |
+| **User Value & Problem** (20 %) | A Mexican saver gets yield without a seed phrase or XLM, and can get part of that yield today without touching the principal. See [README § The problem](../README.md#the-problem). |
+| **Hackathon Progress** (10 %) | 99 commits and 36 merged pull requests during the event: [§ Built during the event](#built-during-the-event). |
+| **Innovation** (15 %) | `seyf_advance` turns DeFindex vault shares into collateral for an advance that repays itself from real yield, paid from an in-contract treasury. An account-proof variant of SEP-10 lets Turnkey co-signed wallets open a session. |
+| **Market & Ecosystem Potential** (10 %) | Mexico-first savings product. Next step: MXN in and out over SPEI with Etherfuse (testnet today), then the SCF Integration Track: [§ 2](#2-scf-eligibility). |
+| **Product Design & UX** (10 %) | Email login, Spanish UI, amounts in MXN, 0 XLM for the user, and one Pollar confirmation per signature. Screens: [README § The app](../README.md#the-app). |
+
 ---
 
 ## 1. Milestones vs goals
@@ -75,7 +90,7 @@ remediation plan (to do), and a STRIDE threat model (to do). Until then, mainnet
 | **Live on mainnet** | Contract `CCZ77VBE…CWXH`, allowlist off: anyone can try it at [www.seyf.app/app](https://www.seyf.app/app) |
 | **Risk controls** | Per-user cap of 1 USDC and global cap of 2 USDC. The pause switch blocks new advances but never `repay` or `settle`. No upgrade entry point. Two-step admin transfer. |
 | **Tests** | 17 contract tests and a CI job on `soroban/`. `npm run build` is green. |
-| **Gasless UX, done safely** | The fee-bump sponsor only signs allowlisted operations (contract, vault, USDC SAC, trustline), with a capped `resourceFee` |
+| **Gasless UX, done safely** | The fee-bump sponsor only signs allowlisted operations (contract, vault, USDC SAC, USDC trustline, USDC payments from the user's own account), with a capped `resourceFee` |
 | **Auth** | SEP-10 with the signing key published in SEP-1 [`stellar.toml`](https://www.seyf.app/.well-known/stellar.toml). The data API is gated by session (`wallet === sub`). |
 | **Key management** | Admin key in the OS secure store, never on a server. Sponsor, keeper and SEP-10 keys are separate hot keys with minimal balances. |
 | **Operations** | Keeper on GitHub Actions every 10 minutes. Supabase schema with RLS and no anonymous access ([`database/schema.sql`](../database/schema.sql)). |
@@ -100,7 +115,8 @@ remediation plan (to do), and a STRIDE threat model (to do). Until then, mainnet
 
 ## Built during the event
 
-`pre-hackmeridian` (`f1d8e46`) → `meridian`: **91 commits, 116 files, +13 385 / −2 537 lines.**
+`pre-hackmeridian` (`f1d8e46`) → `meridian`: **99 commits, 143 files, +14 508 / −3 093 lines,
+and 36 pull requests merged on 25–26 October** (counted on 2026-10-26 at 08:26 UTC).
 
 | Area | Highlights |
 | --- | --- |
