@@ -1,15 +1,6 @@
 'use client'
 
-/**
- * Cambio de activos en Stellar desde el cliente.
- *
- * El servidor decide el camino: agregador Soroswap si hay API key (rutea por
- * Soroswap AMM, Aqua, Phoenix y SDEX), o path payment directo contra el SDEX.
- * Aquí solo se pide, se firma con Pollar y se envía.
- */
-
-import type { PollarClient } from '@pollar/core'
-import { pollarSignXdr, waitForPollarSession } from '@/lib/pollar/client-api'
+import type { CrossmintStellarClient } from '@/lib/wallet/crossmint-stellar'
 import { seyfAuthHeaders } from '@/lib/stellar/auth-token'
 
 export type SwapProvider = 'soroswap' | 'sdex'
@@ -56,21 +47,20 @@ export async function quoteSdexSwap(from: string, to: string, amount: number): P
   return data
 }
 
-/** Ejecuta el cambio: cotiza → arma XDR en el servidor → firma Pollar → envía. */
+/** Ejecuta el cambio: cotiza → arma XDR en el servidor → firma y envía con Crossmint. */
 export async function executeSdexSwap(opts: {
   from: string
   to: string
   amount: number
-  getClient: () => PollarClient
+  getClient: () => CrossmintStellarClient
   slippageBps?: number
 }): Promise<{ txHash: string; amountOut: number; amountIn: number; provider: SwapProvider }> {
   const { from, to, amount, getClient, slippageBps } = opts
-  const { publicKey, client } = await waitForPollarSession(getClient)
+  const client = getClient()
 
   const quoteRes = await postJson<SdexQuoteResult>('/api/swap/quote', { from, to, amount, slippageBps })
   if (!quoteRes.ok) throw new Error(quoteRes.data.error || 'No se pudo cotizar el cambio')
 
-  // El build vuelve a cotizar server-side: el cliente nunca manda el destMin.
   const buildRes = await postJson<{ xdr?: string; provider?: SwapProvider }>(
     '/api/swap/build',
     { from, to, amount, slippageBps },
@@ -80,15 +70,10 @@ export async function executeSdexSwap(opts: {
     throw new Error(buildRes.data.error || 'No se pudo construir la transacción')
   }
 
-  const signedXdr = await pollarSignXdr(client, buildRes.data.xdr, publicKey)
-
-  const sendRes = await postJson<{ txHash?: string }>('/api/swap/send', { signedXdr }, true)
-  if (!sendRes.ok || !sendRes.data.txHash) {
-    throw new Error(sendRes.data.error || 'La transacción no se confirmó en la red')
-  }
+  const txHash = await client.signAndSubmitXdr(buildRes.data.xdr)
 
   return {
-    txHash: sendRes.data.txHash,
+    txHash,
     amountOut: quoteRes.data.amountOut,
     amountIn: quoteRes.data.amountIn,
     provider: buildRes.data.provider ?? quoteRes.data.provider,

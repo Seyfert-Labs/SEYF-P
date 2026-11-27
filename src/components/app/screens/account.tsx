@@ -18,7 +18,6 @@ import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { WelcomeBonus } from "../WelcomeBonus";
 import { SPEI_ENABLED } from "@/lib/rails";
 import { useHideBalance } from "@/hooks/useHideBalance";
-import { usePollar } from "@pollar/react";
 
 /* Ondas de pago sin contacto */
 function Contactless({ size = 22, color = "var(--txt-muted)" }: { size?: number; color?: string }) {
@@ -162,7 +161,6 @@ function maskClabe(clabe: string) {
 
 export function ScreenProfile({ go }: { go: Go }) {
   const wallet = useWallet();
-  const pollar = usePollar();
   const stellar = useSeyfStellarWallet();
   const kyc = useKycStatus();
   // Sin correo en la sesión no se inventa uno: se muestra un texto neutro.
@@ -328,11 +326,10 @@ export function ScreenProfile({ go }: { go: Go }) {
             icon="shield"
             t="Métodos de recuperación"
             right={
-              <span className="chip" style={{ pointerEvents: "none", color: pollar.recoveryLocked ? "var(--neg)" : "var(--accent)" }}>
-                {pollar.recoveryLocked ? "Agregar" : "Protegida"}
+              <span className="chip" style={{ pointerEvents: "none", color: "var(--accent)" }}>
+                Protegida
               </span>
             }
-            onClick={pollar.openRecoveryModal}
           />
           <SecRow icon="eye" t="Ocultar saldos al abrir" right={<HideBalanceSwitch />} last />
         </div>

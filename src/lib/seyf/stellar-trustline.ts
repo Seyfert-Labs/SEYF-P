@@ -74,7 +74,7 @@ export async function hasCetesTrustline(publicKey: string): Promise<boolean> {
   try {
     const account = await server.loadAccount(publicKey)
     const cetes = getCetesAsset()
-    const wantIssuer = cetes.getIssuer().toUpperCase()
+    const wantIssuer = (cetes.getIssuer() ?? "").toUpperCase()
     const wantCode = cetes.getCode().toUpperCase()
     return account.balances.some(
       (b) =>

@@ -6,7 +6,7 @@
  * El router es estado interno, igual que SeyfApp.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { PollarClient } from '@pollar/core'
+import type { CrossmintStellarClient } from '@/lib/wallet/crossmint-stellar'
 import { useSeyfStellarWallet } from '@/lib/seyf/use-seyf-stellar-wallet'
 import { ensureSeyfSession, sep10DeviceNotEnrolled } from '@/lib/stellar/sep10-client'
 import { peekSeyfAuthToken, seyfAuthAccount } from '@/lib/stellar/auth-token'
@@ -31,7 +31,7 @@ const TABS: { id: Tab; lb: string; ic: string }[] = [
 type SessionState = 'pending' | 'ok' | 'error'
 
 /** Espera el token SEP-10 que abre SeyfAuthBridge; si no llega, deja reintentar. */
-export function useSep10(publicKey: string | null, getClient: () => PollarClient) {
+export function useSep10(publicKey: string | null, getClient: () => CrossmintStellarClient) {
   // El estado va atado a la cuenta: si cambia la cuenta, vuelve a "pending" sin otro render.
   const [result, setResult] = useState<{ account: string; state: SessionState } | null>(null)
   const state: SessionState = result && result.account === publicKey ? result.state : 'pending'
@@ -79,7 +79,7 @@ export default function RetiroApp() {
       <Shell>
         <div className="screen-pad" style={{ paddingTop: 40 }}>
           <div className="alert alert-error">
-            Falta configurar Pollar (NEXT_PUBLIC_POLLAR_API_KEY). Sin wallet no se puede entrar.
+            Falta configurar Crossmint (NEXT_PUBLIC_CROSSMINT_API_KEY). Sin wallet no se puede entrar.
           </div>
         </div>
       </Shell>

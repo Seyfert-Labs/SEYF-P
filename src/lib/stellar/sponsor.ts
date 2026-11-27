@@ -137,7 +137,7 @@ function allowedUsdcIssuers(): Set<string> {
 
 function isUsdc(asset: Asset): boolean {
   return (
-    !asset.isNative() && asset.getCode() === 'USDC' && allowedUsdcIssuers().has(asset.getIssuer())
+    !asset.isNative() && asset.getCode() === 'USDC' && allowedUsdcIssuers().has(asset.getIssuer() ?? "")
   )
 }
 
@@ -251,21 +251,26 @@ export async function buildSponsoredTrustline(
 export type SponsoredSubmitResult = { hash: string; successful: boolean }
 
 function contractOf(fn: xdr.HostFunction): string | null {
-  if (fn.switch() !== xdr.HostFunctionType.hostFunctionTypeInvokeContract()) return null
-  return Address.fromScAddress(fn.invokeContract().contractAddress()).toString()
+  const invokeFn = (fn as unknown as { invokeContract?: { contractAddress: xdr.ScAddress } }).invokeContract
+  if (!invokeFn) return null
+  return Address.fromScAddress(invokeFn.contractAddress).toString()
 }
 
 function hasSignature(tx: Transaction, kp: Keypair): boolean {
   const hash = tx.hash()
   const hint = kp.signatureHint()
   return tx.signatures.some(
-    (sig) => sig.hint().equals(hint) && kp.verify(hash, sig.signature()),
+    (sig) => {
+    const raw = sig as unknown as { hint: Uint8Array; signature: Uint8Array }
+    return Buffer.from(raw.hint).equals(Buffer.from(hint)) && kp.verify(hash, Buffer.from(raw.signature))
+  },
   )
 }
 
 function sorobanResourceFee(tx: Transaction): bigint {
-  const ext = tx.toEnvelope().v1().tx().ext()
-  return ext.switch() === 1 ? BigInt(ext.sorobanData().resourceFee().toString()) : BigInt(0)
+  const env = tx.toEnvelope() as unknown as { v1?: { tx: { ext: { switch?: number; sorobanData?: { resourceFee: { toString: () => string } } } } } }
+  const ext = env.v1?.tx.ext
+  return ext?.switch === 1 && ext.sorobanData ? BigInt(ext.sorobanData.resourceFee.toString()) : BigInt(0)
 }
 
 /**

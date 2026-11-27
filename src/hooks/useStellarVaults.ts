@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePollar } from "@pollar/react";
+import { useSeyfStellarWallet } from "@/lib/seyf/use-seyf-stellar-wallet";
 import { store, type StoreVault } from "@/lib/store";
 import { planById } from "@/components/app/data";
 import {
@@ -19,7 +19,6 @@ import {
 import { signAndSubmitDefindexXdr } from "@/lib/defindex/sign-and-submit";
 import { pollStellarBalance } from "@/lib/seyf/stellar-balance-refresh";
 import { fundStellarWallet } from "@/lib/seyf/use-ensure-stellar-funding";
-import type { VaultLimits } from "@/lib/chain";
 import { buildSignSubmit, getVaultPosition } from "@/components/retiro/api";
 import { useAppRetiro } from "@/components/app/RetiroContext";
 
@@ -82,8 +81,7 @@ function normalizeVaultMeta(v: StoreVault): StoreVault {
 }
 
 export function useStellarVaults(address?: string) {
-  const { isAuthenticated, wallet, refreshWalletBalance: refreshBalance, getClient } = usePollar();
-  const walletAddress = wallet?.address;
+  const { authenticated: isAuthenticated, publicKey: walletAddress, refreshBalance, getClient } = useSeyfStellarWallet();
   const metaKey = address;
   const publicKey = isAuthenticated ? walletAddress : undefined;
   const onchain = STELLAR_VAULTS_ONCHAIN && Boolean(publicKey);
@@ -96,7 +94,7 @@ export function useStellarVaults(address?: string) {
   const loadKey = `${metaKey ?? ""}|${publicKey ?? ""}`;
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const limits = null as VaultLimits | null;
+  const limits = null as { available?: number; max?: number } | null;
 
   const reload = useCallback(async () => {
     if (!metaKey) {
@@ -257,7 +255,7 @@ export function useStellarVaults(address?: string) {
   const updateBalance = useCallback(
     async (id: string, delta: number): Promise<string | undefined> => {
       if (delta === 0) return;
-      if (!publicKey) throw new Error("Conecta tu wallet Stellar (Pollar) para abonar o retirar");
+      if (!publicKey) throw new Error("Conecta tu wallet Stellar (Crossmint) para abonar o retirar");
       if (!onchain) return;
 
       const vault = vaults.find((x) => x.id === id);

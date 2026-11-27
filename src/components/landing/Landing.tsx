@@ -1055,7 +1055,6 @@ function LiveActivity() {
 const PARTNERS = [
   { name: "Stellar", logo: "/partners/stellar.svg", h: 30, url: "https://stellar.org", color: "#8B5CF6" },
   { name: "DeFindex", logo: "/partners/defindex.svg", h: 30, url: "https://defindex.io", color: "#DEC9F4" },
-  { name: "Pollar", logo: "/partners/pollar.png", h: 22, url: "https://pollar.xyz", color: "#6c8cff" },
   { name: "Etherfuse", logo: "/partners/etherfuse.svg", h: 24, url: "https://www.etherfuse.com", color: "#C8FF4D" },
 ];
 

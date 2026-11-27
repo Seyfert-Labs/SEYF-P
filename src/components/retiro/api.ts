@@ -1,15 +1,6 @@
 'use client'
 
-/**
- * Cliente de las rutas que usa /retiro.
- *
- * Todas las acciones siguen el mismo camino: el servidor arma el XDR, el
- * usuario lo firma con Pollar y nuestro sponsor lo envía en fee-bump. El
- * servidor nunca tiene fondos ni llaves del usuario.
- */
-
-import type { PollarClient } from '@pollar/core'
-import { pollarSignXdr } from '@/lib/pollar/client-api'
+import type { CrossmintStellarClient } from '@/lib/wallet/crossmint-stellar'
 import { seyfAuthHeaders } from '@/lib/stellar/auth-token'
 import { horizonUrl } from '@/lib/stellar/network'
 
@@ -22,7 +13,6 @@ export type VaultPosition = {
 
 export type AdvanceQuote = { value: string; advance: string }
 
-/** Montos en unidades mínimas; fechas en segundos Unix (forma de `src/lib/advance/contract.ts`). */
 export type AdvancePositionRow = {
   shares: string
   valueAtOpen: string
@@ -96,25 +86,19 @@ export type AdvanceAction =
   | { action: 'repay'; address: string }
   | { action: 'settle'; address: string }
 
-/** Firma con Pollar y envía por fee-bump. Devuelve el hash. */
+/** Firma y envía XDR mediante la Smart Wallet de Crossmint. */
 export async function signAndSubmit(
-  client: PollarClient,
+  client: CrossmintStellarClient,
   publicKey: string,
   xdr: string,
 ): Promise<string> {
-  const signedXdr = await pollarSignXdr(client, xdr, publicKey)
-  const data = await postJson<{ txHash?: string }>(
-    '/api/stellar/sponsor/submit',
-    { signedXdr },
-    'La transacción no se confirmó en la red',
-  )
-  if (!data.txHash) throw new Error('La red no devolvió el hash de la transacción')
-  return data.txHash
+  void publicKey
+  return client.signAndSubmitXdr(xdr)
 }
 
-/** POST a la ruta que arma el XDR → firma → envío. */
+/** POST a la ruta que arma el XDR → firma y envío con Crossmint. */
 export async function buildSignSubmit(
-  client: PollarClient,
+  client: CrossmintStellarClient,
   publicKey: string,
   path: '/api/vault/build' | '/api/advance/build',
   body: VaultAction | AdvanceAction,
@@ -124,20 +108,18 @@ export async function buildSignSubmit(
   return signAndSubmit(client, publicKey, xdr)
 }
 
-/** Crea la cuenta con reserva patrocinada. `null` si ya existía (Pollar la creó). */
-export async function sponsorCreateAccount(client: PollarClient, publicKey: string): Promise<string | null> {
-  const data = await postJson<{ xdr?: string; exists?: boolean }>(
-    '/api/stellar/sponsor/create-account',
-    {},
-    'No se pudo crear tu cuenta Stellar',
-  )
-  if (data.exists) return null
-  if (!data.xdr) throw new Error('El servidor no devolvió la transacción a firmar')
-  return signAndSubmit(client, publicKey, data.xdr)
+/** Crossmint gestiona la creación de cuenta en Stellar automáticamente. */
+export async function sponsorCreateAccount(
+  client: CrossmintStellarClient,
+  publicKey: string,
+): Promise<string | null> {
+  void client
+  void publicKey
+  return null
 }
 
 export async function sponsorTrustline(
-  client: PollarClient,
+  client: CrossmintStellarClient,
   publicKey: string,
   assetCode: string,
   assetIssuer: string,
@@ -151,10 +133,6 @@ export async function sponsorTrustline(
   return signAndSubmit(client, publicKey, xdr)
 }
 
-/**
- * USDC de Circle en mainnet. En testnet hay varios emisores que no comparten
- * liquidez: el vault de DeFindex usa el USDC de Blend testnet.
- */
 const USDC_ISSUER_MAINNET = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
 const USDC_ISSUER_TESTNET = 'GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56'
 
@@ -175,7 +153,6 @@ type HorizonBalance = {
   balance: string
 }
 
-/** Estado de la cuenta en el ledger: existe, trustline USDC y saldos (texto decimal). */
 export async function getAccountState(publicKey: string, issuer: string): Promise<AccountState> {
   const res = await fetch(`${horizonUrl()}/accounts/${encodeURIComponent(publicKey)}`, {
     cache: 'no-store',

@@ -44,7 +44,7 @@ function assetFromHorizon(
 
 function serializeAsset(asset: Asset): SdexPathQuote['sendAsset'] {
   if (asset.isNative()) return 'native'
-  return { code: asset.getCode(), issuer: asset.getIssuer() }
+  return { code: asset.getCode(), issuer: asset.getIssuer() ?? "" }
 }
 
 function deserializeAsset(a: SdexPathQuote['sendAsset']): Asset {
@@ -145,7 +145,7 @@ export async function hasUsdcTrustline(publicKey: string): Promise<boolean> {
   try {
     const account = await server.loadAccount(publicKey)
     const usdc = usdcAsset()
-    const wantIssuer = usdc.getIssuer().toUpperCase()
+    const wantIssuer = (usdc.getIssuer() ?? "").toUpperCase()
     return account.balances.some(
       (b) =>
         'asset_code' in b &&

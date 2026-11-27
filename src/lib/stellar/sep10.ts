@@ -207,7 +207,10 @@ export function buildAccountProofChallenge(account: string): { transaction: stri
 function hasSignature(tx: Transaction, publicKey: string): boolean {
   const kp = Keypair.fromPublicKey(publicKey)
   const hash = tx.hash()
-  return tx.signatures.some((s) => s.hint().equals(kp.signatureHint()) && kp.verify(hash, s.signature()))
+  return tx.signatures.some((s) => {
+    const raw = s as unknown as { hint: Uint8Array; signature: Uint8Array }
+    return Buffer.from(raw.hint).equals(Buffer.from(kp.signatureHint())) && kp.verify(hash, Buffer.from(raw.signature))
+  })
 }
 
 /** Verifica la prueba de cuenta firmada y devuelve la cuenta. */
@@ -240,7 +243,7 @@ export async function verifyAccountProof(signedXdr: string): Promise<string> {
     domainOp?.type !== 'manageData' ||
     domainOp.name !== 'web_auth_domain' ||
     domainOp.source !== account ||
-    domainOp.value?.toString('utf8') !== cfg.webAuthDomain
+    (domainOp as unknown as { value?: Uint8Array }).value ? Buffer.from((domainOp as unknown as { value: Uint8Array }).value).toString('utf8') !== cfg.webAuthDomain : true
   ) {
     throw new Error('Operaciones del challenge inválidas.')
   }
@@ -293,7 +296,7 @@ export function buildMessageChallenge(account: string): { message: string; chall
     `Nonce: ${randomBytes(24).toString('base64')}`,
     `Expira: ${expires}`,
   ].join('\n')
-  const challenge = cfg.serverKeypair.sign(sep53Hash(message)).toString('base64')
+  const challenge = Buffer.from(cfg.serverKeypair.sign(sep53Hash(message))).toString('base64')
   return { message, challenge }
 }
 

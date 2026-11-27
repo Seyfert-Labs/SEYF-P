@@ -17,7 +17,6 @@ export interface ProfileRow {
   wallet_address: string;
   embedded_wallet_address: string | null;
   email: string | null;
-  privy_did: string | null;
   risk_profile: string | null;
   full_name: string | null;
   phone: string | null;
@@ -28,7 +27,7 @@ export async function getProfile(wallet: string): Promise<ProfileRow | null> {
   if (!sb) return null;
   const { data } = await sb
     .from("profiles")
-    .select("wallet_address, embedded_wallet_address, email, privy_did, risk_profile, full_name, phone")
+    .select("wallet_address, embedded_wallet_address, email, risk_profile, full_name, phone")
     .eq("wallet_address", wallet)
     .maybeSingle();
   return (data as ProfileRow) ?? null;
@@ -44,7 +43,6 @@ export async function upsertProfile(p: ProfileInput) {
   };
   if (p.embedded !== undefined) patch.embedded_wallet_address = p.embedded ?? null;
   if (p.email !== undefined) patch.email = p.email ?? null;
-  if (p.did !== undefined) patch.privy_did = p.did ?? null;
   if (p.riskProfile !== undefined) patch.risk_profile = p.riskProfile ?? null;
   if (p.fullName !== undefined) patch.full_name = p.fullName ?? null;
   if (p.phone !== undefined) patch.phone = p.phone ?? null;

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Address, xdr } from '@stellar/stellar-sdk'
+import { Address, scValToNative, xdr } from '@stellar/stellar-sdk'
 import { DEFINDEX_USDC_ISSUER_TESTNET, strategyByVaultAddress } from '@/lib/defindex/catalog'
 import { horizonUrl } from '@/lib/stellar/network'
 import { usdcIssuer } from '@/lib/stellar/usdc'
@@ -108,7 +108,7 @@ function invokedContract(op: Record<string, unknown>): { contractId: string; fn:
   try {
     return {
       contractId: Address.fromScVal(xdr.ScVal.fromXDR(params[0].value, 'base64')).toString(),
-      fn: xdr.ScVal.fromXDR(params[1].value, 'base64').sym().toString(),
+      fn: String(scValToNative(xdr.ScVal.fromXDR(params[1].value, 'base64')) ?? ''),
     }
   } catch {
     return null

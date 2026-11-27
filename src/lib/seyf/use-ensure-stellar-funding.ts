@@ -1,17 +1,12 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { usePollar } from '@pollar/react'
+import { useSeyfStellarWallet } from '@/lib/seyf/use-seyf-stellar-wallet'
 
 type FundResult =
   | { ok: true; funded: boolean; alreadyFunded: boolean; xlm: number | null }
   | { ok: false; error: string }
 
-/**
- * Llama a /api/seyf/stellar-fund (Friendbot) para garantizar XLM de fees.
- * Función plana reusable fuera de React (p. ej. dentro de un callback que ya
- * tiene la publicKey). Idempotente.
- */
 export async function fundStellarWallet(publicKey: string): Promise<FundResult> {
   if (!publicKey) return { ok: false, error: 'Wallet no conectada' }
   try {
@@ -44,31 +39,24 @@ export async function fundStellarWallet(publicKey: string): Promise<FundResult> 
   }
 }
 
-/**
- * Garantiza que la wallet Pollar conectada tenga XLM para pagar fees (testnet).
- * Llama a /api/seyf/stellar-fund (Friendbot) de forma idempotente: si la cuenta
- * ya existe on-chain con saldo, no hace nada. Debe correr ANTES de cualquier
- * operación que firme (trustline, depósito/retiro a bóvedas DeFindex).
- */
 export function useEnsureStellarFunding() {
-  const { wallet } = usePollar()
-  const walletAddress = wallet?.address ?? null
+  const { publicKey } = useSeyfStellarWallet()
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
 
   const ensureFunding = useCallback(async (): Promise<FundResult> => {
     if (busyRef.current) return { ok: false, error: 'Ya en progreso' }
-    if (!walletAddress) return { ok: false, error: 'Wallet no conectada' }
+    if (!publicKey) return { ok: false, error: 'Wallet no conectada' }
 
     busyRef.current = true
     setBusy(true)
     try {
-      return await fundStellarWallet(walletAddress)
+      return await fundStellarWallet(publicKey)
     } finally {
       busyRef.current = false
       setBusy(false)
     }
-  }, [walletAddress])
+  }, [publicKey])
 
   return { ensureFunding, busy }
 }

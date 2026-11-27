@@ -16,7 +16,6 @@ import { GrowingAmount, YieldRate } from "../GrowingAmount";
 import { MoneyInput, formatWithCommas } from "../MoneyInput";
 import type { Go } from "../nav";
 import { useWallet } from "@/components/wallet/WalletContext";
-import { usePollar } from "@pollar/react";
 import { useVaultsRail, MAX_VAULTS, STELLAR_RAIL, type UserVault } from "@/hooks/useVaultsRail";
 import { isPlanUnlocked, STELLAR_VAULTS_ONCHAIN } from "@/lib/defindex/vaults";
 import { inferPlanIdForVault, inferStrategyForVault } from "@/lib/defindex/catalog";
@@ -224,8 +223,7 @@ export function ScreenVaults({ go }: { go: Go }) {
   // Ancla del timer del total = lectura de saldo más reciente entre las bóvedas.
   const totalAnchorMs = vaults.reduce((m, v) => Math.max(m, v.updatedAt ?? 0), 0) || undefined;
   const atCap = vaults.length >= MAX_VAULTS;
-  const { isAuthenticated: pollarOk, wallet: pollarWallet } = usePollar();
-  const pollarPk = pollarWallet?.address;
+  const { authenticated: stellarOk, publicKey: stellarPk } = useSeyfStellarWallet();
   const [orphanOnchain, setOrphanOnchain] = useState<
     { planId: string; name: string; assetSymbol: string; underlyingBalance: number; strategyId: string }[]
   >([]);
@@ -239,21 +237,21 @@ export function ScreenVaults({ go }: { go: Go }) {
   useEffect(() => {
     // Gate en `ready`: antes de que carguen las bóvedas el set `covered` está vacío
     // y TODA posición on-chain parece huérfana → la tarjeta verde aparece y se borra.
-    if (!STELLAR_RAIL || !pollarOk || !pollarPk || !ready) {
+    if (!STELLAR_RAIL || !stellarOk || !stellarPk || !ready) {
       // Reset intencional al desconectar/no-listo: limpia huérfanos obsoletos.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOrphanOnchain([]);
       return;
     }
     const covered = new Set<string>(coveredKey ? coveredKey.split(",") : []);
-    void fetch(`/api/defindex/positions?publicKey=${pollarPk}`)
+    void fetch(`/api/defindex/positions?publicKey=${stellarPk}`)
       .then((r) => r.json())
       .then((data: { withBalance?: { planId: string; name: string; assetSymbol: string; underlyingBalance: number; strategyId: string }[] }) => {
         const rows = data.withBalance ?? [];
         setOrphanOnchain(rows.filter((p) => p.underlyingBalance > 0 && !covered.has(p.planId)));
       })
       .catch(() => setOrphanOnchain([]));
-  }, [STELLAR_RAIL, pollarOk, pollarPk, ready, coveredKey]);
+  }, [STELLAR_RAIL, stellarOk, stellarPk, ready, coveredKey]);
 
   const handleCreate = async (name: string, strategy: DefindexStrategyLive) => {
     setOpening(true);

@@ -1,11 +1,13 @@
-import type { PollarClient } from '@pollar/core'
+import type { CrossmintStellarClient } from '@/lib/wallet/crossmint-stellar'
 import type { RetiroData } from './useRetiroData'
+
+export type RetiroSignerClient = CrossmintStellarClient
 
 export type RetiroCtx = {
   publicKey: string
   network: 'mainnet' | 'testnet'
   usdcIssuer: string
-  getClient: () => PollarClient
+  getClient: () => CrossmintStellarClient
   data: RetiroData
   goTo: (tab: 'fondear' | 'ahorro' | 'adelanto') => void
 }
