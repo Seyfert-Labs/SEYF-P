@@ -2,13 +2,13 @@ import { LEGAL } from "@/config/legal";
 
 /** Encabezado de una página institucional, con índice opcional de secciones. */
 export function DocHead({
-  eyebrow,
   title,
   lede,
   updated = false,
   toc,
 }: {
-  eyebrow: string;
+  /** ya no se muestra; se conserva para no tocar cada página */
+  eyebrow?: string;
   title: string;
   lede?: string;
   updated?: boolean;
@@ -17,7 +17,6 @@ export function DocHead({
   return (
     <>
       <div className="doc-head">
-        <span className="doc-eyebrow">{eyebrow}</span>
         <h1>{title}</h1>
         {lede && <p className="doc-lede">{lede}</p>}
         {updated && <p className="doc-updated">Última actualización: {LEGAL.updated}</p>}

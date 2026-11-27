@@ -87,10 +87,14 @@ const es = {
       { h: "Adelanta tu rendimiento", p: "Cobra hoy los intereses que tu ahorro va a generar en los próximos 1 a 30 días. Tu capital queda apartado, sigue rindiendo y el adelanto se paga solo. Beta en Stellar con topes bajos.", cta: "Pedir un adelanto" },
       { h: "Retira cuando quieras", p: "Saca tu dinero de la bóveda cuando quieras, sin penalización, y queda disponible en tu wallet en segundos. El retiro a tu banco por SPEI llega pronto.", cta: "Abrir mi cuenta" },
     ],
-    art: {
-      saving: "Bóveda · Viaje", unit: "MXN, ahorrado en USDC", earned: "Ganado hoy", daily: "rinde diario",
-      advance: "Adelanto a 30 días", payoff: "Se paga solo con tu rendimiento", backing: "Tu capital", locked: "Intacto",
-      withdraw: "Retiro de bóveda", to: "A tu wallet", arrived: "Listo en segundos",
+    phone: {
+      tabs: ["Inicio", "Ahorro", "Adelanto"],
+      savings: "Ahorro", total: "Tu ahorro total", today: "hoy", myVaults: "Mis bóvedas", vault: "Viaje", vaultSub: "USDC · rinde diario",
+      rates: "Tasas de hoy", ratesSub: "Lo que paga hoy cada activo. Cambia con el mercado.", usdc: "Dólar digital estable", annual: "anual",
+      advance: "Adelanto", advK: "Adelanto de rendimiento", advT: "Cobra hoy los intereses de tu ahorro.", advS: "Sin tocar tu capital.",
+      term: "Plazo", days: "días", youGet: "Recibes hoy", setAside: "Ahorro que queda apartado", keeps: "Sigue rindiendo", capital: "Tu capital", intact: "Intacto", ask: "Pedir adelanto",
+      balance: "Saldo en la bóveda", add: "Agregar", withdraw: "Retirar", toastTi: "Retiro listo", toastSu: "$2,500.00 ya están en tu wallet",
+      activity: "Movimientos", rowW: "Retiro a tu wallet", rowY: "Rendimiento diario", now: "Ahora", yesterday: "Ayer",
     },
   },
   quote: {
@@ -257,10 +261,14 @@ const en: Dict = {
       { h: "Advance your yield", p: "Get today the interest your savings will earn over the next 1 to 30 days. Your principal stays set aside, keeps earning and the advance pays itself off. Beta on Stellar with low caps.", cta: "Get an advance" },
       { h: "Withdraw anytime", p: "Take your money out of the vault whenever you want, with no penalty, and it's in your wallet in seconds. Bank withdrawals via SPEI are coming soon.", cta: "Open my account" },
     ],
-    art: {
-      saving: "Vault · Trip", unit: "MXN, saved in USDC", earned: "Earned today", daily: "earns daily",
-      advance: "30-day advance", payoff: "Pays itself off with your yield", backing: "Your principal", locked: "Intact",
-      withdraw: "Vault withdrawal", to: "To your wallet", arrived: "Ready in seconds",
+    phone: {
+      tabs: ["Home", "Savings", "Advance"],
+      savings: "Savings", total: "Your total savings", today: "today", myVaults: "My vaults", vault: "Trip", vaultSub: "USDC · earns daily",
+      rates: "Today's rates", ratesSub: "What each asset pays today. Changes with the market.", usdc: "Stable digital dollar", annual: "yearly",
+      advance: "Advance", advK: "Yield advance", advT: "Get your savings' interest today.", advS: "Without touching your principal.",
+      term: "Term", days: "days", youGet: "You get today", setAside: "Savings set aside", keeps: "Keeps earning", capital: "Your principal", intact: "Intact", ask: "Get advance",
+      balance: "Vault balance", add: "Add", withdraw: "Withdraw", toastTi: "Withdrawal ready", toastSu: "$2,500.00 is now in your wallet",
+      activity: "Activity", rowW: "Withdrawal to your wallet", rowY: "Daily yield", now: "Now", yesterday: "Yesterday",
     },
   },
   quote: {
@@ -425,10 +433,14 @@ const pt: Dict = {
       { h: "Antecipe seu rendimento", p: "Receba hoje os juros que sua poupança vai gerar nos próximos 1 a 30 dias. Seu capital fica reservado, continua rendendo e a antecipação se paga sozinha. Beta na Stellar com limites baixos.", cta: "Pedir uma antecipação" },
       { h: "Saque quando quiser", p: "Tire seu dinheiro do cofre quando quiser, sem multa, e ele fica disponível na sua wallet em segundos. O saque para o banco via SPEI chega em breve.", cta: "Abrir minha conta" },
     ],
-    art: {
-      saving: "Cofre · Viagem", unit: "MXN, poupado em USDC", earned: "Ganho hoje", daily: "rende todo dia",
-      advance: "Antecipação de 30 dias", payoff: "Se paga sozinha com seu rendimento", backing: "Seu capital", locked: "Intacto",
-      withdraw: "Saque do cofre", to: "Para sua wallet", arrived: "Pronto em segundos",
+    phone: {
+      tabs: ["Início", "Poupança", "Antecipação"],
+      savings: "Poupança", total: "Sua poupança total", today: "hoje", myVaults: "Meus cofres", vault: "Viagem", vaultSub: "USDC · rende todo dia",
+      rates: "Taxas de hoje", ratesSub: "O que cada ativo paga hoje. Muda com o mercado.", usdc: "Dólar digital estável", annual: "ao ano",
+      advance: "Antecipação", advK: "Antecipação de rendimento", advT: "Receba hoje os juros da sua poupança.", advS: "Sem tocar no seu capital.",
+      term: "Prazo", days: "dias", youGet: "Você recebe hoje", setAside: "Poupança reservada", keeps: "Continua rendendo", capital: "Seu capital", intact: "Intacto", ask: "Pedir antecipação",
+      balance: "Saldo no cofre", add: "Adicionar", withdraw: "Sacar", toastTi: "Saque pronto", toastSu: "$2,500.00 já estão na sua wallet",
+      activity: "Movimentos", rowW: "Saque para sua wallet", rowY: "Rendimento diário", now: "Agora", yesterday: "Ontem",
     },
   },
   quote: {
