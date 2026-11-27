@@ -490,96 +490,148 @@ function HeroCinema() {
   );
 }
 
-/* Reel cinematográfico (estilo anuncio): 5 escenas 3D generadas con el kit de
-   marca y animadas con Kling 4.0, fijas al scroll. Cada escena entra con zoom y
-   fundido; la imagen queda como poster mientras carga el clip. */
-const REEL: { img: string; video?: string }[] = [
-  { img: "/landing/reel/escena-1-moneda-celular.jpg", video: "/landing/reel/escena-1-moneda-celular.mp4" },
-  { img: "/landing/reel/escena-2-macro-emblema.jpg", video: "/landing/reel/escena-2-macro-emblema.mp4" },
-  { img: "/landing/reel/escena-3-boveda-abierta.jpg", video: "/landing/reel/escena-3-boveda-abierta.mp4" },
-  { img: "/landing/reel/escena-5-moneda-rayo.jpg", video: "/landing/reel/escena-5-moneda-rayo.mp4" },
-  { img: "/landing/reel/escena-6-trio-celular.jpg", video: "/landing/reel/escena-6-trio-celular.mp4" },
-];
+/* Reel cinematográfico: los 5 clips de Kling 4.0 van unidos en un solo video
+   (`reel-scrub.mp4`, un cuadro clave cada 6 para poder buscar rápido) y el scroll
+   mueve su tiempo: bajar avanza la escena, subir la regresa. En cada corte entre
+   clips hay un destello con desenfoque que tapa el salto. El texto cambia de uno
+   en uno, sin encimarse. */
+const REEL_SRC = "/landing/reel/reel-scrub.mp4";
+const REEL_POSTER = "/landing/reel/escena-1-moneda-celular.jpg";
+// [inicio, fin] de cada escena dentro del video, en segundos
+const REEL_CUTS: [number, number][] = [[0, 5], [5, 10], [10, 15], [15, 16.8], [16.8, 21.75]];
+// halo de color detrás del cuadro, uno por escena
+const REEL_GLOW = ["#B9A4FF", "#C8FF4D", "#9F7BFF", "#D8FF7A", "#B9A4FF"];
 
-function reelWindow(i: number, n: number) {
-  const seg = 1 / n;
-  const a = i * seg;
-  const b = (i + 1) * seg;
-  const f = seg * 0.22;
-  if (i === 0) return { inp: [0, b - f, b], out: [1, 1, 0], a, b, f };
-  if (i === n - 1) return { inp: [a - f, a, 1], out: [0, 1, 1], a, b, f };
-  return { inp: [a - f, a, b - f, b], out: [0, 1, 1, 0], a, b, f };
-}
-
-function ReelMedia({ i, progress }: { i: number; progress: MotionValue<number> }) {
-  const n = REEL.length;
-  const w = reelWindow(i, n);
-  const opacity = useTransform(progress, w.inp, w.out);
-  const scale = useTransform(progress, [w.a - w.f, w.b], [1.16, 1]);
-  const sc = REEL[i];
+function ReelTitle({ text }: { text: string }) {
   return (
-    <motion.div className="reel-media" style={{ opacity }}>
-      <motion.div className="reel-media-in" style={{ scale }}>
-        {sc.video ? (
-          <video src={sc.video} poster={sc.img} autoPlay muted loop playsInline preload="metadata" />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- fondo animado; next/image no aporta aquí
-          <img src={sc.img} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" />
-        )}
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function ReelCopy({ i, progress, t, s }: { i: number; progress: MotionValue<number>; t: string; s: string }) {
-  const n = REEL.length;
-  const w = reelWindow(i, n);
-  const opacity = useTransform(progress, w.inp, w.out);
-  const y = useTransform(progress, [w.a - w.f, w.a + w.f * 0.6], [46, 0]);
-  return (
-    <motion.div className="reel-copy" style={{ opacity, y }}>
-      <h3 className="reel-t">{t}</h3>
-      <p className="reel-s">{s}</p>
-    </motion.div>
+    <h3 className="reel-t">
+      {text.split(" ").map((w, k) => (
+        <span className="reel-w" key={k}>
+          <motion.span
+            initial={{ y: "105%" }}
+            animate={{ y: "0%" }}
+            exit={{ y: "-105%" }}
+            transition={{ duration: 0.55, delay: k * 0.05, ease: EASE }}
+          >
+            {w}
+          </motion.span>
+        </span>
+      ))}
+    </h3>
   );
 }
 
 function FilmReel() {
   const { t } = useI18n();
   const ref = useRef<HTMLElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
-  const p = useSpring(scrollYProgress, { stiffness: 140, damping: 32, mass: 0.4 });
-  const n = REEL.length;
-  const bar = useTransform(p, [0, 1], ["0%", "100%"]);
-  const [idx, setIdx] = useState(1);
-  useMotionValueEvent(p, "change", (v) => setIdx(Math.min(n, Math.floor(v * n) + 1)));
-  // una parada por escena
-  useSnapSection(ref, REEL.map((_, i) => (i === 0 ? 0 : i === n - 1 ? 1 : (i + 0.4) / n)));
+  const p = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.5 });
+  const n = REEL_CUTS.length;
+  const [idx, setIdx] = useState(0);
+
+  // tiempo del video según el avance: cada escena recibe el mismo tramo de scroll
+  const want = useRef(0);
+  const raf = useRef(0);
+  const seek = () => {
+    raf.current = 0;
+    const v = video.current;
+    if (!v || v.readyState < 1) return;
+    if (Math.abs(v.currentTime - want.current) > 1 / 48) v.currentTime = want.current;
+  };
+  useMotionValueEvent(p, "change", (v) => {
+    const x = Math.min(0.9999, Math.max(0, v)) * n;
+    const i = Math.floor(x);
+    const [a, b] = REEL_CUTS[i];
+    want.current = a + (x - i) * (b - a - 0.06);
+    if (!raf.current) raf.current = requestAnimationFrame(seek);
+    setIdx(i);
+  });
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+
+  // iOS no decodifica cuadros de un video que nunca se reprodujo: play() + pause()
+  // silencioso en cuanto la sección se acerca, para que el scroll pueda buscar.
+  useEffect(() => {
+    const el = ref.current;
+    const v = video.current;
+    if (!el || !v) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        v.play().then(() => { v.pause(); seek(); }).catch(() => {});
+        io.disconnect();
+      },
+      { rootMargin: "100% 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // entrada: el cuadro crece y se endereza; corte: destello + desenfoque
+  const enter = useTransform(p, [0, 0.12], [0, 1], { clamp: true });
+  const frameScale = useTransform(enter, [0, 1], [0.78, 1]);
+  const frameRot = useTransform(enter, [0, 1], [-9, 0]);
+  const cut = useTransform(p, (v) => {
+    const x = v * n;
+    const d = Math.abs(x - Math.round(x));
+    return Math.round(x) === 0 || Math.round(x) === n ? 0 : Math.max(0, 1 - d / 0.07);
+  });
+  const blur = useTransform(cut, (c) => `blur(${(c * 16).toFixed(1)}px) saturate(${1 + c * 0.6})`);
+  const bump = useTransform(cut, [0, 1], [1, 1.07]);
+  const flash = useTransform(cut, [0, 1], [0, 0.55]);
+  const it = t.reel.items[idx];
+  // en móvil el cuadro ocupa la pantalla: sin giro ni escala de entrada
+  const [wide, setWide] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 881px)");
+    const on = () => setWide(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+
+  useSnapSection(ref, REEL_CUTS.map((_, i) => (i === 0 ? 0 : i === n - 1 ? 1 : (i + 0.5) / n)));
   return (
-    <section className="reel" ref={ref} style={{ height: `${n * 100}vh` }} aria-label={t.reel.tag}>
+    <section className="reel" ref={ref} style={{ height: `${n * 90}vh` }} aria-label={t.reel.tag}>
       <div className="reel-sticky">
+        <motion.div className="reel-glow" aria-hidden animate={{ background: `radial-gradient(closest-side, ${REEL_GLOW[idx]}, transparent)` }} transition={{ duration: 0.8 }} />
         <div className="wrap reel-grid">
           <div className="reel-side">
             <p className="reel-tag"><span className="live-dot" /> {t.reel.tag}</p>
-            <div className="reel-copies">
-              {t.reel.items.slice(0, n).map((it, i) => (
-                <ReelCopy key={i} i={i} progress={p} t={it.t} s={it.s} />
-              ))}
+            <div className="reel-copies" aria-live="polite">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div className="reel-copy" key={idx} exit={{ opacity: 0, transition: { duration: 0.25, delay: 0.15 } }}>
+                  <ReelTitle text={it.t} />
+                  <motion.p className="reel-s" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 0.7, y: 0 }} transition={{ duration: 0.5, delay: 0.25, ease: EASE }}>
+                    {it.s}
+                  </motion.p>
+                </motion.div>
+              </AnimatePresence>
             </div>
             <div className="reel-meter">
-              <span className="num">{String(idx).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>
-              <span className="reel-bar"><motion.i style={{ width: bar }} /></span>
+              <span className="num">{String(idx + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>
+              <span className="reel-segs">
+                {REEL_CUTS.map((_, i) => (
+                  <ReelSeg key={i} i={i} n={n} progress={p} />
+                ))}
+              </span>
             </div>
           </div>
-          <div className="reel-frame">
-            {REEL.map((_, i) => (
-              <ReelMedia key={i} i={i} progress={p} />
-            ))}
-          </div>
+          <motion.div className="reel-frame" style={{ scale: wide ? frameScale : 1, rotate: wide ? frameRot : 0 }}>
+            <motion.div className="reel-media" style={{ filter: blur, scale: bump }}>
+              <video ref={video} src={REEL_SRC} poster={REEL_POSTER} muted playsInline preload="auto" onLoadedMetadata={seek} />
+            </motion.div>
+            <motion.div className="reel-flash" aria-hidden style={{ opacity: flash }} />
+          </motion.div>
         </div>
       </div>
     </section>
   );
+}
+
+function ReelSeg({ i, n, progress }: { i: number; n: number; progress: MotionValue<number> }) {
+  const fill = useTransform(progress, [i / n, (i + 1) / n], [0, 1], { clamp: true });
+  return <span className="reel-seg"><motion.i style={{ scaleX: fill }} /></span>;
 }
 
 /** "Acomodo" en una sección pinneada: el scroll es libre (nunca se bloquea); al
