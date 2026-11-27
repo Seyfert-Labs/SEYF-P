@@ -491,14 +491,14 @@ function HeroCinema() {
 }
 
 /* Reel cinematográfico (estilo anuncio): 5 escenas 3D generadas con el kit de
-   marca, fijas al scroll. Cada escena entra con zoom y fundido. Cuando haya clips de
-   video por escena, van en `REEL[i].video` y reemplazan a la imagen. */
+   marca y animadas con Kling 4.0, fijas al scroll. Cada escena entra con zoom y
+   fundido; la imagen queda como poster mientras carga el clip. */
 const REEL: { img: string; video?: string }[] = [
-  { img: "/landing/reel/escena-1-moneda-celular.jpg" },
-  { img: "/landing/reel/escena-2-macro-emblema.jpg" },
-  { img: "/landing/reel/escena-3-boveda-abierta.jpg" },
-  { img: "/landing/reel/escena-5-moneda-rayo.jpg" },
-  { img: "/landing/reel/escena-6-trio-celular.jpg" },
+  { img: "/landing/reel/escena-1-moneda-celular.jpg", video: "/landing/reel/escena-1-moneda-celular.mp4" },
+  { img: "/landing/reel/escena-2-macro-emblema.jpg", video: "/landing/reel/escena-2-macro-emblema.mp4" },
+  { img: "/landing/reel/escena-3-boveda-abierta.jpg", video: "/landing/reel/escena-3-boveda-abierta.mp4" },
+  { img: "/landing/reel/escena-5-moneda-rayo.jpg", video: "/landing/reel/escena-5-moneda-rayo.mp4" },
+  { img: "/landing/reel/escena-6-trio-celular.jpg", video: "/landing/reel/escena-6-trio-celular.mp4" },
 ];
 
 function reelWindow(i: number, n: number) {
