@@ -102,7 +102,8 @@ def historia1():
         layers.append(Sticker(txt, "c", 640 + i * 210, 0.9 + i * 0.55, bg=bg, fg=fg, rot=(-2 if i % 2 else 2), size=50))
     layers.append(K([["#ShipItBuilder"]], t0=4.2, size=80, y=1740, color=LIME, font="manrope"))
     shots = [{"d": d, "bg": "ink", "layers": layers,
-              "sfx": [(0.9 + i * 0.55, "pop", 0.6) for i in range(len(items))]}]
+              "sfx": [(0.9 + i * 0.55, "pop", 0.6) for i in range(len(items))]},
+             shipit_card()]
     return shots, None
 
 
@@ -125,8 +126,9 @@ def historia2():
             Progress(10.6),
             Logo(0.05, y=620, width=720, sub=["Pruébalo:", ("seyf.app", "v")], sub2=["#ShipItBuilder"])],
          "sfx": [(0.0, "impact", 0.7)]},
+        shipit_card(),
     ]
-    return shots, Fine("Beta en mainnet con topes · Contrato sin auditar")
+    return shots, FineUntil("Beta en mainnet con topes · Contrato sin auditar", 10.6)
 
 
 SCRIPTS = {"reel": reel, "historia1": historia1, "historia2": historia2}
