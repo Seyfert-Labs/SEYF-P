@@ -95,8 +95,9 @@ const ALL_STRATEGIES: DefindexStrategyConfig[] = [
     structured: 'Tu dinero rinde en CETES, deuda del gobierno mexicano en pesos. Riesgo bajo y rendimiento estable.',
     color: '#5BD6C0',
     emoji: '🛡️',
-    // APY de referencia mientras no carga el vivo — cercano al rendimiento real de CETES.
-    apyTarget: 10.5,
+    // APY de referencia mientras no carga el vivo: CETES a 28 días, subasta de
+    // Banxico del 2026-11-24 (6.20 %).
+    apyTarget: 6.2,
   },
   {
     id: 'usdc',
@@ -115,8 +116,9 @@ const ALL_STRATEGIES: DefindexStrategyConfig[] = [
     structured: 'Ahorro en USDC, un dólar digital estable 1:1 con el dólar de EE. UU. Rendimiento en dólares.',
     color: '#7C9EFF',
     emoji: '🧭',
-    // APY de referencia cercano al rendimiento real de USDC en testnet.
-    apyTarget: 4.5,
+    // APY de referencia mientras no carga el vivo: vault Meru en mainnet, 5.2 %
+    // el 2026-11-28 (GET /api/defindex/vault-info).
+    apyTarget: 5.2,
   },
 ]
 
