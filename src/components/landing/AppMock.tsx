@@ -95,7 +95,7 @@ function ScreenDeposit() {
             <Icon name="eye" size={16} color="var(--txt-dim)" />
           </div>
           <div style={{ marginTop: 14 }}>
-            <GrowingAmount base={590050.4} apy={9} size={50} align="left" id="am-home" />
+            <GrowingAmount base={590050.4} apy={5.2} size={50} align="left" id="am-home" />
           </div>
           <div style={{ display: "flex", gap: 24, marginTop: 14 }}>
             <div className="am-split"><span><i style={{ background: "var(--accent)" }} /> {t.mock.available}</span><b className="num">$125,400</b></div>
@@ -226,7 +226,7 @@ function ScreenVaults() {
             <span className="am-chip"><Icon name="leaf" size={12} /> {t.mock.dailyChip}</span>
           </div>
           <div style={{ marginTop: 14 }}>
-            <GrowingAmount base={464650} apy={10.4} size={46} align="left" color="#c4b5fd" id="am-vaults" />
+            <GrowingAmount base={464650} apy={5.2} size={46} align="left" color="#c4b5fd" id="am-vaults" />
           </div>
           <p className="am-fx-hint" style={{ marginTop: 8 }}>{t.mock.earnedMonth}</p>
         </div>
@@ -257,7 +257,8 @@ function ScreenVaults() {
 
 /* ---------- Celular de "Tu dinero, a tu manera": las pantallas de hoy ----------
    Calcan /app en mainnet: pestañas Inicio · Ahorro · Adelanto, bóvedas en USDC
-   (tasa de referencia 4.5 %), el adelanto de `seyf_advance` y el retiro de una
+   (5.2 %, APY del vault Meru en mainnet el 2026-11-28), el adelanto de `seyf_advance`
+   con su tasa vigente (apy_bps 50: 25,000 × 0.5 % × 30/365 = $10.27) y el retiro de una
    bóveda a la wallet. Mismos números que el texto de la sección. */
 function RealTabBar({ active }: { active: 0 | 1 | 2 }) {
   const { t } = useI18n();
@@ -285,9 +286,9 @@ function WaysSavings() {
         <div className="card glow" style={{ padding: 22 }}>
           <p className="eyebrow">{ph.total}</p>
           <div style={{ marginTop: 14 }}>
-            <GrowingAmount base={25000} apy={4.5} size={46} align="left" tail={0} id="am-ways-total" />
+            <GrowingAmount base={25000} apy={5.2} size={46} align="left" tail={0} id="am-ways-total" />
           </div>
-          <span className="am-chip" style={{ marginTop: 12 }}><Icon name="leaf" size={12} /> +$3.08 {ph.today}</span>
+          <span className="am-chip" style={{ marginTop: 12 }}><Icon name="leaf" size={12} /> +$3.56 {ph.today}</span>
         </div>
         <div className="am-sec" style={{ display: "flex", justifyContent: "space-between" }}>{ph.myVaults}<span style={{ color: "var(--txt-dim)", fontSize: 13 }}>1/5</span></div>
         <motion.div className="card am-vault" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5, ease: EASE }}>
@@ -305,7 +306,7 @@ function WaysSavings() {
           <div className="lrow">
             <div className="ava" style={{ color: "#7C9EFF" }}><Icon name="globe" size={20} /></div>
             <div className="mid"><p className="ti">USDC</p><p className="su">{ph.usdc}</p></div>
-            <div className="amt"><div className="a num am-pos">4.5%</div><div className="s">{ph.annual}</div></div>
+            <div className="amt"><div className="a num am-pos">5.2%</div><div className="s">{ph.annual}</div></div>
           </div>
         </div>
       </div>
@@ -335,7 +336,7 @@ function WaysAdvance() {
               <span key={d} className={`am-term${d === 30 ? " on" : ""}`}>{d} {ph.days}</span>
             ))}
           </div>
-          <div className="am-rowk" style={{ marginTop: 16 }}><span>{ph.youGet}</span><b className="num am-pos" style={{ fontSize: 26 }}>$92.47</b></div>
+          <div className="am-rowk" style={{ marginTop: 16 }}><span>{ph.youGet}</span><b className="num am-pos" style={{ fontSize: 26 }}>$10.27</b></div>
           <div className="am-rowk"><span>{ph.setAside}<small>{ph.keeps}</small></span><b className="num">$25,000</b></div>
           <div className="am-rowk"><span>{ph.capital}</span><b>{ph.intact}</b></div>
           <span className="am-cta">{ph.ask}</span>
@@ -383,7 +384,7 @@ function WaysWithdraw() {
           <div className="lrow">
             <div className="ava" style={{ color: "#c4b5fd" }}><Icon name="leaf" size={20} /></div>
             <div className="mid"><p className="ti">{ph.rowY}</p><p className="su">{ph.yesterday}</p></div>
-            <div className="amt"><div className="a num am-pos">+$3.08</div></div>
+            <div className="amt"><div className="a num am-pos">+$3.56</div></div>
           </div>
         </div>
       </div>

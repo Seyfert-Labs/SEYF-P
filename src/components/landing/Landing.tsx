@@ -462,7 +462,7 @@ function HeroCinema() {
             <div className="float-card">
               <div className="k"><span className="live-dot" /> {t.hero.earnedToday}</div>
               {/* ilustrativo: solo anima el contador, no promete una tasa */}
-              <div className="v"><GrowingAmount base={12.4} apy={9} size={30} align="left" color="#3F7A00" prefix="+$" tail={2} id="lp-ganado" /></div>
+              <div className="v"><GrowingAmount base={12.4} apy={5.2} size={30} align="left" color="#3F7A00" prefix="+$" tail={2} id="lp-ganado" /></div>
             </div>
             <div className="float-card">
               <div className="k">{t.hero.withdrawK}</div>
